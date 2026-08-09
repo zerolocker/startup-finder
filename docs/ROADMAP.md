@@ -93,16 +93,16 @@ international arrives through press, which is thin for early rounds.
 
 ---
 
-## 6. Scheduling
+## 6. Scheduling — shipped
 
-**Problem.** The app is run by hand. A weekly digest should arrive without being
-asked for.
+`./scripts/install-schedule.sh` installs a weekly launchd job that runs the
+pipeline, commits the dated issue, and posts a macOS notification. See
+[SCHEDULING.md](SCHEDULING.md).
 
-**Sketch.** The cadence question is settled — weekly, per [VISION.md](VISION.md).
-The mechanism is not. A cron entry calling `pnpm sf run --quiet` and committing
-the result is the simple version. Anything that emails or notifies should be
-opt-in and must not be built without the user asking, since it sends things
-outward on their behalf.
+Deliberately not included: email delivery. It sends things outward on the user's
+behalf unattended and needs credentials, so it should not be built without them
+asking. Pushing to the remote is also off by default, because the repo is public
+and the reports reveal which companies the user is tracking.
 
 ---
 

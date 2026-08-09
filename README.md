@@ -59,6 +59,16 @@ pnpm sf show oxide-computer        # everything known about one company
 pnpm sf prompt --limit 3           # the exact LLM screening prompt, no LLM call
 ```
 
+## Run it weekly
+
+```bash
+./scripts/install-schedule.sh     # Monday 08:00, via launchd
+```
+
+Each run writes a dated issue to `reports/`, commits it, and notifies you. Back
+issues live in git. Pushing is off by default — this repo is public. Details in
+[`docs/SCHEDULING.md`](docs/SCHEDULING.md).
+
 ## Configure it
 
 [`config/profile.yaml`](config/profile.yaml) defines what "a startup worth my

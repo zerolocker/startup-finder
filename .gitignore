@@ -6,3 +6,6 @@ node_modules/
 # Everything downstream of them (data/*.jsonl, reports/) IS committed on purpose
 # — see docs/DECISIONS.md ADR-002.
 data/cache/
+
+# Scheduled-run logs. Noisy, machine-specific, regenerated every run.
+logs/

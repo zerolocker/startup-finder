@@ -17,6 +17,7 @@ code. **Read before you change.**
 | Add or modify a data source | [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md) |
 | Replace something fundamental | [docs/DECISIONS.md](docs/DECISIONS.md) — check it wasn't already rejected |
 | Pick up new work | [docs/ROADMAP.md](docs/ROADMAP.md) |
+| Change how it runs on a schedule | [docs/SCHEDULING.md](docs/SCHEDULING.md) |
 
 `src/types.ts` is the contract between all pipeline stages and is the best single
 file to read for a fast mental model.
