@@ -58,21 +58,33 @@ Claude entirely for hours. Always pass `--budget`. Never remove the disk cache o
 the budget reservation in `src/llm/claude.ts`. When testing changes, prefer
 `--days 2 --limit 8 --research 2 --budget 1`.
 
-**3. Tune config before code.**
+**3. Branch and PR, never commit to `main`.**
+Start work with `git checkout -b <type>/<short-description>`, then
+`git push -u origin HEAD` and `gh pr create --fill`. A PR keeps a change
+reviewable and revertible as one unit, and this repo is handed between many
+agent sessions — `main` staying green is what makes that safe.
+
+This is enforced, not just requested: a `PreToolUse` hook
+(`.claude/hooks/guard-main-branch.sh`, wired up in `.claude/settings.json`)
+refuses `git commit` and `git push` while `HEAD` is on `main`, and tells you how
+to recover if you already committed there. For a genuinely deliberate exception,
+prefix the command with `SF_ALLOW_MAIN_COMMIT=1` and say why.
+
+**4. Tune config before code.**
 If results look wrong, the fix is almost always `config/profile.yaml`, then the
 rubric in `src/pipeline/score.ts`. Code is the last resort. Adding a data source
 rarely fixes a taste problem.
 
-**4. Don't silently drop companies.**
+**5. Don't silently drop companies.**
 Anything that survives merge must remain findable — below-cutoff companies keep
 `llm: null` and appear in the report's long-tail table. Silent loss is the failure
 mode the user cannot detect.
 
-**5. `null` means unknown, never `0`.**
+**6. `null` means unknown, never `0`.**
 Form D's `totalOfferingAmount` can literally be `"Indefinite"`. A `0` would rank a
 company as having raised nothing.
 
-**6. Never run `claude` from the repo root.**
+**7. Never run `claude` from the repo root.**
 It reads `CLAUDE.md` — this file — from its working directory, which would inject
 these instructions into every scoring prompt. `src/llm/claude.ts` runs it from an
 empty temp dir. Easy to reintroduce by accident.
