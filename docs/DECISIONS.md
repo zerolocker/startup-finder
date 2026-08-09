@@ -284,3 +284,51 @@ where inference happens, and is a live roadmap item — see
 **Revisit when.** Per-call session overhead becomes the dominant cost (measure
 before assuming), or the runtime gains a way to share a warm session across many
 structured calls while preserving batching and caching.
+
+---
+
+## ADR-009: Enforce the branch-and-PR workflow with a hook, not just a doc
+
+**Status:** accepted · requested by the user
+
+**Context.** This repo is explicitly designed to be picked up by many different
+agent sessions. The initial build was committed straight to `main` (the repo was
+empty, so there was nothing to branch from), and nothing prevented later sessions
+from doing the same.
+
+**Decision.** A `PreToolUse` hook on `Bash`
+(`.claude/hooks/guard-main-branch.sh`, wired in `.claude/settings.json`) denies
+`git commit` and `git push` whenever `HEAD` is on `main`, with a message telling
+the agent how to branch — and how to recover if it already committed to `main`.
+The rule is also stated in CLAUDE.md so agents understand the reason rather than
+just hitting a wall.
+
+**Why a hook rather than a documented rule alone.** A documented rule is advice;
+an agent under time pressure can talk itself out of it. The hook is the thing
+that actually holds. Both are present because the hook alone would be a
+mysterious obstacle — the doc explains it.
+
+**Why not GitHub branch protection.** Server-side protection would be stronger
+and would also cover pushes made outside Claude Code. It was not enabled because
+it would equally block the *user's* own direct pushes to `main`, which is a
+change to how they work on their own repo, not just to how agents behave. The
+request was specifically about agent sessions. Worth revisiting if the user wants
+the harder guarantee — the two are complementary, not alternatives.
+
+**Consequences.** Agents must branch. The hook adds a subprocess to every `Bash`
+call; it is a short shell script and the `matcher` is deliberately left broad
+(all `Bash`, not `Bash(git *)`) because a command like `cd sub && git push` does
+not start with `git` and would slip through a narrower matcher.
+
+**Escape hatch.** Prefixing a command with `SF_ALLOW_MAIN_COMMIT=1` bypasses the
+check. It is deliberately visible in the transcript, so a deliberate exception is
+auditable rather than silent.
+
+**Verified.** Twelve cases pinned by pipe-test with `HEAD` on `main`:
+`git commit`, `git push`, `git push -u origin HEAD`, `git add -A && git commit`,
+`git -C dir push`, and `git commit --amend` all block; `git status`, `git log`,
+`git log --grep='git commit'`, `pnpm test`, `git checkout -b`, and the
+`SF_ALLOW_MAIN_COMMIT=1` escape hatch all pass.
+
+**Revisit when.** The user wants protection that also covers their own pushes
+(add a GitHub ruleset), or the hook proves too coarse in practice.
