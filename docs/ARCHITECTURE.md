@@ -21,13 +21,18 @@ Read [VISION.md](VISION.md) first for the intent. This document is the map.
 The whole design is a **funnel with widening cost per item**. Each stage is
 allowed to be more expensive than the last because it sees far fewer items.
 
-| Stage | Items in | Items out | Cost/item | Total |
+All `$` figures are dollar-*equivalents* of token usage. LLM work runs on the
+user's Claude subscription via OAuth — nothing is billed to a card, and the real
+scarce resource is the plan's rate limit. See [ADR-003](DECISIONS.md#adr-003-use-the-claude-code-cli-as-the-llm-backend)
+and [ADR-008](DECISIONS.md#adr-008-keep-the-subprocess-pipeline-do-not-move-scoring-into-in-runtime-subagents).
+
+| Stage | Items in | Items out | Usage/item | Total |
 |---|---:|---:|---:|---:|
-| ingest | — | ~1,600 | $0 | $0 |
-| merge | ~1,600 | ~330 | $0 | $0 |
-| prefilter | ~330 | 120 | $0 | $0 |
-| LLM score | 120 | 120 ranked | ~$0.008 | ~$1 |
-| research | 15 | 15 dossiers | ~$0.30 | ~$4 |
+| ingest | — | ~1,600 | none | none |
+| merge | ~1,600 | ~330 | none | none |
+| prefilter | ~330 | 120 | none | none |
+| LLM score | 120 | 120 ranked | ~$0.008-equiv | ~$1-equiv |
+| research | 15 | 15 dossiers | ~$0.30-equiv | ~$4-equiv |
 
 If you are adding a stage, place it according to what it costs per item and how
 much it narrows the field. A cheap stage that narrows a lot belongs early.
@@ -146,7 +151,7 @@ re-run one stage without the others is what makes iteration affordable.
 
 ## Testing
 
-113 tests, no network, sub-second. Everything pure is tested; the network and
+135 tests, no network, sub-second. Everything pure is tested; the network and
 subprocess boundaries are not mocked, they are simply not unit-tested — the real
 verification for those is running the pipeline.
 

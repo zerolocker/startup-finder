@@ -6,12 +6,25 @@
  * separate API key to manage, and it gets first-class web search for free,
  * which the research stage depends on.
  *
+ * ## What "cost" means here
+ *
+ * With no ANTHROPIC_API_KEY set, `claude` authenticates via OAuth against the
+ * user's subscription. **Nothing is billed to a card.** The `total_cost_usd`
+ * the CLI reports is a dollar-*equivalent* of the tokens used, and the real
+ * scarce resource is the subscription's rate limit.
+ *
+ * We still track and cap it, because it is the best available proxy for how
+ * much of that limit a run consumes. Read every "$" in this file as "plan
+ * usage, expressed in dollar-equivalents" — not as money leaving an account.
+ *
  * Three things here are load-bearing and should not be removed casually:
  *
- *   1. **Disk caching.** A research call costs ~$0.13 and ~15s. Re-running the
- *      pipeline without a cache would re-pay for every company every time.
+ *   1. **Disk caching.** A research call is ~$0.13-equivalent and ~15s.
+ *      Re-running the pipeline without a cache would re-spend that usage for
+ *      every company every time.
  *   2. **The budget cap.** A bug that fans out over 3000 companies instead of
- *      50 would otherwise be an expensive surprise.
+ *      50 would burn through the plan's rate limit and lock the user out of
+ *      Claude entirely for hours. That is the real failure mode it prevents.
  *   3. **The sandbox cwd.** `claude` reads CLAUDE.md from its working
  *      directory. Run from the repo root it would ingest *this project's* dev
  *      instructions into every scoring prompt — irrelevant, costly, and

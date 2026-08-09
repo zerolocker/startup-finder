@@ -27,7 +27,9 @@ agentic-AI company for logistics, with 13 open engineering roles listed, its
 founders' backgrounds, and its investor list — none of which appears anywhere in
 the SEC filing that surfaced it.
 
-Total cost: about $4 of LLM spend and 15 minutes.
+It took about 15 minutes and roughly $4-equivalent of token usage — drawn from
+your Claude subscription, not billed to a card. See
+[Cost, honestly](#cost-honestly).
 
 ## Why it exists
 
@@ -58,38 +60,35 @@ flowchart TD
 
 Five stages, each independently runnable:
 
-| Stage | What it does | Cost |
+| Stage | What it does | Plan usage |
 |---|---|---|
-| `ingest` | Pull SEC Form D filings + funding news RSS | free, slow |
-| `merge` | Join filings and press into company records | free |
-| `score` | Rank everything, then LLM-screen the top ~120 | ~$1 |
-| `research` | Claude reads the web on the top ~15 | ~$3-7 |
-| `report` | Write the digest and dashboard | free |
+| `ingest` | Pull SEC Form D filings + funding news RSS | none, slow |
+| `merge` | Join filings and press into company records | none |
+| `score` | Rank everything, then LLM-screen the top ~120 | ~$1-equiv |
+| `research` | Claude reads the web on the top ~15 | ~$3-7-equiv |
+| `report` | Write the digest and dashboard | none |
 
-**Why a funnel.** Cost per company rises ~40x from screening to research, so each
-tier has to narrow the field before the next one runs — researching all 324
-companies would cost ~$100 instead of ~$4. Because stages persist to disk
-independently, you can re-run `score` and `report` while tuning your profile
-without re-paying for research.
+**Why a funnel.** Token usage per company rises ~40x from screening to research,
+so each tier has to narrow the field before the next one runs — researching all
+324 companies would burn ~$100-equivalent of plan capacity instead of ~$4.
+Because stages persist to disk independently, you can re-run `score` and `report`
+while tuning your profile without re-spending on research.
 
 **Where the judgement lives.** `config/profile.yaml` — themes and weights,
 round-size window, geography, and a free-text description of you passed verbatim
 to the model. It is policy; everything else is mechanism.
 
-To read the exact prompt the screening stage sends, without spending anything:
-
-```bash
-pnpm sf prompt --limit 3
-```
-
 ```bash
 pnpm sf run                        # everything (the normal entry point)
-pnpm sf run --days 3 --budget 2    # quick, cheap pass
+pnpm sf run --days 3 --budget 2    # quick pass, lighter on your rate limit
 pnpm sf score && pnpm sf report    # re-screen after editing your profile
 pnpm sf stats                      # what's in data/
 pnpm sf show oxide-computer        # everything known about one company
-pnpm sf prompt                     # the exact LLM screening prompt, free
+pnpm sf prompt --limit 3           # the exact LLM screening prompt, no LLM call
 ```
+
+`sf prompt` is the fastest way to understand — or debug — the screening stage: it
+prints the literal text sent to the model, profile and rubric included.
 
 Run `pnpm sf --help` for all options.
 
@@ -117,11 +116,27 @@ pnpm sf score --limit 200 && pnpm sf report
 Optionally set `SF_CONTACT` to your email; the SEC asks that automated clients
 identify themselves.
 
-## Cost control
+## Cost, honestly
 
-Every run takes a hard `--budget` in dollars and refuses to start a call that
-would exceed it. LLM responses are cached on disk, so re-runs are nearly free.
-Lifetime spend is tracked in `data/runs.jsonl` and shown by `pnpm sf stats`.
+**Nothing here is billed to a card.** With no `ANTHROPIC_API_KEY` set, `claude -p`
+authenticates via OAuth against your Claude subscription, so every LLM call in
+this app draws on your existing plan.
+
+The `$` figures throughout this repo are the `total_cost_usd` the CLI reports:
+a dollar-*equivalent* of tokens used. We track it anyway, because it is the best
+available proxy for the thing that genuinely is scarce — your plan's rate limit.
+
+That is what `--budget` protects. A bug that fans out over 3,000 companies
+instead of 50 will not cost you money; it will burn your rate limit and lock you
+out of Claude for hours. The cap refuses to dispatch a call that would exceed it,
+and reserves in-flight cost so concurrent calls cannot collectively overshoot.
+
+Responses are cached on disk, so re-runs consume almost nothing. Lifetime usage
+is tracked in `data/runs.jsonl` and shown by `pnpm sf stats`.
+
+If you would rather pay per token than use plan capacity, set `ANTHROPIC_API_KEY`
+— but note that the CLI only honors it under `--bare`, which this app does not
+use. See [ADR-003](docs/DECISIONS.md#adr-003-use-the-claude-code-cli-as-the-llm-backend).
 
 ## Repo layout
 
@@ -145,7 +160,7 @@ reasoning behind the design, not just the mechanics — particularly
 rejected.
 
 ```bash
-pnpm test        # 113 tests, no network required
+pnpm test        # 135 tests, no network required
 pnpm typecheck
 ```
 

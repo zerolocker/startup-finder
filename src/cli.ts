@@ -8,12 +8,15 @@
  * you iterate on prompts or on config/profile.yaml — which is the single most
  * common thing anyone working on this app will want to do.
  *
- *   sf ingest    fetch SEC Form D + funding news        (free, slow)
- *   sf merge     build company records from sources     (free, fast)
- *   sf score     prefilter + LLM fit scoring            ($)
- *   sf research  deep dives with web search             ($$)
- *   sf report    write reports/                         (free, fast)
+ *   sf ingest    fetch SEC Form D + funding news        (no LLM, slow)
+ *   sf merge     build company records from sources     (no LLM, fast)
+ *   sf score     prefilter + LLM fit scoring            (light plan usage)
+ *   sf research  deep dives with web search             (heavy plan usage)
+ *   sf report    write reports/                         (no LLM, fast)
  *   sf run       all of the above                       — the normal entry point
+ *
+ * "Plan usage" means your Claude subscription's rate limit, not money —
+ * see the note at the top of src/llm/claude.ts.
  *
  * See docs/ARCHITECTURE.md for how the stages fit together.
  */
@@ -72,15 +75,17 @@ Options:
   --days <n>        Lookback window for ingestion (default 7)
   --limit <n>       Companies sent to the LLM scorer (default 120)
   --research <n>    Companies given a deep-dive dossier (default 15)
-  --budget <usd>    Hard cap on LLM spend for this run (default 8)
+  --budget <n>      Cap on plan usage for this run, in $-equivalents (default 8)
+                    Runs on your Claude subscription — nothing is billed to a
+                    card. This guards your rate limit, not your wallet.
   --model <name>    haiku | sonnet | opus (default sonnet)
   --refresh         Re-research companies that already have a dossier
   --no-research     Skip the expensive research stage
   --quiet           Only log warnings and errors
 
 Examples:
-  pnpm sf run                          # weekly digest, ~$3-6
-  pnpm sf run --days 3 --budget 2      # quick cheap pass
+  pnpm sf run                          # weekly digest, ~15 min
+  pnpm sf run --days 3 --budget 2      # quick pass, lighter on your rate limit
   pnpm sf score --limit 200 && pnpm sf report   # rescore after editing profile
 `;
 
@@ -235,7 +240,7 @@ async function cmdStats(): Promise<void> {
       `Companies        ${companies.length}`,
       `Scored           ${scored.length} (${withLlm} by LLM, ${strong} at fit >= 70)`,
       `Dossiers         ${dossiers.length}`,
-      `Runs             ${runs.length} (lifetime LLM spend $${totalCost.toFixed(2)})`,
+      `Runs             ${runs.length} (lifetime plan usage ~$${totalCost.toFixed(2)}-equiv)`,
       '',
     ].join('\n'),
   );
@@ -341,7 +346,7 @@ async function cmdRun(opts: {
 
   const lines = [
     '',
-    `Done in ${((Date.parse(record.finishedAt) - Date.parse(record.startedAt)) / 1000).toFixed(0)}s · LLM spend $${record.costUsd.toFixed(2)}`,
+    `Done in ${((Date.parse(record.finishedAt) - Date.parse(record.startedAt)) / 1000).toFixed(0)}s · plan usage ~$${record.costUsd.toFixed(2)}-equiv`,
     '',
     'Top matches:',
     ...top.map((c) => {
@@ -424,12 +429,12 @@ async function main(): Promise<void> {
     case 'score':
       startBudget(budget);
       await stageScore(limit, model);
-      log.info(`LLM spend $${budgetSpent().toFixed(2)}`);
+      log.info(`Plan usage ~$${budgetSpent().toFixed(2)}-equiv (subscription, not billed)`);
       break;
     case 'research':
       startBudget(budget);
       await stageResearch(research, model, values.refresh);
-      log.info(`LLM spend $${budgetSpent().toFixed(2)}`);
+      log.info(`Plan usage ~$${budgetSpent().toFixed(2)}-equiv (subscription, not billed)`);
       break;
     case 'report': {
       const companies = await loadResearched();

@@ -13,7 +13,7 @@ are not the same kind of thing and are not comparable.**
 |---|---|---|
 | Purpose | Triage — who deserves an LLM call | Judgement — is this worth the user's time |
 | Sees | Name, amount, industry code, location | The same, plus reasoning |
-| Cost | $0 | ~$0.008/company |
+| Plan usage | none | ~$0.008-equiv/company |
 | Optimize for | **Recall** | **Precision + honesty** |
 | Shown to user? | No | Yes |
 
@@ -158,8 +158,8 @@ After editing the profile:
 pnpm sf score --limit 200 && pnpm sf report
 ```
 
-Re-scoring is cheap (~$1) and research is cached, so iterating on taste costs
-almost nothing.
+Re-scoring is light (~$1-equiv) and research is cached, so iterating on taste
+barely touches your rate limit.
 
 ## Evaluating a change
 
@@ -172,4 +172,4 @@ top-ranked item. Until there is, the honest procedure is:
    changes are easy to see; silent losses are not.
 
 Bear in mind that LLM responses are cached by prompt hash, so a prompt edit
-invalidates the cache and a full re-score costs real money again.
+invalidates the cache and a full re-score consumes plan capacity again.

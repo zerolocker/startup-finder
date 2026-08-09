@@ -25,14 +25,15 @@ file to read for a fast mental model.
 
 ```bash
 pnpm install
-pnpm test           # 113 tests, no network, <1s
+pnpm test           # 135 tests, no network, <1s
 pnpm typecheck      # tsc --noEmit, strict
 pnpm sf --help      # all CLI options
 
-pnpm sf run                        # full pipeline (~$4, ~15 min)
+pnpm sf run                        # full pipeline (~15 min, ~$4-equiv plan usage)
 pnpm sf score && pnpm sf report    # re-screen without re-ingesting or re-researching
 pnpm sf stats                      # what's in data/
 pnpm sf show <company-id>          # full record for one company, incl. score breakdown
+pnpm sf prompt --limit 3           # the literal screening prompt, no LLM call
 ```
 
 ## The rules that matter
@@ -45,9 +46,15 @@ description costs a wasted conversation and trust in every other row. Every prom
 here is written to make admitting ignorance the easy path. **Preserve that when
 editing prompts.**
 
-**2. LLM calls cost real money — the user's money.**
-A full run is ~$4. Always pass `--budget`. Never remove the disk cache or the
-budget reservation in `src/llm/claude.ts`. When testing changes, prefer
+**2. LLM calls consume the user's plan, not their wallet — but consume it hard.**
+There is no `ANTHROPIC_API_KEY` here; `claude -p` runs on the user's Claude
+subscription via OAuth, so **nothing is billed to a card**. The `total_cost_usd`
+the CLI reports is a dollar-*equivalent* of tokens used, and we track it because
+it is the best proxy for how much of the subscription's rate limit a run eats.
+
+That limit is the real scarce resource: a fan-out bug can lock the user out of
+Claude entirely for hours. Always pass `--budget`. Never remove the disk cache or
+the budget reservation in `src/llm/claude.ts`. When testing changes, prefer
 `--days 2 --limit 8 --research 2 --budget 1`.
 
 **3. Tune config before code.**

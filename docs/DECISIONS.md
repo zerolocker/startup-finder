@@ -92,7 +92,10 @@ The obvious choice is the Anthropic API with an `ANTHROPIC_API_KEY`.
 
 1. **No separate credential or bill.** It runs on the subscription the user
    already has. There was no `ANTHROPIC_API_KEY` in the environment, and asking a
-   user to provision one to run their own tool is real friction.
+   user to provision one to run their own tool is real friction. Confirmed: with
+   no API key and no `apiKeyHelper`, `claude` authenticates via OAuth, so LLM
+   work draws on plan capacity and **nothing is billed to a card**. The
+   `total_cost_usd` the CLI reports is a dollar-equivalent of tokens used.
 2. **Web search comes for free and works headlessly.** Verified: `--allowedTools
    WebSearch` in `-p` mode performs multi-turn search and returns clean JSON. The
    research stage is the app's main value and it depends entirely on this.
@@ -231,3 +234,53 @@ pipeline on branches simultaneously.
 
 **Revisit when.** Repo size becomes a problem. First mitigation is to keep only
 `latest.*` plus a monthly archive rather than every dated run.
+
+---
+
+## ADR-008: Keep the subprocess pipeline; do not move scoring into in-runtime subagents
+
+**Status:** accepted · after the "isn't this free on my plan?" question
+
+**Context.** LLM work here runs through `claude -p` subprocesses. A natural
+alternative: make startup-finder a Claude Code skill that spawns subagents inside
+one runtime, on the theory that this would use the subscription rather than
+costing money.
+
+**The premise is already true.** With no `ANTHROPIC_API_KEY` and no
+`apiKeyHelper`, `claude -p` authenticates via OAuth against the user's
+subscription. Nothing is billed to a card today. `total_cost_usd` is a
+dollar-equivalent of tokens, which we track as a proxy for rate-limit
+consumption. So the motivating problem does not exist.
+
+**Decision.** Keep the subprocess pipeline.
+
+**Why.** Subagents would draw on the same subscription and the same rate limit —
+tokens are tokens, regardless of which process emits them. There is no saving to
+capture. Against that, moving in-runtime gives up four things that are doing real
+work:
+
+1. **Batching.** Tier 2 scores 8 companies per call, so the rubric and profile
+   (most of the prompt) are sent once per batch instead of once per company — a
+   ~6-8x reduction. A subagent-per-company design cannot batch by construction.
+2. **Disk caching keyed by prompt hash.** Re-runs cost almost nothing. A
+   rebuild during development re-scored 120 companies for $0.35-equiv instead of
+   $2.67 because most batches hit cache.
+3. **The budget reservation.** A hard pre-dispatch cap on how much rate limit a
+   run can consume ([ADR-006](#adr-006-reserve-llm-budget-before-dispatch)).
+4. **Headless, schedulable, resumable stages.** `sf score` and `sf report` re-run
+   against on-disk data without a human or a live session.
+
+**Consequences.** We pay per-call session overhead — roughly 12k cache-creation
+tokens for the system prompt and tool definitions on every invocation. Batching
+amortizes this (15 calls for 120 companies, not 120), and `--strict-mcp-config`
+plus an empty working directory keep it near the floor. The CLI's `--bare` flag
+would cut it further but requires an API key and never reads OAuth, so it is
+unusable here.
+
+**Note on "routines".** Scheduling a recurring run is a *separate* concern from
+where inference happens, and is a live roadmap item — see
+[ROADMAP.md](ROADMAP.md) item 6. Nothing in this ADR argues against scheduling.
+
+**Revisit when.** Per-call session overhead becomes the dominant cost (measure
+before assuming), or the runtime gains a way to share a warm session across many
+structured calls while preserving batching and caching.
