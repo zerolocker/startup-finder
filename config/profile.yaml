@@ -1,0 +1,81 @@
+# ============================================================================
+# THE PROFILE — this file is the whole point of the app.
+#
+# Everything else (ingestion, merging, reports) is mechanism. This file is
+# policy: it defines what "a startup worth my time" means. If the results feel
+# wrong, tune this file first, before touching any code.
+#
+# After editing, re-run:  pnpm sf score --rescore && pnpm sf report
+# ============================================================================
+
+about: |
+  Software engineer evaluating early-stage startups, primarily to join one as
+  an employee rather than to invest. Comfortable across the stack and
+  interested in technically substantial work — systems where the engineering
+  is the hard part, not just a CRUD wrapper on someone else's model API.
+
+  Values: strong technical founders, a real product (not a deck), a team small
+  enough that the work is high-leverage, and a market that could plausibly get
+  large. Skeptical of hype-driven positioning and of companies whose only moat
+  is being early.
+
+# What are we evaluating startups FOR? Drives which signals get weighted.
+#   join   — weights team quality, open roles, engineering culture, equity stage
+#   invest — weights market size, traction, round terms, investor quality
+intent:
+  - join
+
+interests:
+  # weight is 0..1 and acts as an importance multiplier in the LLM rubric.
+  themes:
+    - name: AI/ML infrastructure and developer tools
+      weight: 1.0
+    - name: Agent frameworks, evaluation, and LLM tooling
+      weight: 0.95
+    - name: Databases, distributed systems, and cloud infrastructure
+      weight: 0.9
+    - name: Developer platforms and productivity tooling
+      weight: 0.85
+    - name: Data infrastructure, streaming, and analytics
+      weight: 0.8
+    - name: Cybersecurity and privacy engineering
+      weight: 0.75
+    - name: Applied AI in a specific vertical (legal, health, finance, logistics)
+      weight: 0.7
+    - name: Fintech, payments, and financial infrastructure
+      weight: 0.6
+    - name: Consumer apps and marketplaces
+      weight: 0.45
+    - name: Robotics, hardware, and embedded systems
+      weight: 0.4
+
+  # These subtract. Be specific — vague anti-themes cause false rejections.
+  antiThemes:
+    - Crypto, web3, blockchain, and token projects
+    - Real estate investment vehicles and property funds
+    - Cannabis, gambling, vice, and payday lending
+    - Multi-level marketing and affiliate-driven businesses
+    - Thin GPT wrappers with no proprietary technology or data
+    - Defense and weapons systems
+
+stage:
+  # USD. Rounds below this are usually too small/unstable to join full time.
+  minRaiseUsd: 2000000
+  # USD. Above this, the equity upside window has usually closed.
+  maxRaiseUsd: 150000000
+
+geography:
+  # Two-letter US state codes and/or country names.
+  preferred:
+    - CA
+    - NY
+    - WA
+    - MA
+  remoteOk: true
+
+notes:
+  - Prefers companies where engineers are close to the product decisions.
+  - Founder technical depth matters more than brand-name investors.
+  - A company that is hiring senior/staff engineers is a much stronger signal
+    than one hiring only junior roles or only go-to-market.
+  - Wary of companies that raised a very large seed with no shipped product.

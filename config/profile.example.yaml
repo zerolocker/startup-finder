@@ -1,0 +1,33 @@
+# Copy this to config/profile.yaml and edit. See config/profile.yaml for a
+# fully worked example, and docs/SCORING.md for how each field is used.
+
+about: |
+  One or two paragraphs describing who you are and what you are looking for.
+  This is fed verbatim to the LLM, so write it the way you would brief a
+  recruiter who is going to filter hundreds of companies on your behalf.
+  Being specific about what you DON'T want is as valuable as what you do.
+
+# "join", "invest", or both.
+intent:
+  - join
+
+interests:
+  themes:
+    - name: A domain you care about
+      weight: 1.0
+    - name: A domain you care about somewhat less
+      weight: 0.6
+  antiThemes:
+    - A domain you never want to see
+
+stage:
+  minRaiseUsd: 2000000
+  maxRaiseUsd: 150000000
+
+geography:
+  preferred:
+    - CA
+  remoteOk: true
+
+notes:
+  - Any extra instruction you want the model to weigh.

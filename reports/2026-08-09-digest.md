@@ -1,0 +1,716 @@
+# Startup digest — 2026-08-09
+
+Covering funding activity from the last **10 days**. 324 candidates screened, 324 ranked, 17 researched in depth, top 12 written up below.
+
+> Scores are this app's judgement of fit against `config/profile.yaml`, not a measure of company quality.
+> Anything not backed by a link came from a model and should be verified before you act on it.
+
+## At a glance
+
+| | Fit | Company | What they do | Raised | Confidence |
+|---|---:|---|---|---:|---|
+| ⭐ | **78** | [W4 Games US Inc.](#w4-games-us-inc) | Commercial layer on top of the open-source Godot Engine: professional services to help s… | $3.1M | 🌗 medium |
+| ⭐ | **78** | [Oxide Computer Co](#oxide-computer-co) | A vertically integrated 'cloud computer': custom-designed server and switch hardware (ra… | $445.0M | 🌕 high |
+| ⭐ | **74** | [Vangrid](#vangrid) | A decentralized physical infrastructure network (DePIN) that crowdsources smartphone cam… | $9.0M | 🌗 medium |
+| ⭐ | **74** | [Inferra Inc.](#inferra-inc) | Described only in a one-line positioning statement: 'bringing real-time AI inference to … | $19.3M | 🌑 low |
+| ⭐ | **72** | [Emerald AI, Inc.](#emerald-ai-inc) | Emerald Conductor: software that lets AI data centers dynamically flex their power draw … | $90.2M | 🌗 medium |
+| ⭐ | **72** | [HappyRobot](#happyrobot) | An 'AI operating system for the real economy' — autonomous AI agents (voice, chat, email… | $150.0M | 🌗 medium |
+| ⭐ | **72** | [Legaltech Wordsmith](#legaltech-wordsmith) | An AI platform that acts as a 'legal front door' for in-house legal departments: it rece… | $14.0M | 🌗 medium |
+| · | **68** | [Malted AI Ltd](#malted-ai-ltd) | A platform that distills large LLMs into smaller, domain-specific models trained and ali… | $3.9M | 🌑 low |
+| · | **68** | [Smallest.ai](#smallestai) | A voice-AI platform for enterprise conversational agents, built around proprietary model… | $13.0M | 🌑 low |
+| · | **68** | [SkillBench, Inc.](#skillbench-inc) | A 'measurement and transformation layer for AI-augmented knowledge work.' The platform c… | $15.1M | 🌑 low |
+| · | **68** | [TXSE Group Inc.](#txse-group-inc) | A newly launched national stock exchange competing with NYSE, Nasdaq, and Cboe for equit… | $27.9M | 🌗 medium |
+| · | **66** | [Neuraspace](#neuraspace) | AI/ML platform for Space Domain Awareness and Space Traffic Management: ingests commerci… | $15.6M | 🌗 medium |
+
+## The shortlist
+
+### W4 Games US Inc.
+
+**Fit 78/100** · $3.1M · 2026-07-30 · DUBLIN 12 IRELAND, L2
+
+W4 Games is a Dublin-based startup founded by core Godot Engine developers — including Juan Linietsky, Godot's original creator — that sells commercial products and services (porting, console/XR support, enterprise support) built around the open-source Godot game engine. The officers/directors on the SEC Form D filing (Farronato, Linietsky, Alessandrelli, Verschelde, Bifani, Haycock) match W4 Games' known founding and leadership team exactly, so identification is confident. This is a real, shipping business (not a deck) with paying enterprise clients, but it is a game-engine/tooling services company, not an AI/ML infra or dev-tools company, so it sits outside this person's core interest areas even though the engineering (engine internals, console porting, cloud backend) is genuinely substantial.
+
+**Product** — Commercial layer on top of the open-source Godot Engine: professional services to help studios adopt/scale/operate Godot in production, platform and console porting (PlayStation 5, Nintendo Switch, mobile) with compliance support, XR/immersive tooling (OpenXR, Android XR), and premium enterprise support with dedicated engineers. They also run 'W4 Cloud,' a cloud platform product (hiring backend engineers for it). Customers cited include Google, Meta, and Second Dinner.
+
+**Team** — Founded ~2022 by Juan Linietsky (co-creator and longtime lead developer of Godot Engine, CEO), Rémi Verschelde (longtime Godot project manager/maintainer), Fabio Alessandrelli (Godot core contributor), and entrepreneur Nicola Farronato. Darin Bifani and Paul Haycock also appear as executive officers on the current SEC filing but were not found in press coverage of the founding team — likely later operating/exec hires. This is a technically deep founding team with direct, original ownership of the underlying technology (not just early users of someone else's engine).
+
+**Funding** — Public history: $8.5M raised in 2022–2023, then a $15M Series A announced Dec 2023 led by OSS Capital, with participation from Naval Ravikant, Justin Hoffman, Larry Augustin, Alex Atallah, Thomas Dohmke, Diogo Mónica, and Scott Williamson (per Phoronix/GameDeveloper.com coverage). Crunchbase/PitchBook show additional smaller tranches into 2024 (e.g. a ~$0.35M Series A extension in July 2024), suggesting the round was raised in pieces. The $3.1M Form D dated 2026-07-30 referenced in the SEC filing appears to be a further extension/top-up of this ongoing raise; no press coverage or named investors for this specific tranche were found, and the 6 investors listed in the filing were not identified by name in public sources.
+
+**Open roles** — `Software Engineer - Professional Services (Remote, posted 08/07/2026)`, `System Backend Engineer, W4 Cloud (Remote)`
+
+**Stack** — Godot Engine (C++/GDScript core), OpenXR, Android XR, PlayStation 5 SDK, Nintendo Switch SDK, Cloud backend services/APIs (W4 Cloud)
+
+**Competitors** — Unity Technologies, Epic Games (Unreal Engine), Other commercial game-engine service/consulting providers
+
+**Reasons to look closer**
+- Founders are the actual creators/maintainers of the underlying technology (Godot Engine) rather than early adopters of someone else's platform — deep, verifiable technical ownership.
+- Real, shipping product with named enterprise clients (Google, Meta, Second Dinner) rather than a pre-launch deck.
+- Small team building genuinely hard systems work (engine internals, console certification/porting, XR integration, cloud backend) — plausible high engineering leverage.
+- Multi-year funding history with credible institutional and individual investors (OSS Capital, Naval Ravikant, GitHub CEO Thomas Dohmke, others) in the earlier Series A.
+
+**Reasons for caution**
+- No press or named investors found for the specific $3.1M / 2026-07-30 Form D tranche cited in the SEC filing — funding appears to be a continuation/top-up of the 2023 Series A rather than a fresh priced round, which is smaller and less newsworthy than the headline $15M figure suggests.
+- Currently only 1-2 open engineering roles listed on their own careers page, both mid-level individual-contributor postings — no visible senior/staff-level openings, which is a weaker hiring signal per this person's stated heuristic.
+- Core market is game engine tooling/services, not AI/ML infrastructure, agents, data infra, or the other high-priority interest areas for this evaluator.
+
+**Links** — [Homepage](https://www.w4games.com) · [Careers](https://www.w4games.com/jobs) · [LinkedIn](https://ie.linkedin.com/company/w4games) · [SEC Form D filing](https://www.sec.gov/Archives/edgar/data/2016288/000201628826000001/0002016288-26-000001-index.htm) · [Series A coverage (Phoronix)](https://www.phoronix.com/news/W4-Games-15M-Funding) · [Founding coverage (TechCrunch)](https://techcrunch.com/2022/08/19/how-w4-plans-to-commercialize-the-godot-game-engine-by-following-red-hats-playbook/)
+
+**Why this scored 78** — Founding team includes Juan Linietsky and Remi Verschelde, the actual creators/core maintainers of Godot — about as strong a technical-founder signal as exists, and building genuine developer infrastructure rather than a thin wrapper. Small team size means real engineering leverage.
+
+**Screening concerns** — Game engine tooling is adjacent to but not squarely within AI/ML infra — core value is in developer tooling generally; Entity is Dublin-registered despite the 'US Inc' name, actual team location/remote policy unclear; Small $3.1M raise means very early stage
+
+**On the SEC filing** — Nicola Farronato (Executive Officer, Director) · Juan Linietsky (Executive Officer, Director) · Fabio Alessandrelli (Director) · Remi Verschelde (Director) · Darin Bifani (Executive Officer) · Paul Haycock (Executive Officer)
+
+**Sources** — [edgar](https://www.sec.gov/Archives/edgar/data/2016288/000201628826000001/0002016288-26-000001-index.htm)
+
+---
+
+### Oxide Computer Co
+
+**Fit 78/100** · $445.0M · 2026-07-20 · Emeryville, CA
+
+Confidently identified: Oxide Computer Company, founded 2019 by Bryan Cantrill (ex-Sun Microsystems, ex-Joyent CTO, creator of DTrace) and Steve Tuck (ex-Joyent), based in Emeryville, CA. Oxide builds rack-scale server hardware plus a from-scratch, open-source cloud-control-plane software stack, positioned as an on-premises alternative to hyperscaler cloud infrastructure. This is a real, shipping product with paying customers (not a deck), a technically deep founding team, and it just closed a $445M round per SEC Form D (2026-07-20) — more than double its prior $200M Series C — making it one of the more substantial and credible infra plays in this space.
+
+**Product** — A vertically integrated 'cloud computer': custom-designed server and switch hardware (rack-scale, sold as a full rack, not individual servers) paired with fully open-source systems software the company wrote itself — including a Rust-based hypervisor (Propolis), an illumos-derived host OS (Helios), and a cloud control plane exposing an AWS/Azure-style API for on-premises compute, storage, and networking. Sold to enterprises/governments who want hyperscaler-style elastic, API-driven infrastructure but must (or choose to) run it on their own premises.
+
+**Team** — Co-founded 2019 by Bryan Cantrill (kernel engineer at Sun Microsystems, co-creator of DTrace, later VP Eng then CTO of Joyent) and Steve Tuck (also ex-Joyent). Both bring roughly two decades of systems/cloud-infrastructure experience (Sun, Joyent, and colleagues' backgrounds also cite Dell). Directors/officers per the SEC filing: Steven Tuck, Bryan Cantrill, Seth Winterroth, Gaetano Crupi (Managing Director, USIT), and Scott Orn.
+
+**Funding** — History: $100M Series B (2025), $200M Series C (Feb 2026) led by Thomas Tull's US Innovative Technology Fund (USIT), with Eclipse, Riot Ventures, Jane Street and existing investors participating; most recently a $445M round disclosed via SEC Form D filed 2026-07-20 (15 investors listed), roughly double the Series C. Exact new-round investor names and valuation weren't disclosed in the press coverage found — only the SEC filing confirms the amount and director list.
+
+**Open roles** — `Control Plane Engineer`, `Field Technical Delivery Engineer`, `Hardware Technical Program Manager`, `Networking Deployment Engineer`, `Networking Software Engineer`, `Operating System Kernel Engineer`, `Operating System Networking Engineer`, `Operating System Virtualization Engineer`, `Performance Engineer`, `Product Assurance Engineer`, `Quality Manager`, `Solutions Architect`
+
+**Stack** — Rust (Propolis hypervisor/VMM), illumos-based OS (Helios, written largely in C), Custom server and switch hardware (rack-scale design), Cloud control plane with public API (AWS/Azure-style), Open-source software stack (self-authored, not built on third-party virtualization like VMware/KVM)
+
+**Competitors** — Hewlett Packard Enterprise, Dell (VxRail), Supermicro, Nutanix, VMware, Microsoft Azure Stack HCI
+
+**Reasons to look closer**
+- Deeply technical founders (Cantrill, DTrace co-creator and well-known systems engineer; Tuck, longtime cloud infra operator) — this is founder depth, not a pitch-deck team
+- Shipped, GA product since 2023 ('world's first commercial cloud computer') with real enterprise/government customers, not vaporware
+- Open-sourced their entire stack (Helios, Propolis, control plane) — signals genuine technical substance and confidence, not a thin wrapper
+- Hiring senior/staff-level systems roles (OS kernel, virtualization, networking, performance engineers) — strong signal that engineering work is core and high-leverage, not GTM-only hiring
+- Flat, transparent compensation ($275k regardless of location) and remote-first culture with real engineering autonomy
+- Rapid, credible funding escalation ($100M → $200M → $445M) suggests real revenue/demand traction, not just hype
+
+**Reasons for caution**
+- New $445M round's specific investors and valuation are undisclosed beyond the SEC filing — less transparency than the Series B/C announcements, which were accompanied by named-investor press releases
+- Hardware-plus-software vertical integration is capital- and manufacturing-intensive, a structurally harder scaling path than pure software infra companies
+
+**Links** — [Homepage](https://oxide.computer) · [Careers](https://oxide.computer/careers) · [SEC Form D Filing](https://www.sec.gov/Archives/edgar/data/1795071/000179507126000002/0001795071-26-000002-index.htm) · [Series C Announcement](https://www.prnewswire.com/news-releases/oxide-closes-200m-series-c-to-scale-on-premises-cloud-computing-302683724.html) · [Series B Announcement](https://oxide.computer/blog/our-100m-series-b) · [Bryan Cantrill (Wikipedia)](https://en.wikipedia.org/wiki/Bryan_Cantrill)
+
+**Why this scored 78** — This is a genuinely deep systems engineering company — custom hardware, firmware, hypervisor, and control plane — with founders of unusually strong technical pedigree, which is exactly the kind of 'engineering is the hard part' company this profile wants; the large late-stage raise is the main knock.
+
+**Screening concerns** — Raise size ($445M) is well above the preferred ceiling and implies a later-stage company with less per-engineer leverage; At this scale, headcount and org structure may already be substantial, reducing the 'small team, high leverage' dynamic
+
+**On the SEC filing** — Steven Tuck (Executive Officer, Director) · Bryan Cantrill (Executive Officer, Director) · Seth Winterroth (Director) · Gaetano Crupi (Director) · Scott Orn (Executive Officer)
+
+**Sources** — [edgar](https://www.sec.gov/Archives/edgar/data/1795071/000179507126000002/0001795071-26-000002-index.htm)
+
+---
+
+### Vangrid
+
+**Fit 74/100** · $9.0M Seed · 2026-08-06
+
+Vangrid is a real, identifiable company — an Amsterdam-based startup building a decentralized spatial-data network ("spatial intelligence for Physical AI") that pays smartphone users to capture real-world imagery, reconstructs it into 3D models, and verifies provenance onchain. It raised $9M via a SAFT (token-based seed round) closing in tranches through January 2026, announced August 6, 2026. This is a DePIN/crypto-token project, not a conventional equity-funded software startup, which conflicts directly with the user's stated exclusion of crypto/web3/token projects — flagging this clearly rather than glossing over it.
+
+**Product** — A decentralized physical infrastructure network (DePIN) that crowdsources smartphone camera/sensor captures of real-world locations, reconstructs them into 3D spatial models with on-device privacy blurring (faces, license plates), and verifies data provenance onchain before exposing it via an "Enterprise Spatial API." Positioned for Physical AI use cases: robotics, autonomous logistics, critical infrastructure, embodied AI, and explicitly "Sovereign Defense."
+
+**Team** — CEO is named Robert Brighton (per tech.eu coverage). Core team of ~14, based in Amsterdam. No other founder names, technical backgrounds, or prior company/pedigree were found on the company site or in press coverage — could not verify founder technical depth.
+
+**Funding** — $9M seed, structured as a SAFT (token round, not equity), begun August 2025 and closed in tranches by January 2026. Named participants: HashKey, Borderless, Crypto.com Capital, Animoca Brands, Gate Labs, Mapleblock Capital — all crypto-native funds/exchanges, not traditional tech VCs.
+
+**Stack** — Onchain/blockchain verification for data provenance, Smartphone-based 3D reconstruction / photogrammetry, Edge/on-device privacy processing (face and license-plate blurring), Enterprise Spatial API
+
+**Reasons to look closer**
+- Has a functioning, live network with 'real transactions already processing,' per the CEO — not just a deck, and the team reportedly delayed the funding announcement until the network was live.
+- Signed MOUs with named-if-undisclosed strategic data partners in defense and robotics, suggesting some real commercial traction beyond token speculation.
+
+**Reasons for caution**
+- Funded via a SAFT/token round rather than equity, with investors that are exclusively crypto funds and exchanges (HashKey, Crypto.com Capital, Animoca Brands, Gate Labs) — this is squarely a crypto/DePIN/token project, which the user explicitly excludes regardless of the underlying spatial-AI technology.
+- Lists 'Sovereign Defense' as one of four core go-to-market verticals and is 'actively engaging defense... organizations' — brushes against the user's stated exclusion of defense/weapons work.
+- No open roles, careers page, or specific engineering job listings could be found anywhere (site, docs, press); the company site directs interested parties to a generic contact email, not a jobs board.
+- No verifiable founder technical background found — only a CEO name, no LinkedIn, prior company, or engineering credentials surfaced.
+- Amsterdam HQ falls outside the user's preferred geographies (CA/NY/WA/MA), and no evidence of a remote-friendly policy was found.
+
+**Links** — [Homepage](https://vangrid.io/) · [Docs](https://docs.vangrid.io/) · [Tech.eu funding coverage](https://tech.eu/2026/08/06/vangrid-raises-9m-seed-to-build-a-decentralised-spatial-intelligence-network-for-the-physical-ai-era/) · [The Block coverage](https://www.theblock.co/post/411022/depin-project-vangrid-funding-token-round-spatial-data-physical-ai)
+
+**Why this scored 74** — If the headline is accurate this is a hard distributed-systems/spatial-AI infra problem, not a wrapper — exactly the kind of engineering-is-the-hard-part company this person looks for. Score is tempered by early stage and geography.
+
+**Screening concerns** — Netherlands-based, outside preferred CA/NY/WA/MA geography with no stated remote policy; Seed-stage with a very ambitious infra claim ('decentralised spatial intelligence network') that is unproven at this size
+
+**Sources** — [news](https://tech.eu/2026/08/06/vangrid-raises-9m-seed-to-build-a-decentralised-spatial-intelligence-network-for-the-physical-ai-era/)
+
+---
+
+### Inferra Inc.
+
+**Fit 74/100** · $19.3M · 2026-07-14 · MENLO PARK, CA
+
+Inferra Inc. (inferra.ai) is a Menlo Park, CA stealth-stage startup building AI inference infrastructure for the 'metro edge' — i.e., moving inference compute closer to end users/latency-sensitive applications rather than relying solely on centralized cloud data centers. It raised $19.3M via SEC Form D (filed 2026-07-14, 13 investors), corroborated by a PitchBook-tracked Refactor Capital investment dated 2026-07-29. The company has no public product yet: its website is a pre-launch landing page with an email signup, and no careers page or job listings could be found anywhere. This is a technically interesting problem space (inference infra) but currently unverifiable as an actual engineering opportunity — there's no shipped product, no visible engineering team beyond two named co-founders, and essentially no independent press coverage of the raise.
+
+**Product** — Described only in a one-line positioning statement: 'bringing real-time AI inference to the metro edge — decentralizing the data center and building the local layer for next-generation intelligence.' A secondary aggregator description calls it 'AI inference infrastructure designed for latency-sensitive application deployment,' exploring 'new infrastructure architectures, deployment approaches, scalable resource management methods, and engineering frameworks.' No architecture details, no product demo, no customers named. The live site (as of this research) is a coming-soon page with no product to try.
+
+**Team** — CEO/co-founder Aidin Aghamiri (Redwood City, CA) — MBA, Duke Fuqua; previously co-founder/CEO of ITRenew, which he grew from ~$1M to $440M revenue ($84M EBITDA) before its acquisition by Iron Mountain for ~$925M. That's a real operating and scaling track record, though ITRenew was an IT-asset-disposition/recommerce business, not an infrastructure/ML company, so his direct technical depth in inference systems is unverified. Co-founder/president Mohammad Javanbakht (LinkedIn: linkedin.com/in/javanbakht, labeled 'Inferra AI') — could not confirm his technical background; multiple people share this name and none of the matched profiles conclusively establish AI/infra engineering credentials. Yuri Sagalov is listed as a Director (not an officer) on the SEC filing — he's the founder/GP of Wayfinder Ventures and a former 5-year Y Combinator partner who has seed-invested in 50+ companies (Flexport, Solugen, Boom Supersonic); he previously founded/ran AeroFS. His role reads as an investor-director rather than a working technical co-founder.
+
+**Funding** — $19.3M raised, per SEC Form D filed 2026-07-14, with 13 investors listed on the filing. Independently, PitchBook-sourced data shows Refactor Capital (Burlingame-based seed-stage hard-tech VC, typically writing $1–2M checks) made its latest portfolio investment in Inferra on 2026-07-29 — consistent timing with this round. Camford Capital is also cited as an investor in aggregator data, though I could not verify this on a primary source. No lead investor, valuation, or round name (seed/Series A) was confirmed in press; there appears to be no TechCrunch/major tech press coverage of this raise at all, which is unusual for a $19M-plus round in AI infra.
+
+**Competitors** — DeepInfra, Inference.net, OpenInfer, Inferact (vLLM-commercializing startup, $150M seed), Cloudflare (edge AI inference)
+
+**Reasons to look closer**
+- CEO Aidin Aghamiri has a genuine large-scale operating track record: grew ITRenew from ~$1M to $440M revenue and $84M EBITDA, culminating in a ~$925M acquisition by Iron Mountain — evidence of real execution ability, not just a pitch deck.
+- Yuri Sagalov's involvement as a director (via Wayfinder Ventures, ex-YC partner) suggests reasonably informed investor backing rather than purely brand-chasing capital.
+- The round size ($19.3M) is within the user's preferred range and modest enough that it isn't the 'huge seed with nothing to show' pattern at an extreme scale, though the 'nothing shipped yet' concern still applies.
+- The problem space — latency-sensitive/edge AI inference infrastructure — is technically substantial and squarely in the user's top-interest area (AI/ML infrastructure) if the company actually builds real systems here.
+
+**Reasons for caution**
+- No shipped product: the live website is a pre-launch/coming-soon page with only an email signup, despite $19.3M raised.
+- No careers page or job listings found anywhere (own site, LinkedIn, aggregators) — no evidence they are hiring engineers at all, let alone senior/staff roles.
+- No independent tech press coverage of the funding round found — visibility is limited to the SEC filing and data aggregators (PitchBook), which is unusual for a round this size in a hot category (AI inference infra).
+- One co-founder's (Javanbakht) technical background could not be verified; several same-named individuals in search results with unrelated fields (remote sensing, medicine, generic software engineering) made confirmation impossible.
+- CEO's prior company (ITRenew) was in IT asset recommerce/disposition, not infrastructure or ML engineering — his operational scale-up experience is real but not obviously transferable to building inference systems.
+
+**Links** — [Homepage](https://inferra.ai/) · [SEC Form D Filing](https://www.sec.gov/Archives/edgar/data/2142121/000214212126000001/0002142121-26-000001-index.htm) · [Aidin Aghamiri LinkedIn](https://www.linkedin.com/in/aidinaghamiri/) · [Mohammad Javanbakht LinkedIn](https://www.linkedin.com/in/javanbakht) · [Yuri Sagalov / Wayfinder Ventures](https://www.generalcatalyst.com/team/yuri-sagalov)
+
+**Why this scored 74** — Strong thematic alignment with top-weighted interests (AI/ML infra, inference) plus a credible AI-industry director and a sizeable $19.3M round make this worth a serious look, tempered by the lack of a confirmed product description.
+
+**Screening concerns** — Product description is inferred from name and investor background, not confirmed; AI infra is a crowded space; differentiation and technical depth are unverified
+
+**On the SEC filing** — AIDIN AGHAMIRI (Executive Officer, Director, Promoter) · MOHAMMAD JAVANBAKHT (Executive Officer, Director, Promoter) · YURI SAGALOV (Director)
+
+**Sources** — [edgar](https://www.sec.gov/Archives/edgar/data/2142121/000214212126000001/0002142121-26-000001-index.htm)
+
+---
+
+### Emerald AI, Inc.
+
+**Fit 72/100** · $90.2M · 2026-07-17 · WASHINGTON, DC
+
+Emerald AI, Inc. (Washington, DC) is confidently identified: it's the AI-data-center grid-flexibility startup founded in 2024 by Varun Sivaram, matching the SEC filing's location and named officer/director. The $90.2M raise around 2026-07-17 aligns with reporting that the company was seeking ~$100M at a $1B+ valuation just months after a $25M strategic round in March 2026. This is a real, shipping product (multiple utility pilots, a Nature Energy-validated field trial) in a genuinely hard infrastructure problem — not a thin AI wrapper — though the core engineering challenge is industrial/grid software rather than model-building.
+
+**Product** — Emerald Conductor: software that lets AI data centers dynamically flex their power draw (temporal, spatial, and battery/resource-based flexibility) to reduce grid strain during peak demand, without materially hurting AI compute performance. Sold to data center operators, hyperscalers/AI labs, and utilities to unlock grid capacity without new physical infrastructure. Hardware-agnostic, software-only approach (differentiator vs. battery-backed competitors). Validated via commercial-scale demos in Phoenix (with Oracle) and Chicago, a UK trial with National Grid/Nebius/NVIDIA, and results peer-reviewed in Nature Energy.
+
+**Team** — Founder/CEO: Dr. Varun Sivaram — Rhodes Scholar, physicist, former Fortune 500 renewable energy executive, energy policy figure (matches SEC filing's Executive Officer/Director). Chief Scientist: Prof. Ayse Coskun of Boston University, who pioneered flexible-AI-workload research. Engineering leadership includes Shayan Sengupta (ex-Amazon/Intel, cloud infrastructure). Head of Legal & Policy: Michael Panfil. Board/directors per SEC filing also include Rob Toews (partner at Radical Ventures, an investor) and Markus Specks — consistent with a normal investor-board structure.
+
+**Funding** — Progressive raises: $24.5M seed (closed July 2025) with NVIDIA, John Kerry, John Doerr, Jeff Dean, Fei-Fei Li among backers; $25M strategic expansion round (March 2026) led by Energy Impact Partners with Amplo, Eaton, GE Vernova, IQT, Lowercarbon Capital, NVentures (NVIDIA), Radical Ventures, Salesforce Ventures, Samsung Ventures, and Siemens. The SEC Form D shows $90.2M raised around 2026-07-17 with 23 investors, consistent with press reports that the company was raising ~$100M at a $1B+ valuation as of mid-July 2026 — this appears to be that round (possibly still filling).
+
+**Open roles** — `Software Engineer - Backend/Distributed Systems`, `Software Engineer - Datacenter/Power Systems`, `Software Engineer - Grid Services`, `Software Engineer, AI/ML Systems`, `Product Manager, Grid Services`
+
+**Stack** — Real-time telemetry pipelines for datacenter power/compute integration, Distributed systems / backend platform (core orchestration engine), AI/ML orchestration models for automated workload decision-making, Grid-facing integration systems (utility/ISO connectivity)
+
+**Competitors** — Verrus (Sidewalk Infrastructure Partners spinout, battery-backed flexibility approach)
+
+**Reasons to look closer**
+- Real, deployed product with named utility and hyperscaler pilots (Oracle in Phoenix, Silicon Valley Power in Santa Clara, National Grid/Nebius/NVIDIA in the UK) rather than just a deck
+- Technical validation via peer review (Nature Energy) on the Arizona results, a meaningful bar for a startup this young
+- Currently hiring for senior-leaning, technically substantial roles (distributed systems, datacenter/power systems, AI/ML systems, grid services) rather than only GTM/junior roles
+- Strategic/technical investors (NVIDIA/NVentures, Salesforce Ventures, GE Vernova, Siemens, Eaton) suggest real industry validation beyond financial backers
+- Addresses a large, structurally growing market (AI data center power constraints) where the engineering problem (real-time grid-aware workload orchestration) is genuinely hard, not a CRUD/model-API wrapper
+- DC/Boston/SF locations fit the user's preferred geography
+
+**Reasons for caution**
+- Very rapid fundraising cadence — seed (Jul 2025) → strategic round (Mar 2026) → ~$90-100M round (Jul 2026) in about a year, pushing toward a $1B+ valuation quickly, which raises questions about whether commercial traction is scaling as fast as valuation
+- Team is fairly small and CEO's background is energy policy/strategy rather than software engineering, so evaluate how much engineering decision-making is founder-led vs. delegated to engineering leadership
+
+**Links** — [Homepage](https://www.emeraldai.co/) · [Careers](https://www.emeraldai.co/careers) · [Blog: Strategic Expansion Round](https://www.emeraldai.co/blog/sharing-our-strategic-expansion-round-emerald-ai-raises-25-million-to-transform-ai-data-centers-into-flexible-power-grid-assets) · [Axios: Emerald AI raising at $1B+ valuation (Jul 2026)](https://www.axios.com/pro/climate-deals/2026/07/13/emerald-ai-valuation-funding-data-center-software) · [Axios: Meet Varun Sivaram](https://www.axios.com/2025/11/03/varun-sivaram-emerald-ai-time-climate-ted-talk) · [DataCenterDynamics: In perfect harmony](https://www.datacenterdynamics.com/en/analysis/in-perfect-harmony-how-emerald-ai-is-turning-data-centers-into-flexible-grid-assets/) · [Fortune: Emerald AI and Nvidia fast pass for grid connects](https://fortune.com/2026/03/31/emerald-ai-nvidia-fast-pass-data-center-grid-connects/) · [Radical Ventures portfolio page](https://radical.vc/portfolio/emerald-ai/)
+
+**Why this scored 72** — A $90.2M raise with a recognizable, credible team (a well-known AI investor and an energy-policy expert) building AI-for-grid-infrastructure touches real distributed-systems/control problems at real scale, which is a strong technical-substance signal despite location being a minor mismatch.
+
+**Screening concerns** — DC location is outside the preferred geography list and unclear if remote-friendly; If this is primarily an energy/grid company rather than software, the engineering work may be less about core AI/ML systems
+
+**On the SEC filing** — Varun Sivaram (Executive Officer, Director) · Rob Toews (Director) · Markus Specks (Director)
+
+**Sources** — [edgar](https://www.sec.gov/Archives/edgar/data/2047797/000204779726000004/0002047797-26-000004-index.htm)
+
+---
+
+### HappyRobot
+
+**Fit 72/100** · $150.0M Series C · 2026-08-04
+
+HappyRobot is a San Francisco-based (YC S23) startup building an AI agent platform for enterprise operations, originally focused on logistics/freight and now expanding into insurance, energy, telecom, and airlines. It just raised a $150M Series C led by Prysm Capital and co-led by Eurazeo, at a $1.2B valuation, with existing investors a16z, Base10, and Y Combinator participating. This is a well-differentiated, vertical-specific agentic AI company (not a generic chatbot wrapper) with real enterprise customers and reported strong retention, making it a plausible high-leverage engineering opportunity, though it's now a 200+ person, unicorn-stage company rather than a tiny early team.
+
+**Product** — An 'AI operating system for the real economy' — autonomous AI agents (voice, chat, email, document, and back-office) that execute real workflows inside enterprises (freight booking/tracking, customer support, claims, dispatch, etc.) rather than just answering questions. Claims 70%+ autonomous resolution, 75% cost reduction, 10x capacity increase, and 10M+ interactions/month across 150+ enterprise customers including DHL, Kuehne + Nagel, Naturgy, Repsol, and Uber. Includes agent evaluation, governance/monitoring, and human-agent interface tooling; SOC 2, GDPR, and HIPAA compliance claimed.
+
+**Team** — Founded 2022 in San Francisco by brothers Pablo Palafox (CEO) and Javi Palafox (COO), plus childhood friend Luis Paarup (CTO). Pablo holds dual Master's degrees in Industrial Engineering (Technical University of Madrid and TUM) and pursued a PhD in AI/Deep Learning at TUM. Company reports hires from Apple, Uber, Palantir, Google, X, Microsoft, McKinsey, BCG, and AWS. Now operates 8 offices across North America, Europe, LATAM, and Australia (grown from 2 offices).
+
+**Funding** — Series C: $150M, closed ~Aug 4, 2026, led by Prysm Capital, co-led by Eurazeo, at a $1.2B post-money valuation. Existing investors a16z, Base10, and Y Combinator doubled down; strategic participants include Koch Disruptive Technologies, Orange, T.Capital (Deutsche Telekom), Bankinter, Endeavor Catalyst, KFund, and Wave-X. Total funding to date ~$200M; Series B closed late 2025 (terms not found in sources checked). Company reportedly grew 5x since the Series B.
+
+**Open roles** — `Senior Software Engineer - Backend (San Francisco)`, `Senior Software Engineer - Full-Stack (San Francisco)`, `Software Engineer - Backend (San Francisco)`, `Software Engineer - Full-Stack (San Francisco)`, `Site Reliability Engineer (San Francisco)`, `Machine Learning Engineer (Spain)`, `Data Scientist (Barcelona, San Francisco)`, `Data Operations Lead (San Francisco)`, `Cloud Security Engineer (Madrid)`, `SOC Analyst (Madrid)`, `SOC Engineer (Madrid)`, `Product Design Engineer (San Francisco, 2 openings)`, `Forward Deployed Engineer (multiple locations)`
+
+**Competitors** — Parloa (Berlin-based enterprise voice AI, contact-center focused), Sierra (Bret Taylor's customer-service AI agent company), Airudder, clerk.chat, Callin.io, Goodcall, JustCall
+
+**Reasons to look closer**
+- Technically credentialed founding team (CEO with AI/deep learning PhD research background) rather than pure business founders
+- Actively hiring senior/staff-level backend and full-stack engineers, SREs, and ML engineers, not just junior or GTM roles — a positive signal per the person's stated criteria
+- Real, named enterprise customers (DHL, Kuehne + Nagel, Uber, Repsol, Naturgy) with reported deep operational integration, not just a thin demo
+- Vertical-specific technical differentiation (logistics/freight workflow depth) rather than a generic GPT wrapper, with proprietary agent evaluation/governance tooling
+- Round size ($150M) and stage fit within the person's stated preferences; investor syndicate (a16z, Base10, Prysm, Eurazeo) is substantive
+
+**Reasons for caution**
+- Company is already unicorn-scale (~$1.2B valuation, ~$200M raised, 8 global offices) — the 'small team, high leverage' window has likely passed
+- Most open roles skew toward San Francisco with a large go-to-market/sales/deployment headcount alongside engineering, suggesting a scale-up phase rather than early product-building phase
+- Several claimed metrics (70%+ autonomous resolution, 75% cost reduction, 9.4/10 satisfaction) come from company/press material and were not independently verified
+
+**Links** — [Homepage](https://www.happyrobot.ai) · [Careers](https://www.happyrobot.ai/careers) · [YC Jobs Page](https://www.ycombinator.com/companies/happyrobot/jobs) · [CEO LinkedIn](https://www.linkedin.com/in/pablorpalafox/) · [Series C Announcement (Tech.eu)](https://tech.eu/2026/08/04/happyrobot-lands-150m-series-c-to-scale-agentic-ai-for-enterprise-operations/) · [Funding coverage (TechFundingNews)](https://techfundingnews.com/happyrobot-150m-series-c-ai-agents/)
+
+**Why this scored 72** — Strong thematic hit on agent frameworks applied to a real logistics vertical, with credible investors (a16z, YC); the main knock is that Series C scale can mean the highest-leverage engineering decisions are already made.
+
+**Screening concerns** — $150M Series C is at the very top of the preferred round range — company is scaling fast and may already have less per-engineer leverage than an earlier-stage team; At Series C, hiring may skew toward GTM/scaling roles rather than core research/engineering
+
+**Sources** — [news](https://tech.eu/2026/08/04/happyrobot-lands-150m-series-c-to-scale-agentic-ai-for-enterprise-operations/)
+
+---
+
+### Legaltech Wordsmith
+
+**Fit 72/100** · $14.0M Series B · 2026-08-05
+
+Confidently identified: this is Wordsmith AI (also styled Wordsmith), an Edinburgh-founded legal AI startup building an 'AI legal front door' for in-house corporate legal teams. The $14M is a Series B extension (bringing total Series B to $84M, total raised to date ~$94M+), led by new backers Intact Private Capital and FT Ventures, with follow-on from existing investors Index Ventures and Highland Europe. This is a well-funded, product-shipping company with real enterprise customers (500+), not a stealth or deck-stage startup — worth evaluating on engineering substance rather than hype.
+
+**Product** — An AI platform that acts as a 'legal front door' for in-house legal departments: it receives, triages, routes, and resolves routine legal work (contract review/redlining, intake requests, Q&A, drafting) against a company's own playbooks, escalating only what needs human judgment. Built heavily on RAG-based agent pipelines, and integrates into Slack, Microsoft 365 (Word, Outlook, Teams, SharePoint), and Salesforce. Sold to General Counsel and legal ops teams at mid-market/enterprise companies; named customers include Financial Times, Trustpilot, Deliveroo, Canva, BT, Belron, Starling, Sage, Safelite, and Trip.com.
+
+**Team** — Founded January 2024 by CEO Ross McNairn, a trained lawyer (Aberdeen) who left law for engineering, later spending ~5 years as CPO then CPTO at TravelPerk (scaled it toward $170M ARR, one of Europe's SaaS unicorns), with earlier stints at Skyscanner and Letgo. McNairn writes publicly and technically about applied RAG/LLM engineering. Company is HQ'd in Edinburgh with a stated New York presence (GTM Legal Engineer role is NY-based). Specific other co-founders/exec team not confirmed in sources found.
+
+**Funding** — Seed: $5M (June 2023). Series A: $25M led by Index Ventures (closed ~June 2025, reported $100M valuation — fastest for a Scottish startup). Series B: $70M (reported June 2026). Series B extension: $14M (announced 2026-08-05) from new investors Intact Private Capital and FT Ventures, plus follow-on from Index Ventures and Highland Europe — bringing total Series B to $84M. Company reports 14x YoY revenue growth and 500+ enterprise customers as of the extension announcement.
+
+**Open roles** — `Senior Product Engineer`, `Applied LLM Engineer`, `Legal Solutions Engineer`, `GTM Legal Engineer (New York)`, `Junior Legal Engineer`, `Legal Content Researcher`, `Legal Ops Associate`, `Commercial Legal Counsel`, `Product Designer`, `GTM Recruiter`
+
+**Stack** — RAG (retrieval-augmented generation) pipelines for legal-domain agents, Integrations with Microsoft 365 (Word, Outlook, Teams, SharePoint), Slack and Salesforce integrations
+
+**Competitors** — Harvey, Legora, Robin AI, Ontra
+
+**Reasons to look closer**
+- Technically deep, credible founder: practicing lawyer turned engineer who was CPTO at TravelPerk during its scale to $170M ARR — strong signal of both technical depth and experience building product at scale.
+- Real, named enterprise customers (FT, Trustpilot, Deliveroo, Canva, BT, Starling, Sage) and a claimed 500+ customer base plus 14x YoY revenue growth — evidence of a shipped, adopted product rather than a deck.
+- Open roles skew toward senior/staff engineering (Senior Product Engineer, Applied LLM Engineer) alongside domain-specific 'legal engineer' hybrid roles, suggesting engineers work close to the actual product/domain rather than being isolated from customers.
+- Round size ($14M extension, $84M total Series B) is within a normal, product-validated growth-stage range rather than an oversized speculative seed with no shipped product.
+- Founder publishes real technical writing on RAG/agent engineering, suggesting the team treats the AI engineering as genuinely hard, not just an API wrapper.
+
+**Reasons for caution**
+- Total disclosed raise is now roughly $94M+ against a company still described in places as ~$100M valuation as of Series A — later-round valuation not found in sources checked, so capital efficiency/dilution picture is unclear.
+- Careers page (wordsmith.ai/careers and Ashby listing) is JS-rendered and couldn't be fully audited directly; role list here was reconstructed via search indexing and may be incomplete or slightly stale.
+- Legal AI (in-house workflow) is a crowded and well-capitalized category — Harvey ($11B valuation) and Legora ($5.6B valuation, $600M raised) are direct/adjacent competitors with vastly larger war chests, which raises competitive/differentiation risk even though Wordsmith targets a somewhat different in-house-vs-law-firm niche.
+
+**Links** — [Homepage](https://www.wordsmith.ai/) · [Careers](https://jobs.ashbyhq.com/wordsmith) · [Series B extension coverage (Sifted)](https://sifted.eu/articles/wordsmith-14m-series-b-extension) · [Series A coverage (Sifted)](https://sifted.eu/articles/index-ventures-wordsmith-ai) · [Founder LinkedIn (Ross McNairn)](https://www.linkedin.com/in/rossmcnairn/) · [Founder technical blog](https://www.rossmcnairn.com/) · [Company blog: $70M Series B announcement](https://www.wordsmith.ai/blog/wordsmith-ai-raises-70-million-series-b)
+
+**Why this scored 72** — A named applied-AI product in a high-value vertical (legal) with credible top-tier investors (Index, FT Ventures) and later-stage validation suggests a shipped product — a strong thematic and stage match even though technical depth isn't directly confirmed.
+
+**Screening concerns** — Location not disclosed — can't confirm it meets the geography preference; Series B extension (rather than a fresh new round) could mean this is a smaller top-up rather than a major new raise, and no product/team detail is given beyond the headline
+
+**Sources** — [news](https://sifted.eu/articles/wordsmith-14m-series-b-extension/)
+
+---
+
+### Malted AI Ltd
+
+**Fit 68/100** · $3.9M · 2026-07-23 · EDINBURGH, X0
+
+Malted AI Ltd is an Edinburgh-based startup building small, distilled language models for financial institutions (banks, wealth managers), founded in 2023 by three technically strong founders with PhDs and industry ML research backgrounds. The $3.9M SEC Form D filed 2026-07-23 appears to be a newer, US-investor-inclusive round on top of an earlier £6M/€6.9M seed (May 2024) and £1M pre-seed (Aug 2023) — the July 2026 round itself has not yet shown up in press coverage I could find, so treat its exact structure (extension vs. new priced round) as unconfirmed.
+
+**Product** — A platform that distills large LLMs into smaller, domain-specific models trained and aligned specifically for financial services use cases — pitched on lower inference cost, higher accuracy on financial data, and regulatory compliance, aimed at UK banks and financial institutions.
+
+**Team** — Founded by Iain Mackie (CEO — former quant trader at BNY Mellon, researcher at Edinburgh Partners, PhD under a Bloomberg AI Fellowship on small language models), Carlos Gemmell (CTO/Chief Scientist — former Meta Research Scientist, led the Amazon Alexa Prize–winning team, PhD on tool-using LLMs), and Federico Rossetto (Chief Architect — former developer at Lynx, won the Fujitsu AI-NLP Challenge). All three met doing SLM research at the University of Glasgow. Ewen Fleming (Chief Commercial Officer, 40+ years in retail banking/wealth management) and Dr. Sandy Nairn (Chairman as of April 2026, longtime professional investor) round out leadership — Nairn's full legal name likely corresponds to 'Alasdair Gordon Mackenzie Nairn' listed as a director on the SEC filing. I could not independently confirm who Bryan Charles Gartner or James Oliver MacFarlane are (likely investor-appointed directors), so I'm not speculating on their backgrounds.
+
+**Funding** — £1M pre-seed (Aug 2023, led by Creator Fund) → £6M/€6.9M seed (May 2024, led by Hoxton Ventures, joined by Creator Fund, Tech Nation Group, and angels) → $3.9M per SEC Form D filed 2026-07-23 with 23 investors. Total disclosed funding across sources is roughly $11M+. I could not find press coverage specifically confirming the July 2026 round's investors, lead, or whether it's a fresh raise or a continuation/extension of an existing round — this is a gap worth asking about directly.
+
+**Open roles** — `Information Security Lead`, `Senior Software Engineer`, `Forward Deployed Manager`, `Software Engineer`
+
+**Stack** — Python, AWS, Docker, Kubernetes, CI/CD pipelines, model distillation / small language models
+
+**Reasons to look closer**
+- Founding team has genuine technical depth: PhDs in ML/NLP, a Bloomberg AI Fellowship, a former Meta Research Scientist, and an Amazon Alexa Prize win — not a brand-only founding story.
+- Named, reputable investors across rounds: Hoxton Ventures (lead, 2024 seed), Creator Fund (pre-seed lead), Tech Nation Group.
+- Product is a real, named enterprise use case (SLM distillation for financial services) with proprietary technical work (distillation methods, domain alignment) rather than a thin wrapper on a third-party model API.
+- Currently hiring a Senior Software Engineer (not just junior or GTM roles), consistent with a company where engineering is close to the product.
+- Named 'AI Ones to Watch' by the Sunday Times Tech 100 (March 2026) and added an experienced Chairman (Dr. Sandy Nairn) in April 2026, suggesting maturing governance alongside product development.
+
+**Reasons for caution**
+- The most recent $3.9M SEC filing (July 2026) has no accompanying press coverage I could find, unlike their 2023 and 2024 rounds which were both widely reported — worth asking the company directly what this round represents.
+- A 2024 Scotsman headline quotes ambitions to become 'the biggest tech company in Scottish history,' which is the kind of hype-y framing worth discounting relative to actual product traction.
+- Team size appears to be roughly ~20 people per third-party estimates (Latka), and the single named vertical is UK banks — a slow-moving, compliance-heavy buyer base that could constrain growth speed.
+
+**Links** — [Homepage](https://malted.ai/) · [About](https://malted.ai/about-us/) · [Careers](https://malted.ai/careers) · [News](https://malted.ai/news) · [Companies House filing](https://find-and-update.company-information.service.gov.uk/company/15033703) · [SEC Form D filing](https://www.sec.gov/Archives/edgar/data/2148622/000214862226000001/0002148622-26-000001-index.htm) · [Sifted coverage (2024 seed)](https://sifted.eu/articles/malted-ai-meta-raise-news)
+
+**Why this scored 68** — The founder names line up with published IR/RAG researchers, which is a strong technical-depth signal even without a product description, and a small early team means high leverage if it's what it looks like.
+
+**Screening concerns** — UK-based (Edinburgh), outside preferred US geography and not confirmed remote-friendly; Very small $3.9M raise gives little runway signal about hiring plans
+
+**On the SEC filing** — Iain Mackie (Executive Officer, Director) · Bryan Charles Gartner (Director) · Carlos Gemmell (Director) · James Oliver MacFarlane (Director) · Alasdair Gordon Mackenzie Nairn (Director) · Federico Rossetto (Director)
+
+**Sources** — [edgar](https://www.sec.gov/Archives/edgar/data/2148622/000214862226000001/0002148622-26-000001-index.htm)
+
+---
+
+### Smallest.ai
+
+**Fit 68/100** · $13.0M · 2026-07-31
+
+Smallest.ai is a real, identifiable company: an enterprise voice-AI startup founded in late 2023/2024 by Sudarshan Kamath and Akshat Mandloi, both ex-Robert Bosch engineers and IIT Guwahati mechanical engineering grads. They build their own low-latency TTS/STT/speech-to-speech models rather than wrapping a third-party API, and have real paying customers (RingCentral, Truecaller). The $13M Series A (total funding $21M+) is within a reasonable range for the stage. Main caution: the public careers page currently shows only one open role (an on-site QA position in Bengaluru), which is a weak signal against the user's 'hiring senior/staff engineers' heuristic, and the marketing language ('breaks the Turing test') leans hyped.
+
+**Product** — A voice-AI platform for enterprise conversational agents, built around proprietary models rather than a wrapper on someone else's LLM: Lightning (TTS, ~100ms latency, 15+ languages), Pulse (STT with emotion/speaker detection, 38 languages), Electron (a sub-3B parameter LLM the company claims outperforms GPT-4.1), and Hydra, a native speech-to-speech model (part of their 'Voice 4.0' architecture) designed to listen/think/respond simultaneously instead of using a cascaded ASR→LLM→TTS pipeline. Target verticals: financial services, healthcare, contact centers/BPO, debt collection, real estate. Named customers: RingCentral, Truecaller.
+
+**Team** — Co-founders Sudarshan Kamath (CEO) and Akshat Mandloi, both mechanical engineering graduates of IIT Guwahati who worked together as engineers at Robert Bosch (Akshat as a senior data scientist) before founding the company. Kamath's stated background includes self-driving-car model training/compression work and being self-taught in AI. Company reports ~60 employees as of the Series A announcement. HQ address listed as San Francisco, CA, but the only current job posting found is on-site in Bengaluru, India, suggesting significant engineering presence there.
+
+**Funding** — $13M Series A announced 2026-07-31, led by Seligman Ventures, with Sierra Ventures, 3one4 Capital, Better Capital, Upsparks Capital, Schema Ventures, Tiny VC, DeVC, Mission Street Capital, and an angel group participating. Total funding to date reported as $21M+.
+
+**Open roles** — `Automation QA Engineer (Engineering, Bengaluru, on-site, full-time)`
+
+**Stack** — Proprietary TTS model (Lightning), Proprietary STT model (Pulse), Sub-3B parameter LLM (Electron), Native speech-to-speech model (Hydra / Voice 4.0 architecture), Real-time/low-latency streaming voice pipeline, SOC 2 Type 2, ISO 27001, GDPR, HIPAA compliance stack
+
+**Competitors** — ElevenLabs, Cartesia, Sarvam AI
+
+**Reasons to look closer**
+- Shipped, revenue-generating product with named enterprise customers (RingCentral, Truecaller), not just a deck or prototype.
+- Founders have genuine technical depth: real-time model compression work on self-driving car hardware and applied ML roles at Robert Bosch, not first-time or purely business-background founders.
+- Building proprietary models (TTS, STT, small LLM, native speech-to-speech) rather than a thin wrapper around a third-party API — the latency/architecture problem they describe (simultaneous listen/think/speak) is a genuine systems + ML engineering challenge.
+- Round size ($13M) and total funding ($21M+) are proportionate to an early product with paying customers, not a bloated seed with nothing shipped.
+
+**Reasons for caution**
+- Only one open role is publicly listed on their Ashby careers page (a QA engineer, on-site in Bengaluru) — no visible senior/staff engineering openings, which is a weaker hiring signal than the user typically looks for.
+- That one open role is on-site in Bengaluru, India, not in the user's preferred CA/NY/WA/MA geography and not explicitly remote-friendly.
+- Marketing language is hype-forward ('breaks the Turing test', 'sounds genuinely human') and the claim that a sub-3B model 'outperforms GPT-4.1' is a bold, unverified assertion typical of startup positioning rather than independently benchmarked.
+
+**Links** — [Homepage](https://smallest.ai/) · [Careers](https://jobs.ashbyhq.com/smallest) · [Series A announcement (company blog)](https://smallest.ai/blog/series-a-funding-13m-next-generation-voice-ai) · [TechCrunch coverage](https://techcrunch.com/2026/07/31/smallest-ai-raises-13m-to-build-ultra-fast-voice-ai-that-sounds-genuinely-human/) · [LinkedIn (company)](https://www.linkedin.com/company/smallest) · [Sudarshan Kamath (CEO) LinkedIn](https://www.linkedin.com/in/sudarshankamath/) · [Akshat Mandloi (Co-founder) LinkedIn](https://www.linkedin.com/in/akshatmandloi/)
+
+**Why this scored 68** — Ultra-low-latency voice model work is genuine, hard ML/systems engineering rather than a thin wrapper, which fits the person's infra interest well, but the space is competitive and geography is uncertain.
+
+**Screening concerns** — Crowded, well-funded voice AI space (ElevenLabs, Cartesia, others) — moat beyond model quality/speed is unclear; Likely India-based (name/market pattern), outside preferred geography with remote policy unstated
+
+**Sources** — [news](https://techcrunch.com/2026/07/31/smallest-ai-raises-13m-to-build-ultra-fast-voice-ai-that-sounds-genuinely-human/)
+
+---
+
+### SkillBench, Inc.
+
+**Fit 68/100** · $15.1M · 2026-07-23 · SANTA BARBARA, CA
+
+SkillBench, Inc. is a Santa Barbara, CA startup co-founded by Matt Beane (UCSB professor and author of the HarperCollins book 'The Skill Code') and Juho Kim (MIT CSAIL PhD '15), building a measurement/telemetry platform for AI-augmented knowledge work — starting with software developers. It filed a $15.1M Form D on 2026-08-06 (matching the SEC filing the user already has), a large step up from a $430K convertible note in August 2024. Reid Hoffman is a director; the founders have genuine research and technical depth rather than a pure go-to-market pedigree, and a currently-open Staff Backend Engineer/Tech Lead role suggests real infrastructure work, not a thin wrapper.
+
+**Product** — A 'measurement and transformation layer for AI-augmented knowledge work.' The platform captures telemetry on how developers actually use AI coding tools (not self-reported survey data) and turns it into two products: private skill-coaching feedback for individual developers, and workforce/architecture intelligence dashboards for engineering leadership (CXOs). One job listing describes the underlying work as 'productionizing analytics/telemetry and services' over batch and streaming data pipelines.
+
+**Team** — CEO Matt Beane is a UCSB Technology Management professor, MIT-affiliated researcher, and author of 'The Skill Code: How to Save Human Ability in an Age of Intelligent Machines' (HarperCollins) — his research (TED talk, HBR articles) is specifically about how automation affects skill development, which is the company's thesis. Co-founder Juho Kim holds a PhD from MIT CSAIL and has KAIST ties. Reid Hoffman (LinkedIn co-founder, Greylock partner) is listed as a director on the SEC filing; some secondary sources also mention Ethan Mollick, Jeff Wilke, and Anu Bharadwaj as advisors, though I could not independently confirm the advisor claim on SkillBench's own site.
+
+**Funding** — SEC Form D filed 2026-08-06 for $15,069,899 in equity, with 20 investors (matches the user-supplied filing). This follows a much smaller $430,000 convertible note filed in August 2024, suggesting the company only recently moved from pre-seed/bootstrapped scale to a proper seed/Series A-sized raise. I could not find a press release, TechCrunch piece, or named-investor list (beyond Reid Hoffman on the SEC filing) confirming this round — as of this research it appears to be documented only via SEC filing, not yet publicly announced.
+
+**Open roles** — `Staff Backend Engineer — Production Platform (Tech Lead)`, `Head of Operations`
+
+**Stack** — Terraform, Helm, GitOps, Prometheus, Grafana, Tempo, Spark, Databricks, GPU inference / MLOps, Loki, Elastic, S3
+
+**Reasons to look closer**
+- Open Staff Backend Engineer role is explicitly a tech-lead position owning 'technical and architectural direction' with real distributed-systems/observability/MLOps scope — a strong senior-engineering signal, not just GTM hiring.
+- Founding team has substantive, verifiable technical/research depth (MIT CSAIL PhD co-founder; CEO is a published researcher/author on the exact problem the company addresses) rather than brand-driven or purely commercial founders.
+- Round size ($15.1M) and location (Santa Barbara, CA) both fit the target's stated preferences; the role is listed as fully remote (US/South Korea preferred).
+- Product is built on genuine data/telemetry infrastructure (streaming/batch pipelines, observability stack) rather than being a thin prompt wrapper around a third-party model API.
+
+**Reasons for caution**
+- Jump from a $430K convertible note (2024) to a $15.1M round (2026) is a large step-up with no public press coverage found — worth asking directly how much product/revenue traction backs this raise.
+- Public information about the company is inconsistent across aggregators (conflicting founding years, HQ city, and funding totals on Tracxn/ZoomInfo/CB Insights), making it hard to independently corroborate claims like enterprise customers (e.g., Microsoft, CommBank) that appear only on aggregator sites, not on SkillBench's own site.
+- Company's own homepage is fairly thin on technical/product specifics and has no direct careers link from the nav — job postings had to be found via a separate /work/ page and a third-party ATS (Workable).
+
+**Links** — [Homepage](https://skillbench.com) · [Open Roles](https://skillbench.com/work/) · [Head of Operations listing (Workable)](https://apply.workable.com/skillbench-inc/j/CF4E04CA78/) · [LinkedIn](https://www.linkedin.com/company/skillbench) · [SEC Form D filing](https://www.sec.gov/Archives/edgar/data/2035925/000203592526000003/0002035925-26-000003-index.htm) · [Matt Beane (CEO) personal site](https://www.mattbeane.com/)
+
+**Why this scored 68** — Reid Hoffman as a board director and a $15.1M/20-investor round signal a serious, well-backed company, and the founder pairing (AI-and-skill researcher + HCI/learning platform builder) points toward a technically substantial evaluation or benchmarking product rather than a wrapper.
+
+**Screening concerns** — Product description is inferred from founder research areas, not stated directly; Could turn out to be closer to HR/EdTech than core AI infra, a less technically deep space
+
+**On the SEC filing** — Matthew Beane (Executive Officer, Director) · Juho Kim (Executive Officer, Director) · Reid Hoffman (Director)
+
+**Sources** — [edgar](https://www.sec.gov/Archives/edgar/data/2035925/000203592526000003/0002035925-26-000003-index.htm)
+
+---
+
+### TXSE Group Inc.
+
+**Fit 68/100** · $27.9M · 2026-07-14 · Dallas, TX
+
+This is TXSE Group Inc, the parent company of the Texas Stock Exchange — a new SEC-registered national securities exchange headquartered in Dallas that began live trading operations on July 6, 2026 and activated full listings by July 31, 2026. Identification is high-confidence: the SEC filing's director list (James H. Lee, Tyson Tuttle, James Richard 'Rick' Perry, Paul Foster, Thomas Long) matches TXSE Group's public leadership exactly. It's a real, shipped product (not a deck) with a genuinely hard infrastructure problem at its core — a proprietary low-latency matching engine — but it is not early-stage in the startup sense: total capital raised is roughly $270–275M, backers are major banks and market makers, and the leadership bench is already deep.
+
+**Product** — A newly launched national stock exchange competing with NYSE, Nasdaq, and Cboe for equity listings and trading volume. TXSE built its own proprietary order-matching engine and exchange platform in about 18 months, designed for low-latency, high-throughput trading, and now offers both listings and live trading.
+
+**Team** — Founder/Chairman/CEO James H. Lee has a finance/dealmaking background (not an engineering founder). Day-to-day technology is led by CTO Rick Yoder, with a technical bench including Adrian Falcone (Head of Technology Operations), Alex Upton (Director of Infrastructure), Matthew Yonke (Director of Security), Phil Russell (Principal Software Engineer), and Constantine Sokoloff (Principal Engineer). The board includes high-profile Texas business and political figures (former Texas Governor Rick Perry, semiconductor exec Tyson Tuttle, El Paso businessman Paul Foster) rather than technologists. The broader leadership team is already large (COO, CFO, General Counsel, multiple C-level and 'Global Head' titles), more consistent with a well-staffed financial institution than a lean startup.
+
+**Funding** — SEC Form D shows a $27.9M tranche around 2026-07-14 with 15 investors, part of a much larger financing effort: press reports put total capital raised at roughly $250–275M across multiple rounds, with named institutional backers including BlackRock, Citadel Securities, Charles Schwab, J.P. Morgan, Goldman Sachs, and Bank of America.
+
+**Open roles** — `Senior Software Engineer`, `Financial Controller`, `Market Operations Analyst`, `Opportunistic Hires (general)`
+
+**Stack** — Proprietary in-house order-matching engine (low-latency, built for billions of messages), Primary data center: Equinix NY6/NY4/NY5 area (Secaucus, NJ), Disaster-recovery data center: Equinix DA11, Dallas, 10Gb Ethernet cross-connects (Equinix NY6, DA11, 350 E. Cermak/CH1), Latency-equalized fiber optic connectivity between matching engine and market participants
+
+**Competitors** — NYSE (Intercontinental Exchange), Nasdaq, Cboe Global Markets, IEX (Investors Exchange), Miami International Holdings (MIAX)
+
+**Reasons to look closer**
+- Genuinely shipped and operating: SEC-approved, live trading since July 6 2026, full ticker/listings activation by July 31 2026 — a real product, not vaporware
+- The core engineering problem (proprietary low-latency matching engine handling billions of messages, multi-datacenter latency equalization) is substantive distributed-systems/infra work, not a thin wrapper
+- Backed by top-tier financial institutions (BlackRock, Citadel Securities, Goldman Sachs, JPMorgan, Bank of America, Charles Schwab), which is a strong signal of credibility and durability for the venture
+- Actively hiring senior-level engineering roles (Senior Software Engineer, Principal Software Engineer/Engineer, Director of Infrastructure, Director of Security), which the user's own criteria treat as a stronger signal than junior-only or GTM-only hiring
+
+**Reasons for caution**
+- Not early-stage by capital or headcount: ~$270-275M raised total and a leadership team already stocked with C-level and director titles — low-leverage for an individual engineer joining now
+- Founder/CEO is a finance executive, not a technical founder; engineering is led by a separately hired CTO and staff, which weakens the 'strong technical founder' signal this person values
+- Headquartered in Dallas, TX — outside the stated preferred geography (CA/NY/WA/MA) and not a remote-friendly software company; it's a physical exchange operation
+- Business is capital-markets infrastructure competing against deeply entrenched incumbents (NYSE, Nasdaq, Cboe) with strong network effects on the listings side — market share is not guaranteed just because the tech works
+
+**Links** — [Homepage](https://www.txse.com) · [Careers](https://www.txse.com/careers) · [Leadership](https://www.txse.com/meet-the-team) · [Wikipedia (Texas Stock Exchange)](https://en.wikipedia.org/wiki/Texas_Stock_Exchange) · [James H. Lee LinkedIn](https://www.linkedin.com/in/jameshleetx/)
+
+**Why this scored 68** — If this is indeed the Texas Stock Exchange effort, building a national exchange requires serious low-latency, high-reliability distributed systems engineering, a strong match for the top-weighted infrastructure interest, and the $27.9M raise with a credible technical/industry board is a good signal; scored with some caution since the filing alone doesn't confirm the engineering-hiring profile.
+
+**Screening concerns** — Exchange infrastructure is a regulatory- and compliance-heavy business; engineering roles may be as much about market operations as core distributed-systems work; No direct evidence of the technical hiring profile (senior/staff vs. compliance/ops-heavy); Large, well-connected board could mean brand-name-driven hiring rather than deep technical founder leadership
+
+**On the SEC filing** — James H. Lee (Executive Officer, Director) · Thomas Long (Director) · Tyson Tuttle (Director) · James Richard Perry (Director) · Paul Foster (Director) · Richard Roberts (Director)
+
+**Sources** — [edgar](https://www.sec.gov/Archives/edgar/data/2017031/000201703126000004/0002017031-26-000004-index.htm) · [edgar](https://www.sec.gov/Archives/edgar/data/2017031/000201703126000005/0002017031-26-000005-index.htm) · [edgar](https://www.sec.gov/Archives/edgar/data/2017031/000201703126000002/0002017031-26-000002-index.htm)
+
+---
+
+### Neuraspace
+
+**Fit 66/100** · $15.6M · 2026-08-05
+
+Neuraspace is a Coimbra, Portugal-based space-tech company building an AI-driven Space Domain Awareness (SDA) and Space Traffic Management (STM) platform — collision-risk prediction, orbit determination, and autonomous maneuver decision-support for satellite operators. Founded in 2020 by Chiara Manfletti (former president of the Portuguese Space Agency) with Nuno Sebastião (co-founder/CEO of unicorn Feedzai) as a founder, it just raised €15.6M (private capital plus Portuguese government RRP funds) to expand commercial and defence/dual-use capabilities, including a NATO- and Portuguese Air Force-linked defence product line (NeuraspaceDEF). This is a real, deployed product (600+ satellites monitored, named commercial and institutional customers) rather than a deck, but it is Portugal-based, defence-adjacent, and highly specialized in orbital mechanics/astrodynamics — a narrower fit than typical AI infra/dev-tools roles.
+
+**Product** — AI/ML platform for Space Domain Awareness and Space Traffic Management: ingests commercial and sovereign sensor data, performs orbit determination and AI-based collision-risk assessment, and provides autonomous decision support (maneuver recommendations) for satellite operators, launch providers, and defence/government customers. NeuraspaceDEF is a separate dual-use variant for government and defence missions (cyber threats, RF interference, counterspace activity).
+
+**Team** — Founded 2020 in Coimbra, Portugal by Chiara Manfletti (CEO — former president of the Portuguese Space Agency, former senior adviser to the ESA Director General) and Nuno Sebastião (also co-founder/CEO of Feedzai, a fintech unicorn). Team described as multidisciplinary — AI/ML scientists, astrodynamicists, aerospace engineers, software engineers, and UX/product staff — with ties to academic AI/ML research centres. Exact headcount not disclosed in sources found.
+
+**Funding** — €15.6M round announced 2026-08-05, combining strategic private investment from Lince Capital, Explorer Investments, and Armilar Venture Partners plus funding under Portugal's Recovery and Resilience Plan (RRP). Prior round: €2.5–2.75M raised around March 2022, including from Armilar Venture Partners.
+
+**Stack** — AI/ML models for collision-probability prediction, orbit determination, proprietary optical sensing infrastructure, autonomous mission operations/decision-support systems
+
+**Competitors** — LeoLabs, Slingshot Aerospace
+
+**Reasons to look closer**
+- Real, operating product with named paying/using customers (Spire Global, GEOSAT, NanoAvionics, Sidus Space, U-Space, ESA cited in press) and 600+ satellites monitored — not just a deck.
+- Technically substantial domain: astrodynamics, orbit determination, and collision-risk ML are genuinely hard engineering problems, not a thin GPT wrapper.
+- Founder technical/domain depth is strong: CEO has direct space-agency and ESA leadership background; a founder has already built and scaled a unicorn (Feedzai), suggesting real startup-scaling experience.
+- Round size ($15.6M ≈ within the user's preferred $2–150M band) and named, identifiable investors rather than an oversized unvalidated seed.
+
+**Reasons for caution**
+- Meaningful defence/dual-use business line (NeuraspaceDEF, contracts referenced with the Portuguese Air Force and NATO) — falls inside the user's explicit 'not interested: defense and weapons systems' exclusion.
+- Based in Coimbra, Portugal — outside the user's preferred geographies (CA, NY, WA, MA); no evidence found that the company is remote-friendly for engineering roles.
+- Careers page (neuraspace.com/careers) lists no specific open roles or seniority levels — only generic language about 'expanding' — so no direct evidence of active senior/staff engineering hiring.
+- Round is largely non-dilutive/government-linked (Portuguese RRP funds blended with private capital), which can mean less market-validated commercial traction than a pure VC round of the same size.
+
+**Links** — [Homepage](https://www.neuraspace.com/) · [Company/About](https://www.neuraspace.com/company) · [Careers](https://www.neuraspace.com/careers) · [Funding announcement (Tech.eu)](https://tech.eu/2026/08/05/neuraspace-lands-eur156m-to-expand-ai-space-intelligence-platform/) · [Funding coverage (EU-Startups)](https://www.eu-startups.com/2026/08/portugals-neuraspace-lands-e15-6-million-to-protect-satellites-and-bolster-europes-space-domain-awareness/) · [Funding coverage (Tech Funding News)](https://techfundingnews.com/ex-portuguese-space-agency-chiefs-neuraspace-raises-e15-6m-to-build-european-ai-shield-for-satellites/)
+
+**Why this scored 66** — Space Traffic Management is a genuinely hard, high-stakes data/ML problem (tracking, collision prediction at scale) that would give engineers real technical leverage, but the vertical and location are outside the person's stated preferences.
+
+**Screening concerns** — Portugal-based, outside preferred geography with no stated remote policy; Applied vertical (space traffic) isn't one of the named priority verticals, so fit is somewhat adjacent rather than direct
+
+**Sources** — [news](https://tech.eu/2026/08/05/neuraspace-lands-eur156m-to-expand-ai-space-intelligence-platform/)
+
+---
+
+## Everything else considered (312)
+
+<details>
+<summary>Expand — ranked, but not researched in depth</summary>
+
+| Fit | Company | Raised | Date | Location | Note |
+|---:|---|---:|---|---|---|
+| 70 | [KEA Cloud, Inc.](https://www.sec.gov/Archives/edgar/data/2073579/000207357926000001/0002073579-26-000001-index.htm) | $15.9M | 2025-05-30 | PALO ALTO, CA | Unknown in detail, but 'KEA Cloud' plus 'Other Technology' industry code, a Pa… |
+| 66 | [Empirical Security, Inc.](https://www.sec.gov/Archives/edgar/data/2049036/000123191926000819/0001231919-26-000819-index.htm) | $20.8M | 2026-07-17 | CHICAGO, IL | Chicago-based cybersecurity/risk-management startup (SEC-listed 'Other Technol… |
+| 65 | [Proactive AI Lab, Inc.](https://www.sec.gov/Archives/edgar/data/2148214/000214821426000001/0002148214-26-000001-index.htm) | $28.3M | 2026-07-20 | LOS ALTOS, CA | Unknown — 'AI Lab' name and Los Altos location suggest a general AI research/p… |
+| 62 | [Omilia](https://www.eu-startups.com/2026/08/cyprus-based-enterprise-agentic-cx-company-omilia-secures-e58-1-million-in-series-b-funding/) | $58.1M | 2026-08-07 | — | Cyprus-based enterprise conversational/agentic customer-experience (CX) platfo… |
+| 62 | [Core Automation, Inc.](https://www.sec.gov/Archives/edgar/data/2148145/000214814526000001/0002148145-26-000001-index.htm) | $432.1M | 2026-07-15 | SAN FRANCISCO, CA | Unknown precisely, but director Rohan Anil is a known Google DeepMind AI/ML re… |
+| 60 | [Valoros, Inc.](https://www.sec.gov/Archives/edgar/data/2115457/000211545726000002/0002115457-26-000002-index.htm) | $31.4M | 2026-07-27 | NEW YORK, NY | Unknown in detail, but Saam Motamedi (a Greylock partner known for enterprise/… |
+| 60 | [Genomenon, Inc.](https://www.sec.gov/Archives/edgar/data/1650557/000165055726000004/0001650557-26-000004-index.htm) | $6.0M | 2026-07-15 | ANN ARBOR, MI | A genomics/biotechnology company (Ann Arbor, MI) — likely an AI-driven genomic… |
+| 58 | [Silicon Derivatives Inc.](https://www.sec.gov/Archives/edgar/data/2061171/000206117126000003/0002061171-26-000003-index.htm) | $30.5M | 2026-07-17 | HARTSDALE, NY | Unknown in detail, but the name and Donald R. Wilson Jr. (founder of DRW, a ma… |
+| 55 | [NavVis](https://www.eu-startups.com/2026/08/munich-based-navvis-raises-e74-5-million-to-build-its-spatial-data-engine-and-accelerate-ai-roadmap/) | $73.7M | 2026-08-07 | — | Munich-based spatial-twin/mapping platform building a large-scale spatial data… |
+| 55 | [Inforcer](https://techcrunch.com/2026/07/30/inforcer-raises-50m-to-help-prepare-smbs-for-a-new-world-of-ai-and-security-risks/) | $50.0M | 2026-07-30 | — | London-based cybersecurity company helping smaller businesses manage AI and se… |
+| 55 | [Naïve](https://techcrunch.com/2026/08/06/naive-raises-28-5m-to-automate-the-grunt-work-of-setting-up-and-running-a-company/) | $28.5M | 2026-08-06 | — | Naïve builds AI/agent infrastructure aimed at automating the operational "grun… |
+| 55 | [Invoq Health, Inc.](https://www.sec.gov/Archives/edgar/data/1808311/000180831126000003/0001808311-26-000003-index.htm) | $58.8M | 2026-07-21 | MUNDELEIN, IL | Unknown specifics — a health-tech company (Invoq Health) that raised a large $… |
+| 55 | [10x Banking](https://tech.eu/2026/08/04/10x-banking-banks-ps40m-in-debt-and-equity-raise/) | $40.0M | 2026-08-04 | — | UK core-banking technology platform provider whose software powers JP Morgan's… |
+| 55 | [Tursio Inc.](https://www.sec.gov/Archives/edgar/data/1980335/000198033526000001/0001980335-26-000001-index.htm) | $50K | 2026-08-05 | SAMMAMISH, WA | Unknown in detail, but the founding team (Alekh Jindal, Shi Qiao, Arun Ramamoo… |
+| 54 | [SeeTrue Technologies](https://www.eu-startups.com/2026/08/finlands-seetrue-technologies-raises-e2-2-million-to-commercialise-low-power-eye-sensing-architecture/) | $2.2M | 2026-08-06 | — | A Finnish deep-tech company building an ultra-low-power eye-tracking/eye-sensi… |
+| 52 | [orgn.dev Inc](https://www.sec.gov/Archives/edgar/data/2131378/000213137826000002/0002131378-26-000002-index.htm) | $1.0M | 2026-07-28 | WILMINGTON, DE | Unknown — name 'orgn.dev' and 'Other Technology' industry code suggest a devel… |
+| 50 | [Janet AI, Inc.](https://www.sec.gov/Archives/edgar/data/2147912/000214791226000001/0002147912-26-000001-index.htm) | $2.2M | 2025-06-18 | SARATOGA, CA | Unknown specifics, but the name and 'Other Technology' industry suggest an AI … |
+| 46 | [Fair Warning Art, Inc.](https://www.sec.gov/Archives/edgar/data/1993532/000199353226000004/0001993532-26-000004-index.htm) | $2.5M | 2026-04-09 | NEW YORK, NY | Likely a technology platform for live/mobile art auctions, founded by figures … |
+| 45 | [Notabene, Inc.](https://www.sec.gov/Archives/edgar/data/1880160/000188016026000003/0001880160-26-000003-index.htm) | $11.5M | 2026-06-29 | Brooklyn, NY | Unknown from evidence alone — 'Other Technology' company in Brooklyn with a si… |
+| 45 | [Aavalynx](https://tech.eu/2026/08/04/legal-ai-startup-aavalynx-raises-ps15m-to-cut-the-cost-of-corporate-disputes/) | $1.5M | 2026-08-04 | — | A UK legal-tech startup building AI tools to help enterprises reduce the finan… |
+| 45 | [Wild Zebra, Inc.](https://www.sec.gov/Archives/edgar/data/2148239/000214823926000002/0002148239-26-000002-index.htm) | $8.0M | 2026-07-24 | SEATTLE, WA | Unknown — 'Wild Zebra, Inc.' in Seattle, WA with an $8M raise from 2 investors… |
+| 42 | [Latitude Health, Inc.](https://www.sec.gov/Archives/edgar/data/2148343/000214834326000001/0002148343-26-000001-index.htm) | $2.0M | 2026-07-24 | SAN FRANCISCO, CA | Unknown — likely a health-tech company given the name and triage keyword, but … |
+| 42 | [Quantum Network Technologies, Inc.](https://www.sec.gov/Archives/edgar/data/2141598/000214159826000001/0002141598-26-000001-index.htm) | $1.5M | 2026-07-30 | BOSTON, MA | Unknown — name 'Quantum Network Technologies' suggests networking or quantum-c… |
+| 40 | [Contrivian Inc](https://www.sec.gov/Archives/edgar/data/2147465/000214746526000001/0002147465-26-000001-index.htm) | $4.7M | 2026-07-14 | SAN FRANCISCO, CA | Unknown — SEC industry code is Telecommunications; no product description avai… |
+| 40 | [Cicero, Inc /DE/](https://www.sec.gov/Archives/edgar/data/2148057/000121390026084388/0001213900-26-084388-index.htm) | $6.8M | 2026-07-16 | NEW YORK, NY | Unknown — 'Other Technology' company in New York with a $6.8M round and 35 inv… |
+| 40 | [AI Software Holdings, LLC](https://www.sec.gov/Archives/edgar/data/2083164/000095013826000017/0000950138-26-000017-index.htm) | $703K | 2026-07-14 | ST. LOUIS, MO | Unknown specifics, but 'AI Software Holdings' led by St. Louis tech entreprene… |
+| 40 | [C.S.I. Enterprises, Inc.](https://www.sec.gov/Archives/edgar/data/2146817/000112329226001051/0001123292-26-001051-index.htm) | $75.0M | 2026-07-30 | Bonita Springs, FL | Unknown in detail — 'C.S.I. Enterprises' is associated with commercial payment… |
+| 40 | [GRAI, Inc.](https://www.sec.gov/Archives/edgar/data/2147605/000214760526000001/0002147605-26-000001-index.htm) | $2.1M | 2026-07-16 | WILMINGTON, DE | Unknown — SEC industry listed only as 'Other'; Delaware incorporation is commo… |
+| 38 | [Bear Analytics, Inc.](https://www.sec.gov/Archives/edgar/data/2145783/000214578326000001/0002145783-26-000001-index.htm) | $2.6M | 2026-07-22 | ARLINGTON, VA | Unknown — 'Analytics' name and Arlington, VA location (a hub for government/de… |
+| 38 | [Relu](https://www.eu-startups.com/2026/08/belgian-ai-dental-startup-relu-lands-e1-51-million-to-accelerate-us-expansion/) | $1.5M | 2026-08-06 | — | A Belgium-based AI startup automating dental design and planning workflows for… |
+| 38 | [Senza Research, Inc.](https://www.sec.gov/Archives/edgar/data/2148209/000214820926000002/0002148209-26-000002-index.htm) | $2.1M | 2026-07-17 | APEX, NC | Unknown — SEC industry 'Other Health Care' and a $2.1M raise suggest an early … |
+| 38 | [Samply, Inc.](https://www.sec.gov/Archives/edgar/data/2148970/000214897026000001/0002148970-26-000001-index.htm) | $3.3M | 2026-07-20 | STEVENS POINT, WI | Unknown — name suggests a sampling/panel or consumer research product, but SEC… |
+| 38 | [emberOS, Inc.](https://www.sec.gov/Archives/edgar/data/2149231/000214923126000001/0002149231-26-000001-index.htm) | $2.5M | 2026-07-02 | LOS ANGELES, CA | Unknown — name suggests developer/infrastructure tooling (an 'OS' or platform … |
+| 37 | [Wildfire Water Solutions, Inc.](https://www.sec.gov/Archives/edgar/data/2064966/000206496626000003/0002064966-26-000003-index.htm) | $8.0M | 2026-07-01 | BEND, OR | Unknown — name suggests water treatment or wildfire-mitigation technology; bas… |
+| 35 | [Violet AI, Inc.](https://www.sec.gov/Archives/edgar/data/1982047/000198204726000004/0001982047-26-000004-index.htm) | $2.0M | 2026-07-06 | AUSTIN, TX | Unknown — a generic 'AI' name with no product evidence; this is a small follow… |
+| 35 | [Unspun, PBC](https://www.sec.gov/Archives/edgar/data/2033020/000203302026000003/0002033020-26-000003-index.htm) | $14.4M | 2026-07-20 | EMERYVILLE, CA | Unspun is known (from general knowledge, not this filing) as a company buildin… |
+| 35 | [Edtech platform](https://techcrunch.com/2026/07/23/edtech-platform-raises-4-5m-to-help-teach-students-how-to-vibe-code/) | $4.5M | 2026-07-23 | — | Edtech startup (Imagi) that teaches students AI-assisted 'vibe coding'. |
+| 35 | [Exclaim Robotics Inc.](https://www.sec.gov/Archives/edgar/data/2149175/000214917526000001/0002149175-26-000001-index.htm) | $5.0M | 2026-07-24 | ZURICH, V8 | Unknown specifics — 'Other Technology' SEC industry and the name suggest a rob… |
+| 33 | [Furnace Systems Corp](https://www.sec.gov/Archives/edgar/data/2148187/000214818726000001/0002148187-26-000001-index.htm) | $3.5M | 2026-07-23 | NEW YORK, NY | Unknown — 'Furnace Systems Corp' with an 'Other Technology' SEC industry code … |
+| 33 | [PETA OPTRONICS, INC.](https://www.sec.gov/Archives/edgar/data/2147798/000214779826000001/0002147798-26-000001-index.htm) | $8.5M | 2026-07-17 | MILPITAS, CA | Unknown — name ('Optronics') and Milpitas, CA location suggest an optical/phot… |
+| 32 | [GIBO HOLDINGS Ltd](https://www.sec.gov/Archives/edgar/data/2034520/000149315226035308/0001493152-26-035308-index.htm) | $23.4M | 2026-07-27 | KUALA LUMPUR, N8 | Unknown — Kuala Lumpur-based entity classified as 'Other Technology' with a $2… |
+| 32 | [Shape Memory Medical Inc.](https://www.sec.gov/Archives/edgar/data/1630786/000163078626000003/0001630786-26-000003-index.htm) | $6.9M | 2026-07-02 | SAN JOSE, CA | San Jose medical device company developing shape-memory polymer implants/devic… |
+| 32 | [Clearjet Inc.](https://www.sec.gov/Archives/edgar/data/1991890/000199189026000004/0001991890-26-000004-index.htm) | $24.3M | 2026-07-21 | AUSTIN, TX | Unknown — the name suggests private aviation/jet booking or logistics, but the… |
+| 32 | [Nanoramic, Inc.](https://www.sec.gov/Archives/edgar/data/1488336/000148833626000001/0001488336-26-000001-index.htm) | $9.0M | 2026-07-15 | Woburn, MA | Nanoramic appears to be a materials/energy-storage company (nanocarbon materia… |
+| 32 | [Oncologic, Inc. / DE](https://www.sec.gov/Archives/edgar/data/2148177/000214817726000001/0002148177-26-000001-index.htm) | $26.7M | 2026-07-20 | Orlando, FL | Unknown — name implies an oncology/cancer-focused health company, likely biote… |
+| 32 | [Resurgent Industries Inc.](https://www.sec.gov/Archives/edgar/data/2144464/000214446426000004/0002144464-26-000004-index.htm) | $19.2M | 2026-07-14 | AUSTIN, TX | Unknown — an Austin-based manufacturing company; no evidence of a software/AI … |
+| 32 | [Recovered Potential, Inc.](https://www.sec.gov/Archives/edgar/data/2147469/000214746926000001/0002147469-26-000001-index.htm) | $223K | 2026-07-27 | MENLO PARK, CA | Unknown — Menlo Park, CA 'Other Technology' filer; a director (William Abraham… |
+| 30 | [Gluzo AI Inc.](https://www.sec.gov/Archives/edgar/data/2146831/000214683126000001/0002146831-26-000001-index.htm) | $3.0M | 2026-07-28 | SHUNYI DISTRICT, BEIJING CITY, F4 | Unknown — name suggests an AI company, but no product description is available… |
+| 30 | [UNPLUGS HEARING, INC.](https://www.sec.gov/Archives/edgar/data/2054746/000205474626000002/0002054746-26-000002-index.htm) | $3.4M | 2026-07-31 | BROOKLYN, NY | Unknown in detail, but the name strongly suggests a hearing-health/audio hardw… |
+| 30 | [Blend Innovations, Inc.](https://www.sec.gov/Archives/edgar/data/2147140/000214714026000001/0002147140-26-000001-index.htm) | $12.0M | 2026-07-23 | COLUMBUS, OH | Unknown — 'Blend Innovations, Inc.' in health care with a $12M raise and a mul… |
+| 30 | [Sila Nanotechnologies, Inc.](https://www.sec.gov/Archives/edgar/data/1530888/000153088826000001/0001530888-26-000001-index.htm) | $309.6M | 2026-07-17 | ALAMEDA, CA | Sila Nanotechnologies develops silicon-anode battery materials for EVs and con… |
+| 30 | [Huupe Inc.](https://www.sec.gov/Archives/edgar/data/1973387/000197338726000003/0001973387-26-000003-index.htm) | $9.6M | 2026-07-30 | PALM HARBOR, FL | Unknown from the filing itself (SEC industry: 'Other'); the director roster (a… |
+| 30 | [The browser is where attacks](https://venturebeat.com/security/the-browser-is-where-attacks-land-why-is-security-still-focused-on-the-endpoint) | undisclosed | 2026-08-06 | — | Unknown as a fundable company — this is a sponsored/native news article about … |
+| 29 | [CND Life Sciences, Inc.](https://www.sec.gov/Archives/edgar/data/1841099/000184109926000002/0001841099-26-000002-index.htm) | $6.3M | 2026-06-09 | SCOTTSDALE, AZ |  |
+| 29 | [Monava](https://tech.eu/2026/08/04/monava-closes-funding-round-as-demand-for-passive-drone-detection-grows/) | undisclosed | 2026-08-04 | — | raise amount unknown; keyword themes: robotics |
+| 29 | [BioGene Therapeutics Inc.](https://www.sec.gov/Archives/edgar/data/2140719/000214071926000005/0002140719-26-000005-index.htm) | $3.0M | 2026-06-05 | AUSTIN, TX |  |
+| 29 | [HILstart, Inc.](https://www.sec.gov/Archives/edgar/data/2147638/000214763826000001/0002147638-26-000001-index.htm) | $1.1M | 2026-07-13 | WILMINGTON, DE | raise 1080K is below the 2M floor |
+| 29 | [MedRhythms, Inc.](https://www.sec.gov/Archives/edgar/data/1746125/000174612526000002/0001746125-26-000002-index.htm) | $1.0M | 2026-07-31 | PORTLAND, ME | raise 1000K is below the 2M floor |
+| 29 | [COVR Promo Inc](https://www.sec.gov/Archives/edgar/data/2147676/000214767626000001/0002147676-26-000001-index.htm) | $1.0M | 2026-07-15 | OCEAN RIDGE, FL | raise 1000K is below the 2M floor |
+| 29 | [Shrink Software LLC](https://www.sec.gov/Archives/edgar/data/2145482/000214548226000001/0002145482-26-000001-index.htm) | $1.0M | 2026-07-30 | GRAND RAPIDS, MI | raise 1000K is below the 2M floor |
+| 28 | [Taktile Holding, Inc.](https://www.sec.gov/Archives/edgar/data/2140539/000214053926000002/0002140539-26-000002-index.htm) | $110.0M | 2026-05-18 | New York, NY |  |
+| 28 | [Cyberbrain, INC.](https://www.sec.gov/Archives/edgar/data/2148819/000214881926000001/0002148819-26-000001-index.htm) | $150K | 2026-07-24 | VACAVILLE, CA | raise 150K is below the 2M floor |
+| 28 | [Veyl Technologies, Inc.](https://www.sec.gov/Archives/edgar/data/2149290/000214929026000001/0002149290-26-000001-index.htm) | $950K | 2026-07-27 | GREAT FALLS, VA | raise 950K is below the 2M floor |
+| 28 | [LabyrinthAI Inc.](https://www.sec.gov/Archives/edgar/data/2087100/000208710026000001/0002087100-26-000001-index.htm) | $160K | 2026-08-03 | SOMERVILLE, MA | raise 160K is below the 2M floor |
+| 28 | [Layka Bio Inc](https://www.sec.gov/Archives/edgar/data/2148283/000214828326000001/0002148283-26-000001-index.htm) | $300K | 2026-07-27 | NEWTON HIGHLANDS, MA | raise 300K is below the 2M floor; keyword themes: health |
+| 28 | [Midwest Screens Holdings, LLC](https://www.sec.gov/Archives/edgar/data/2148991/000214899126000001/0002148991-26-000001-index.htm) | $2.3M | 2026-07-31 | ELMHURST, IL | only one officer listed |
+| 28 | [Monster Equities LLC](https://www.sec.gov/Archives/edgar/data/2144971/000214497126000002/0002144971-26-000002-index.htm) | $15.0M | 2026-08-05 | NAPLES, FL | only one officer listed |
+| 28 | [Promus NSI Holdings, LLC](https://www.sec.gov/Archives/edgar/data/2147087/000104216726000059/0001042167-26-000059-index.htm) | $17.4M | 2026-07-21 | CHICAGO, IL | only one officer listed |
+| 28 | [AZURO CAPITAL VENTURES LLC](https://www.sec.gov/Archives/edgar/data/2099698/000209969826000004/0002099698-26-000004-index.htm) | $2.8M | 2026-07-15 | Jersey City, NJ | only one officer listed |
+| 28 | [Mainstay Healthcare Columbus, LLC](https://www.sec.gov/Archives/edgar/data/2148172/000170940926000021/0001709409-26-000021-index.htm) | $2.2M | 2026-07-30 | AUBURNDALE, FL | only one officer listed |
+| 28 | [Yaven, Inc.](https://www.sec.gov/Archives/edgar/data/2146457/000214645726000001/0002146457-26-000001-index.htm) | $50K | 2026-07-27 | NEW YORK, NY | raise 50K is below the 2M floor |
+| 28 | [Armory Technologies, Inc.](https://www.sec.gov/Archives/edgar/data/2006694/000200669426000001/0002006694-26-000001-index.htm) | $2.3M | 2026-07-31 | WORCESTER, MA | Unknown — "Armory Technologies" gives no reliable signal; the name is ambiguou… |
+| 28 | [Enumera Molecular, Inc.](https://www.sec.gov/Archives/edgar/data/1929085/000192908526000005/0001929085-26-000005-index.htm) | $12.3M | 2026-07-16 | ANN ARBOR, MI | Unknown specifics — an Ann Arbor, MI molecular diagnostics/biotech company (SE… |
+| 28 | [Chat Automation Group, Inc.](https://www.sec.gov/Archives/edgar/data/2148763/000214876326000001/0002148763-26-000001-index.htm) | $2.0M | 2026-07-06 | CHELMSFORD, X0 | A 'Business Services' company named Chat Automation Group — likely a chatbot/a… |
+| 28 | [BLUE STREET DATA LLC](https://www.sec.gov/Archives/edgar/data/1971764/000197176426000004/0001971764-26-000004-index.htm) | $795K | 2026-08-03 | CARNEGIE, PA | Unknown — 'Other Technology' SEC industry and the name suggest a data-related … |
+| 28 | [Advanced Thermovoltaic Systems, Corp.](https://www.sec.gov/Archives/edgar/data/2126585/000212658526000002/0002126585-26-000002-index.htm) | $4.6M | 2026-07-13 | LOVELAND, CO | Unknown — name implies thermophotovoltaic/thermal-to-electric energy conversio… |
+| 28 | [Central Nevada Gold Corp.](https://www.sec.gov/Archives/edgar/data/2147886/000214788626000001/0002147886-26-000001-index.htm) | $12.1M | 2026-06-23 | Toronto, A6 | industry "Other Energy" is a weak fit |
+| 28 | [CompanAIn, Inc.](https://www.sec.gov/Archives/edgar/data/2148791/000214879126000001/0002148791-26-000001-index.htm) | $730K | 2026-08-01 | CHARLESTON, SC | raise 730K is below the 2M floor |
+| 28 | [Caryatid Inc.](https://www.sec.gov/Archives/edgar/data/2147960/000214796026000001/0002147960-26-000001-index.htm) | $510K | 2026-07-21 | MERCER ISLAND, WA | raise 510K is below the 2M floor; only one officer listed |
+| 28 | [Automera US Inc.](https://www.sec.gov/Archives/edgar/data/1992812/000199281226000001/0001992812-26-000001-index.htm) | $1.0M | 2026-07-23 | SEATTLE, WA | raise 1000K is below the 2M floor |
+| 28 | [Antora Energy, Inc.](https://www.sec.gov/Archives/edgar/data/2082245/000208224526000001/0002082245-26-000001-index.htm) | $457.6M | 2026-07-20 | SUNNYVALE, CA | raise is above the preferred ceiling (likely late stage) |
+| 28 | [EmulateAI, Inc.](https://www.sec.gov/Archives/edgar/data/2149097/000214909726000001/0002149097-26-000001-index.htm) | $400K | 2026-07-30 | WAYLAND, MA | raise 400K is below the 2M floor; only one officer listed |
+| 28 | [Hadrian](https://techcrunch.com/2026/08/06/defense-tech-hadrian-raises-1-37b-at-8b-valuation/) | $1.4B | 2026-08-06 | — | raise is above the preferred ceiling (likely late stage) |
+| 27 | [Trivas Inc.](https://www.sec.gov/Archives/edgar/data/2149078/000214907826000001/0002149078-26-000001-index.htm) | $375K | 2026-07-23 | LOS ALTOS, CA | raise 375K is below the 2M floor; only one officer listed |
+| 27 | [Reika Thermal, Inc.](https://www.sec.gov/Archives/edgar/data/2147452/000214745226000001/0002147452-26-000001-index.htm) | $500K | 2026-07-06 | SAN DIEGO, CA | raise 500K is below the 2M floor; only one officer listed |
+| 27 | [Practice LLC](https://www.sec.gov/Archives/edgar/data/2148130/000214813026000001/0002148130-26-000001-index.htm) | $1.2M | 2026-07-28 | LOS ANGELES, CA | raise 1200K is below the 2M floor; keyword themes: health |
+| 27 | [Aperon, Inc.](https://www.sec.gov/Archives/edgar/data/2147596/000214759626000001/0002147596-26-000001-index.htm) | $505K | 2026-07-05 | CAMBRIDGE, MA | raise 505K is below the 2M floor; only one officer listed |
+| 27 | [FIXX Energy Holdings, Inc.](https://www.sec.gov/Archives/edgar/data/2145840/000214584026000001/0002145840-26-000001-index.htm) | $35.0M | 2026-08-05 | SMYRNA, TN | industry "Other Energy" is a weak fit; only one officer listed |
+| 27 | [Biota Inc.](https://www.sec.gov/Archives/edgar/data/2147804/000214780426000001/0002147804-26-000001-index.htm) | $3.0M | 2026-07-17 | LONGMONT, CO | Unknown — likely a biotech/life-sciences company (Longmont, CO is a biotech hu… |
+| 27 | [G1 Veriflow LLC](https://www.sec.gov/Archives/edgar/data/2146846/000214684626000001/0002146846-26-000001-index.htm) | $400K | 2026-07-27 | TAMPA, FL | raise 400K is below the 2M floor |
+| 27 | [ProrataAI, Inc.](https://www.sec.gov/Archives/edgar/data/2038213/000203821326000002/0002038213-26-000002-index.htm) | $13.5M | 2026-03-09 | PASADENA, CA |  |
+| 27 | [Labelbees Inc](https://www.sec.gov/Archives/edgar/data/2149211/000214921126000001/0002149211-26-000001-index.htm) | $50K | 2026-08-03 | SANTA CLARA, CA | raise 50K is below the 2M floor; only one officer listed |
+| 27 | [Mariana Minerals Co.](https://www.sec.gov/Archives/edgar/data/2123886/000212388626000004/0002123886-26-000004-index.htm) | $310.5M | 2026-07-22 | SAN FRANCISCO, CA | raise is above the preferred ceiling (likely late stage); industry "Other Ener… |
+| 27 | [ORF Biologics, Inc.](https://www.sec.gov/Archives/edgar/data/2048350/000204835026000004/0002048350-26-000004-index.htm) | $1.7M | 2026-07-23 | TIFFIN, IA | raise 1734K is below the 2M floor |
+| 27 | [ClerkMate, Inc.](https://www.sec.gov/Archives/edgar/data/2148986/000214898626000001/0002148986-26-000001-index.htm) | $225K | 2026-07-27 | CRANSTON, RI | raise 225K is below the 2M floor |
+| 27 | [Nexus Labs Holdings, Inc.](https://www.sec.gov/Archives/edgar/data/2148774/000214877426000001/0002148774-26-000001-index.htm) | $615K | 2026-07-21 | BOULDER, CO | raise 615K is below the 2M floor |
+| 27 | [330 County LW, LLC](https://www.sec.gov/Archives/edgar/data/2146802/000214680226000001/0002146802-26-000001-index.htm) | $1.1M | 2026-07-20 | NEW YORK, NY | raise 1065K is below the 2M floor; industry "Other Banking and Financial Servi… |
+| 27 | [KORTEK SOLUTIONS LLC](https://www.sec.gov/Archives/edgar/data/2148969/000214896926000001/0002148969-26-000001-index.htm) | $600K | 2026-07-28 | LARGO, FL | raise 600K is below the 2M floor |
+| 26 | [Kiken Technoloigies, Inc](https://www.sec.gov/Archives/edgar/data/2147713/000214771326000002/0002147713-26-000002-index.htm) | $131K | 2026-07-17 | MERRILLVILLE, IN | raise 131K is below the 2M floor |
+| 26 | [Squary, Inc.](https://www.sec.gov/Archives/edgar/data/2148990/000214899026000001/0002148990-26-000001-index.htm) | $125K | 2026-08-03 | GIBSONIA, PA | raise 125K is below the 2M floor |
+| 26 | [Beam Management Holdco, LLC](https://www.sec.gov/Archives/edgar/data/2147388/000206235726000339/0002062357-26-000339-index.htm) | undisclosed | 2026-07-22 | NEW YORK, NY | raise amount unknown |
+| 26 | [HCW Biologics Inc.](https://www.sec.gov/Archives/edgar/data/1828673/000182867326000005/0001828673-26-000005-index.htm) | $1.6M | 2026-07-29 | Miramar, FL | raise 1600K is below the 2M floor |
+| 26 | [Pellucid Network, Inc.](https://www.sec.gov/Archives/edgar/data/2126486/000212648626000002/0002126486-26-000002-index.htm) | $500K | 2026-08-01 | CARY, NC | raise 500K is below the 2M floor |
+| 26 | [Coraa, Inc.](https://www.sec.gov/Archives/edgar/data/2147704/000214770426000001/0002147704-26-000001-index.htm) | $100K | 2026-07-20 | HOUSTON, TX | raise 100K is below the 2M floor |
+| 26 | [SLP Tacer Topco, LLC](https://www.sec.gov/Archives/edgar/data/2148167/000214816726000001/0002148167-26-000001-index.htm) | undisclosed | 2026-07-31 | VAN NUYS, CA | raise amount unknown |
+| 26 | [Psympl Inc.](https://www.sec.gov/Archives/edgar/data/2055784/000205578426000003/0002055784-26-000003-index.htm) | $100K | 2026-07-22 | Covington, KY | raise 100K is below the 2M floor |
+| 26 | [Weatherwave Space, Inc.](https://www.sec.gov/Archives/edgar/data/2142221/000214222126000001/0002142221-26-000001-index.htm) | $35K | 2026-07-11 | BEAR, DE | raise 35K is below the 2M floor |
+| 26 | [RMX INDUSTRIES, INC.](https://www.sec.gov/Archives/edgar/data/1970743/000197074326000003/0001970743-26-000003-index.htm) | $25K | 2026-07-22 | DALLAS, TX | raise 25K is below the 2M floor |
+| 26 | [Payward, Inc.](https://www.sec.gov/Archives/edgar/data/1785695/000119312526331081/0001193125-26-331081-index.htm) | $11K | 2026-07-24 | Cheyenne, WY | raise 11K is below the 2M floor |
+| 26 | [Platter](https://tech.eu/2026/08/07/platter-lands-follow-on-funding-from-verb-ventures-to-modernise-food-supply-operations/) | undisclosed | 2026-08-07 | — | raise amount unknown |
+| 26 | [QMUL spinouts looking to](https://sifted.eu/articles/qmul-spinouts-looking-to-raise/) | undisclosed | 2026-08-07 | — | raise amount unknown |
+| 26 | [AssureSync LLC](https://www.sec.gov/Archives/edgar/data/2145823/000214582326000001/0002145823-26-000001-index.htm) | $355K | 2026-07-17 | CHAGRIN FALLS, OH | raise 355K is below the 2M floor |
+| 26 | [Jesse & Bens, Inc.](https://www.sec.gov/Archives/edgar/data/2142925/000214292526000001/0002142925-26-000001-index.htm) | $16.3M | 2026-04-22 | NEW YORK, NY |  |
+| 26 | [2101 Venable, LLC](https://www.sec.gov/Archives/edgar/data/2146804/000214680426000001/0002146804-26-000001-index.htm) | $786K | 2026-07-20 | NEW YORK, NY | raise 786K is below the 2M floor; industry "Other Banking and Financial Servic… |
+| 26 | [Tenaxiom Technology, Inc.](https://www.sec.gov/Archives/edgar/data/2148112/000214811226000001/0002148112-26-000001-index.htm) | $25K | 2026-07-08 | WILMINGTON, DE | raise 25K is below the 2M floor |
+| 26 | [Commercium Financial, Inc.](https://www.sec.gov/Archives/edgar/data/1922045/000192204526000003/0001922045-26-000003-index.htm) | $906K | 2026-07-16 | CHEYENNE, WY | raise 906K is below the 2M floor; industry "Other Banking and Financial Servic… |
+| 26 | [ALM Ortho Inc](https://www.sec.gov/Archives/edgar/data/2002423/000184795226000002/0001847952-26-000002-index.htm) | $750K | 2026-07-17 | SCARBOROUGH, ME | raise 750K is below the 2M floor; keyword themes: health |
+| 25 | [Glacian Technologies Inc.](https://www.sec.gov/Archives/edgar/data/2148234/000214823426000001/0002148234-26-000001-index.htm) | $150K | 2026-07-28 | STATE COLLEGE, PA | raise 150K is below the 2M floor |
+| 25 | [Vast Resources PLC](https://www.sec.gov/Archives/edgar/data/2107569/000101297526000713/0001012975-26-000713-index.htm) | $1.9M | 2026-08-03 | LONDON, X0 | raise 1854K is below the 2M floor |
+| 25 | [KaiAvora Health, LLC](https://www.sec.gov/Archives/edgar/data/2148338/000214833826000001/0002148338-26-000001-index.htm) | $300K | 2026-06-29 | MEDFORD, MA | raise 300K is below the 2M floor; keyword themes: health |
+| 25 | [Fifth Asset, Inc.](https://www.sec.gov/Archives/edgar/data/1793078/000179307826000004/0001793078-26-000004-index.htm) | $997K | 2026-06-09 | CHARLOTTE, NC | raise 997K is below the 2M floor |
+| 25 | [Insignis Therapeutics Inc.](https://www.sec.gov/Archives/edgar/data/1981826/000149315226036132/0001493152-26-036132-index.htm) | $6.0M | 2026-06-11 | NORTH HAVEN, CT | only one officer listed |
+| 25 | [Kaleta Labs LLC](https://www.sec.gov/Archives/edgar/data/2149373/000214937326000001/0002149373-26-000001-index.htm) | $100K | 2026-07-28 | ROUND ROCK, TX | raise 100K is below the 2M floor |
+| 25 | [FMFreeman Inc](https://www.sec.gov/Archives/edgar/data/2148704/000214870426000001/0002148704-26-000001-index.htm) | $100K | 2026-07-24 | BOULDER, CO | raise 100K is below the 2M floor |
+| 25 | [Imagen Glenview Support Services, LLC](https://www.sec.gov/Archives/edgar/data/2148588/000214858826000001/0002148588-26-000001-index.htm) | $1.0M | 2026-07-29 | SCOTTSDALE, AZ | raise 1010K is below the 2M floor; keyword themes: health |
+| 25 | [WRM Wastewater Aggregator, LLC](https://www.sec.gov/Archives/edgar/data/2148061/000214806126000001/0002148061-26-000001-index.htm) | $571K | 2026-07-21 | NEW YORK, NY | raise 571K is below the 2M floor |
+| 25 | [Lightyear Space, Inc.](https://www.sec.gov/Archives/edgar/data/2146571/000214657126000001/0002146571-26-000001-index.htm) | $50K | 2026-07-27 | DENVER, CO | raise 50K is below the 2M floor |
+| 25 | [SVCV Group Inc](https://www.sec.gov/Archives/edgar/data/2113098/000211309826000012/0002113098-26-000012-index.htm) | $500K | 2026-07-31 | NEW YORK CITY, NY | raise 500K is below the 2M floor; industry "Other Banking and Financial Servic… |
+| 25 | [Le Nose Inc.](https://www.sec.gov/Archives/edgar/data/2129389/000212938926000004/0002129389-26-000004-index.htm) | $3.0M | 2026-04-14 | BROOKLYN, NY |  |
+| 25 | [Channing Street Copper Co](https://www.sec.gov/Archives/edgar/data/1993644/000199364426000003/0001993644-26-000003-index.htm) | $9.8M | 2026-07-15 | BERKELEY, CA | Channing Street Copper Co (Sam Calisch, Berkeley) is known as the maker of "Co… |
+| 25 | [Propy, Inc.](https://www.sec.gov/Archives/edgar/data/1823988/000182398826000002/0001823988-26-000002-index.htm) | $2.1M | 2026-07-10 | San Francisco, CA | Unknown from evidence, but the name and 'Propy' branding strongly suggest a re… |
+| 25 | [Circinus Medical Technology LLC](https://www.sec.gov/Archives/edgar/data/1815322/000181532226000001/0001815322-26-000001-index.htm) | $4.2M | 2026-07-21 | CONCORD, MA | Unknown — SEC lists 'Biotechnology' and the name suggests a medical device/tec… |
+| 25 | [Theradaptive, Inc.](https://www.sec.gov/Archives/edgar/data/2148461/000214846126000001/0002148461-26-000001-index.htm) | $36.2M | 2026-07-21 | Frederick, MD | A biotechnology company (per SEC industry code) based in Frederick, MD, with a… |
+| 25 | [Provisio Medical Technologies Corp](https://www.sec.gov/Archives/edgar/data/2082025/000143774926026164/0001437749-26-026164-index.htm) | $50K | 2026-07-27 | San Diego, CA | Unknown — San Diego-based 'Other Technology' filer named 'Provisio Medical Tec… |
+| 25 | [Hub Corp](https://www.sec.gov/Archives/edgar/data/2148604/000214860426000001/0002148604-26-000001-index.htm) | $1.9M | 2026-08-06 | CHARLOTTE, NC | raise 1915K is below the 2M floor |
+| 25 | [MFG DIVERSIFIED HOLDINGS INC](https://www.sec.gov/Archives/edgar/data/2149220/000214922026000001/0002149220-26-000001-index.htm) | $1.0B | 2026-08-04 | SHERIDAN, WY | raise is above the preferred ceiling (likely late stage); industry "Other Bank… |
+| 25 | [ThreatLocker, Inc.](https://www.sec.gov/Archives/edgar/data/1824320/000182432026000003/0001824320-26-000003-index.htm) | $189.2M | 2026-05-20 | ORLANDO, FL | raise is above the preferred ceiling (likely late stage) |
+| 25 | [Bragg Gaming Group Inc.](https://www.sec.gov/Archives/edgar/data/1867834/000091228226001047/0000912282-26-001047-index.htm) | $3.2M | 2026-07-22 | Toronto, A6 | anti-theme hit: gambling |
+| 25 | [Uranium Royalty Corp.](https://www.sec.gov/Archives/edgar/data/2143673/000214367326000001/0002143673-26-000001-index.htm) | $812.6M | 2026-07-27 | LAKEWOOD, CO | raise is above the preferred ceiling (likely late stage) |
+| 25 | [WaveGuide Corp](https://www.sec.gov/Archives/edgar/data/1640481/000164048126000003/0001640481-26-000003-index.htm) | $200K | 2026-07-16 | WALTHAM, MA | raise 200K is below the 2M floor |
+| 24 | [HSC Group Holdings, Inc.](https://www.sec.gov/Archives/edgar/data/2148246/000214824626000001/0002148246-26-000001-index.htm) | $5.3M | 2026-07-22 | Fort Worth, TX | industry "Oil and Gas" is a weak fit; anti-theme hit: extractive |
+| 24 | [Canyon State Minerals LLC](https://www.sec.gov/Archives/edgar/data/2147673/000214767326000001/0002147673-26-000001-index.htm) | $10.6M | 2026-07-28 | MIDLAND, TX | industry "Oil and Gas" is a weak fit; anti-theme hit: extractive |
+| 24 | [Kinesthetic Inc.](https://www.sec.gov/Archives/edgar/data/2148471/000214847126000001/0002148471-26-000001-index.htm) | $350K | 2026-07-09 | WILMINGTON, DE | raise 350K is below the 2M floor; only one officer listed |
+| 24 | [BTB Finance, LLC](https://www.sec.gov/Archives/edgar/data/2136536/000213653626000001/0002136536-26-000001-index.htm) | $250K | 2026-07-31 | RIDGEFIELD, WA | raise 250K is below the 2M floor; only one officer listed |
+| 24 | [Truckee Hilltop Holdings, LLC](https://www.sec.gov/Archives/edgar/data/2149225/000214922526000001/0002149225-26-000001-index.htm) | $132K | 2026-07-30 | SAN FRANCISCO, CA | raise 132K is below the 2M floor |
+| 24 | [316 High Street, LLC](https://www.sec.gov/Archives/edgar/data/2147257/000214725726000001/0002147257-26-000001-index.htm) | $1.3M | 2026-07-20 | Norfolk, VA | raise 1262K is below the 2M floor; industry "Other Banking and Financial Servi… |
+| 24 | [InnerActiv Inc.](https://www.sec.gov/Archives/edgar/data/2074508/000207450826000001/0002074508-26-000001-index.htm) | $1.3M | 2026-07-23 | WORTHINGTON, OH | raise 1310K is below the 2M floor |
+| 24 | [LiLi MD Group Inc](https://www.sec.gov/Archives/edgar/data/2143503/000214350326000001/0002143503-26-000001-index.htm) | $100K | 2026-07-19 | SARASOTA, FL | raise 100K is below the 2M floor; keyword themes: health |
+| 24 | [StratGrid Inc.](https://www.sec.gov/Archives/edgar/data/2120153/000206075526000047/0002060755-26-000047-index.htm) | $1.8M | 2026-07-28 | CALGARY, A0 | raise 1750K is below the 2M floor; industry "Other Energy" is a weak fit |
+| 24 | [Infoport Inc.](https://www.sec.gov/Archives/edgar/data/2109917/000210991726000003/0002109917-26-000003-index.htm) | $2.3M | 2025-12-08 | NEW YORK, NY | funding is 244 days old |
+| 24 | [ShowdMe, Inc.](https://www.sec.gov/Archives/edgar/data/2002331/000200233126000005/0002002331-26-000005-index.htm) | $2.0M | 2025-06-30 | CEDARHURST, NY | funding is 405 days old |
+| 24 | [GorillaOps, Inc.](https://www.sec.gov/Archives/edgar/data/2148252/000214825226000001/0002148252-26-000001-index.htm) | $160K | 2026-07-14 | CLAYMONT, DE | raise 160K is below the 2M floor; only one officer listed |
+| 24 | [Gentle Caring Mind Healthcare LLC](https://www.sec.gov/Archives/edgar/data/2147822/000214782226000001/0002147822-26-000001-index.htm) | $50K | 2026-07-22 | COON RAPIDS, MN | raise 50K is below the 2M floor; keyword themes: health |
+| 24 | [E2ML Plainfield Borrower, LLC](https://www.sec.gov/Archives/edgar/data/2147044/000214704426000001/0002147044-26-000001-index.htm) | $550K | 2026-07-29 | DENVER, CO | raise 550K is below the 2M floor; industry "Other Banking and Financial Servic… |
+| 24 | [CSP Parent LLC](https://www.sec.gov/Archives/edgar/data/2072028/000207202826000004/0002072028-26-000004-index.htm) | $125K | 2026-07-31 | RICHMOND, VA | raise 125K is below the 2M floor; industry "Other Banking and Financial Servic… |
+| 24 | [VitaPixel, LLC](https://www.sec.gov/Archives/edgar/data/2104370/000114036126031857/0001140361-26-031857-index.htm) | $350K | 2026-08-07 | Philadelphia, PA | raise 350K is below the 2M floor; keyword themes: health |
+| 24 | [CloneTech, Inc.](https://www.sec.gov/Archives/edgar/data/2149301/000214930126000001/0002149301-26-000001-index.htm) | $10K | 2026-07-30 | NEWARK, DE | raise 10K is below the 2M floor; only one officer listed |
+| 24 | [PushCART Therapeutics, Inc.](https://www.sec.gov/Archives/edgar/data/2147621/000214762126000001/0002147621-26-000001-index.htm) | $500K | 2026-07-10 | ROCKVILLE, MD | raise 500K is below the 2M floor |
+| 23 | [Casa Blossom LLC](https://www.sec.gov/Archives/edgar/data/2148162/000214816226000001/0002148162-26-000001-index.htm) | $170K | 2026-07-17 | BROOKLYN, NY | raise 170K is below the 2M floor |
+| 23 | [Oro Muscles, Inc.](https://www.sec.gov/Archives/edgar/data/2072571/000207257126000003/0002072571-26-000003-index.htm) | $350K | 2026-07-17 | MELBOURNE, FL | raise 350K is below the 2M floor |
+| 23 | [OdysseyPBC, Inc.](https://www.sec.gov/Archives/edgar/data/2148450/000214845026000001/0002148450-26-000001-index.htm) | $1.0M | 2026-05-12 | SAN FRANCISCO, CA | raise 1004K is below the 2M floor; only one officer listed |
+| 23 | [GRAI HOLDCO, LLC](https://www.sec.gov/Archives/edgar/data/2147606/000214760626000001/0002147606-26-000001-index.htm) | $1.8M | 2026-07-16 | WILMINGTON, DE | raise 1842K is below the 2M floor; only one officer listed |
+| 23 | [Flora Coatings, Inc.](https://www.sec.gov/Archives/edgar/data/1744729/000174472926000002/0001744729-26-000002-index.htm) | $800K | 2026-07-09 | PHOENIX, AZ | raise 800K is below the 2M floor |
+| 23 | [Brio Health, Inc.](https://www.sec.gov/Archives/edgar/data/2147203/000214720326000001/0002147203-26-000001-index.htm) | $93K | 2026-07-06 | LEWES, DE | raise 93K is below the 2M floor; keyword themes: health |
+| 23 | [Unicorn Snot, LLC](https://www.sec.gov/Archives/edgar/data/2149217/000214921726000001/0002149217-26-000001-index.htm) | $495K | 2026-07-17 | BROOKLYN, NY | raise 495K is below the 2M floor; only one officer listed |
+| 23 | [Potluck Media, Inc.](https://www.sec.gov/Archives/edgar/data/2148953/000149315226036174/0001493152-26-036174-index.htm) | $500K | 2026-07-27 | LOS ANGELES, CA | raise 500K is below the 2M floor; only one officer listed |
+| 22 | [ODDSworks, Inc.](https://www.sec.gov/Archives/edgar/data/1826494/000182649426000002/0001826494-26-000002-index.htm) | $1.1M | 2026-08-04 | DOWNERS GROVE, IL | raise 1083K is below the 2M floor |
+| 22 | [Conexeu Sciences Inc.](https://www.sec.gov/Archives/edgar/data/2066836/000206075526000048/0002060755-26-000048-index.htm) | $63K | 2026-07-23 | RENO, NV | raise 63K is below the 2M floor |
+| 22 | [Goldera Exploration Ltd.](https://www.sec.gov/Archives/edgar/data/2141204/000091228226001045/0000912282-26-001045-index.htm) | $571K | 2026-07-23 | Montreal, A8 | raise 571K is below the 2M floor |
+| 22 | [Overlay Fusion & Firm Power Anchor, LLC](https://www.sec.gov/Archives/edgar/data/2145874/000091406226000051/0000914062-26-000051-index.htm) | $1.0M | 2026-07-09 | ALPHARETTA, GA | raise 1000K is below the 2M floor |
+| 22 | [Dot Game Holdings, Inc.](https://www.sec.gov/Archives/edgar/data/2147994/000214799426000001/0002147994-26-000001-index.htm) | $250K | 2026-06-20 | BRENTWOOD, TN | raise 250K is below the 2M floor; only one officer listed |
+| 22 | [Hepion Pharmaceuticals, Inc.](https://www.sec.gov/Archives/edgar/data/1583771/000149315226036216/0001493152-26-036216-index.htm) | $3.1M | 2026-07-31 | RED BANK, NJ | Hepion Pharmaceuticals is a biotechnology company developing drug candidates (… |
+| 22 | [Moove](https://techcrunch.com/2026/08/05/moove-raises-250m-to-become-the-backbone-of-the-robotaxi-industry/) | $250.0M | 2026-08-05 | — | Moove operates autonomous-vehicle fleet management infrastructure, positioning… |
+| 22 | [Gourmend Foods, Inc.](https://www.sec.gov/Archives/edgar/data/2148966/000214896626000004/0002148966-26-000004-index.htm) | $275K | 2026-07-24 | NEW YORK, NY | raise 275K is below the 2M floor; only one officer listed |
+| 22 | [Bella Bling LLC](https://www.sec.gov/Archives/edgar/data/2149341/000214934126000001/0002149341-26-000001-index.htm) | $100K | 2026-08-07 | CHELMSFORD, MA | raise 100K is below the 2M floor; only one officer listed |
+| 22 | [SanctifAI Dental Inc.](https://www.sec.gov/Archives/edgar/data/2143633/000114036126031841/0001140361-26-031841-index.htm) | $275K | 2026-06-17 | Austin, TX | raise 275K is below the 2M floor; only one officer listed |
+| 22 | [H. BOISCH SOLUTIONS INC.](https://www.sec.gov/Archives/edgar/data/2148431/000214843126000001/0002148431-26-000001-index.htm) | $200K | 2026-07-31 | SAN MARCOS, CA | raise 200K is below the 2M floor; only one officer listed |
+| 22 | [Tralyte Health, Inc.](https://www.sec.gov/Archives/edgar/data/2135910/000213591026000001/0002135910-26-000001-index.htm) | $110K | 2026-07-21 | HENRICO, VA | raise 110K is below the 2M floor; keyword themes: health |
+| 22 | [Baton Media Inc.](https://www.sec.gov/Archives/edgar/data/2146420/000214642026000001/0002146420-26-000001-index.htm) | $6.1M | 2023-09-15 | BROOKLYN, NY | funding is 1059 days old; only one officer listed |
+| 21 | [Blue Jacket Movie, Inc.](https://www.sec.gov/Archives/edgar/data/1952850/000195285026000008/0001952850-26-000008-index.htm) | $55K | 2026-07-31 | EASTCHESTER, NY | raise 55K is below the 2M floor; only one officer listed |
+| 21 | [Automated Water Machines Inc d/b/a Kadeya](https://www.sec.gov/Archives/edgar/data/2090508/000209050826000004/0002090508-26-000004-index.htm) | $265K | 2026-07-15 | CHICAGO, IL | raise 265K is below the 2M floor |
+| 21 | [Splat Labs, LLC](https://www.sec.gov/Archives/edgar/data/2147112/000214711226000001/0002147112-26-000001-index.htm) | $30K | 2026-07-20 | SEATTLE, WA | raise 30K is below the 2M floor; only one officer listed |
+| 21 | [Kala Holdings Inc.](https://www.sec.gov/Archives/edgar/data/2147376/000214737626000001/0002147376-26-000001-index.htm) | $60K | 2026-06-17 | NEWARK, DE | raise 60K is below the 2M floor; only one officer listed |
+| 21 | [Shiver Vertical, LLC](https://www.sec.gov/Archives/edgar/data/2149100/000214910026000001/0002149100-26-000001-index.htm) | $10K | 2026-07-29 | STUDIO CITY, CA | raise 10K is below the 2M floor; only one officer listed |
+| 21 | [Pelva Health Corp](https://www.sec.gov/Archives/edgar/data/2008160/000200816026000004/0002008160-26-000004-index.htm) | $30K | 2026-07-09 | EDINA, MN | raise 30K is below the 2M floor; keyword themes: health |
+| 21 | [International Battery Company, Inc.](https://www.sec.gov/Archives/edgar/data/1957197/000195719726000001/0001957197-26-000001-index.htm) | $28.9M | 2025-06-03 | JERSEY CITY, NJ | funding is 432 days old |
+| 21 | [Incluud, Inc.](https://www.sec.gov/Archives/edgar/data/2023180/000202318026000002/0002023180-26-000002-index.htm) | $4.3M | 2025-08-06 | COEUR D'ALENE, ID | funding is 368 days old |
+| 21 | [Katis, Inc.](https://www.sec.gov/Archives/edgar/data/2148248/000214824826000001/0002148248-26-000001-index.htm) | $500K | 2026-08-04 | AUBURN, AL | raise 500K is below the 2M floor |
+| 21 | [SUPPLYCADDY, INC.](https://www.sec.gov/Archives/edgar/data/1967620/000196762026000003/0001967620-26-000003-index.htm) | $500K | 2026-07-21 | Miami, FL | raise 500K is below the 2M floor |
+| 21 | [INVI Mindhealth, Inc.](https://www.sec.gov/Archives/edgar/data/2023115/000202311526000001/0002023115-26-000001-index.htm) | $2.8M | 2024-05-07 | PARKER, CO | funding is 824 days old |
+| 21 | [TIGER INTERNATIONAL RESOURCES INC](https://www.sec.gov/Archives/edgar/data/1083285/000106299326004078/0001062993-26-004078-index.htm) | $39K | 2026-07-27 | Toronto, A6 | raise 39K is below the 2M floor |
+| 21 | [JSAP HOLDINGS COSTA MESA LLC](https://www.sec.gov/Archives/edgar/data/2148332/000214833226000001/0002148332-26-000001-index.htm) | $1.0M | 2026-07-21 | SOUTH OGDEN, UT | raise 1000K is below the 2M floor; only one officer listed |
+| 21 | [Metari Technologies Ltd](https://www.sec.gov/Archives/edgar/data/2148672/000214867226000001/0002148672-26-000001-index.htm) | $3K | 2026-08-04 | LONDON, X0 | raise 3K is below the 2M floor |
+| 21 | [FIELDLINK VENTURES, LLC](https://www.sec.gov/Archives/edgar/data/2072524/000207252426000001/0002072524-26-000001-index.htm) | $1.0M | 2026-07-10 | EVANSTON, IL | raise 1000K is below the 2M floor; only one officer listed |
+| 21 | [NETTA STARTUP STUDIO LLC](https://www.sec.gov/Archives/edgar/data/2059020/000205902026000003/0002059020-26-000003-index.htm) | $50K | 2026-07-02 | Framingham, MA | raise 50K is below the 2M floor; only one officer listed |
+| 20 | [Claris Biotherapeutics, Inc.](https://www.sec.gov/Archives/edgar/data/1809726/000180972626000003/0001809726-26-000003-index.htm) | $55.7M | 2025-11-25 | HALF MOON BAY, CA | funding is 257 days old |
+| 20 | [Shiverbright Technologies, Inc.](https://www.sec.gov/Archives/edgar/data/2149182/000214918226000001/0002149182-26-000001-index.htm) | $200K | 2026-07-31 | LAFAYETTE, CO | raise 200K is below the 2M floor; only one officer listed |
+| 20 | [Sponsormind, Inc.](https://www.sec.gov/Archives/edgar/data/2148459/000214845926000001/0002148459-26-000001-index.htm) | $150K | 2026-07-22 | ST. PETERSBURG, FL | raise 150K is below the 2M floor |
+| 20 | [Inevitable AI Group](https://www.eu-startups.com/2026/08/inevitable-ai-group-raises-e5-2-million-from-aleph-to-launch-ai-native-saas-companies/) | $5.2M | 2026-08-06 | — | AI-native venture studio that spins up and operates many small AI SaaS busines… |
+| 20 | [FuVeX](https://tech.eu/2026/08/05/fuvex-raises-eur3m-to-scale-dual-use-drone-technology-across-europe/) | $3.0M | 2026-08-05 | — | Spanish drone technology company explicitly building 'dual-use' (military/civi… |
+
+_…and 112 more in `data/scored.jsonl`._
+
+</details>
+
+---
+
+<sub>Generated 2026-08-09T03:45:04.257Z · run `report-only` · Sources: SEC EDGAR Form D + funding press. See `docs/DATA_SOURCES.md` for coverage limits.</sub>

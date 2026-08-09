@@ -1,0 +1,8 @@
+node_modules/
+*.log
+.DS_Store
+
+# Raw upstream payloads are large, re-fetchable, and pure noise in diffs.
+# Everything downstream of them (data/*.jsonl, reports/) IS committed on purpose
+# — see docs/DECISIONS.md ADR-002.
+data/cache/
