@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { mergeSources, shouldMerge } from '../src/pipeline/merge.ts';
 import { prefilterScore, rankCompanies } from '../src/pipeline/prefilter.ts';
-import { effectiveScore } from '../src/pipeline/score.ts';
+import { buildScorePrompt, effectiveScore } from '../src/pipeline/score.ts';
 import { extractJson } from '../src/llm/claude.ts';
 import type { Company, FormDFiling, NewsItem, Profile, ScoredCompany } from '../src/types.ts';
 
@@ -243,5 +243,50 @@ describe('extractJson', () => {
 
   it('throws when there is no object at all', () => {
     expect(() => extractJson('I cannot help with that.')).toThrow(/no JSON object/);
+  });
+});
+
+describe('buildScorePrompt', () => {
+  const candidates = [
+    { company: mergeSources([filing()], []).companies[0]!, prefilter: { total: 70, breakdown: {}, notes: ['keyword themes: AI/ML'] } },
+  ];
+  const prompt = buildScorePrompt(candidates, PROFILE);
+
+  it('embeds the profile so scoring reflects the user, not generic taste', () => {
+    expect(prompt).toContain(PROFILE.about.trim());
+    expect(prompt).toContain('AI/ML infrastructure');
+    expect(prompt).toContain('importance 1.00');
+  });
+
+  it('states the intent, which changes the evaluation lens', () => {
+    expect(prompt).toContain('JOINING a startup as an employee');
+    expect(prompt).toContain('As a PLACE TO WORK');
+  });
+
+  it('tells the model it has no web access and must admit ignorance', () => {
+    // The rule that keeps the app from fabricating product descriptions.
+    expect(prompt).toContain('You do NOT\n   have web access here');
+    expect(prompt).toContain('Do NOT invent a product description');
+  });
+
+  it('separates confidence from score', () => {
+    expect(prompt).toContain('A low-confidence score is not a low score');
+  });
+
+  it('renders the company facts it actually has', () => {
+    expect(prompt).toContain('id: acme-ai');
+    expect(prompt).toContain('San Francisco, CA');
+    expect(prompt).toContain('Ada Lovelace');
+    expect(prompt).toContain('triage notes: keyword themes: AI/ML');
+  });
+
+  it('asks for exactly one entry per company', () => {
+    expect(prompt).toContain('COMPANIES TO SCORE (1)');
+    expect(prompt).toContain('Return exactly 1 entries');
+  });
+
+  it('includes anti-themes so mismatches can be scored down', () => {
+    expect(prompt).toContain('ACTIVELY NOT INTERESTED IN');
+    expect(prompt).toContain('crypto');
   });
 });

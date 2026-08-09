@@ -44,7 +44,7 @@ import { ingestEdgar } from './sources/edgar.ts';
 import { ingestNews } from './sources/news.ts';
 import { mergeSources } from './pipeline/merge.ts';
 import { rankCompanies } from './pipeline/prefilter.ts';
-import { effectiveScore, scoreCompanies } from './pipeline/score.ts';
+import { buildScorePrompt, effectiveScore, scoreCompanies } from './pipeline/score.ts';
 import { researchCompanies } from './pipeline/research.ts';
 import { renderDigest } from './report/markdown.ts';
 import { renderDashboard } from './report/html.ts';
@@ -66,6 +66,7 @@ Commands:
   report     Regenerate reports/ from existing scored data
   stats      Summarize what is currently in data/
   show <id>  Print everything known about one company
+  prompt     Print the exact LLM screening prompt for the top candidates
 
 Options:
   --days <n>        Lookback window for ingestion (default 7)
@@ -238,6 +239,21 @@ async function cmdStats(): Promise<void> {
       '',
     ].join('\n'),
   );
+}
+
+/**
+ * Print the literal prompt the screening stage would send. Costs nothing.
+ *
+ * The fastest way to debug "why did this company score like that" is to read
+ * exactly what the model was told about it.
+ */
+async function cmdPrompt(count: number): Promise<void> {
+  const [companies, profile] = await Promise.all([readAll<Company>(COMPANIES_PATH), loadProfile()]);
+  if (companies.length === 0) {
+    throw new Error('No companies yet — run `pnpm sf ingest && pnpm sf merge` first.');
+  }
+  const batch = rankCompanies(companies, profile).slice(0, count);
+  process.stdout.write(`${buildScorePrompt(batch, profile)}\n`);
 }
 
 async function cmdShow(id: string): Promise<void> {
@@ -431,6 +447,10 @@ async function main(): Promise<void> {
     }
     case 'stats':
       await cmdStats();
+      break;
+    case 'prompt':
+      // --limit doubles as the batch size to render; 3 keeps it readable.
+      await cmdPrompt(values.limit === '120' ? 3 : limit);
       break;
     case 'show': {
       const id = positionals[1];

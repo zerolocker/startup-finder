@@ -10,7 +10,7 @@ code. **Read before you change.**
 
 | If you are about to… | Read |
 |---|---|
-| Get oriented fast | [docs/OVERVIEW.md](docs/OVERVIEW.md) — the pipeline in one diagram |
+| Get oriented fast | [README.md](README.md) — the pipeline in one diagram |
 | Anything at all | [docs/VISION.md](docs/VISION.md) — why this exists, non-goals |
 | Change structure or add a stage | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Change what gets surfaced | [docs/SCORING.md](docs/SCORING.md) |

@@ -132,6 +132,32 @@ export interface ScoreResult {
 }
 
 /**
+ * Build the exact prompt sent to the model for one batch.
+ *
+ * Exported so it can be unit-tested and inspected (`pnpm sf prompt`) without
+ * spending money. This is the most consequential prompt in the app; being able
+ * to read the literal text that gets sent — profile, rubric, and rendered
+ * company records — is the fastest way to debug a bad score.
+ */
+export function buildScorePrompt(
+  batch: ReadonlyArray<{ company: Company; prefilter: PrefilterScore }>,
+  profile: Profile,
+): string {
+  const body = batch.map(({ company, prefilter }) => `- ${renderCompany(company, prefilter)}`).join('\n\n');
+
+  return `${rubric(profile)}
+
+COMPANIES TO SCORE (${batch.length}):
+
+${body}
+
+Respond with ONLY a JSON object, no prose and no markdown fences:
+{"scores": [{"id": "<the id given above, copied exactly>", "fit": <0-100>, "whatTheyDo": "<one sentence, or an explicit 'Unknown — ...'>", "matchedInterests": ["<theme names from the profile>"], "concerns": ["<specific concerns>"], "rationale": "<2-3 sentences arguing your score>", "confidence": "low"|"medium"|"high"}]}
+
+Return exactly ${batch.length} entries, one per company, using the ids exactly as given.`;
+}
+
+/**
  * Score a shortlist with the LLM.
  *
  * A batch that fails validation twice is skipped rather than aborting the run —
@@ -151,7 +177,6 @@ export async function scoreCompanies(
     batches.push(candidates.slice(i, i + batchSize));
   }
 
-  const instructions = rubric(profile);
   const byId = new Map<string, LlmScore>();
   let costUsd = 0;
   let failures = 0;
@@ -159,17 +184,7 @@ export async function scoreCompanies(
 
   const { mapWithConcurrency } = await import('../util/http.ts');
   await mapWithConcurrency(batches, concurrency, async (batch) => {
-    const body = batch.map(({ company, prefilter }) => `- ${renderCompany(company, prefilter)}`).join('\n\n');
-    const prompt = `${instructions}
-
-COMPANIES TO SCORE (${batch.length}):
-
-${body}
-
-Respond with ONLY a JSON object, no prose and no markdown fences:
-{"scores": [{"id": "<the id given above, copied exactly>", "fit": <0-100>, "whatTheyDo": "<one sentence, or an explicit 'Unknown — ...'>", "matchedInterests": ["<theme names from the profile>"], "concerns": ["<specific concerns>"], "rationale": "<2-3 sentences arguing your score>", "confidence": "low"|"medium"|"high"}]}
-
-Return exactly ${batch.length} entries, one per company, using the ids exactly as given.`;
+    const prompt = buildScorePrompt(batch, profile);
 
     try {
       const { value, costUsd: cost } = await runClaudeJson(prompt, BatchScoreSchema, { model });

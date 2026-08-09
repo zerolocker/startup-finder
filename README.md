@@ -31,19 +31,30 @@ Total cost: about $4 of LLM spend and 15 minutes.
 
 ## Why it exists
 
-Because the interesting moment to find a startup is right after it raises and
-before it shows up on job boards. Form D filings are public within 15 days of a
-round closing and almost nobody reads them, because 80% are real-estate SPVs and
-investment funds and the rest is a name and a dollar figure with no indication of
-what the company does.
+SEC Form D is the only *comprehensive* record of US private funding — every
+round, public within 15 days, free. It is also nearly unusable: ~80% of filers
+are real-estate SPVs and investment funds, and a real company's filing gives you
+a name, a dollar amount, and a coarse industry code. Nothing about what they do.
 
-This app does the filtering and the "what do they actually do" research for you.
+News is the opposite: rich, but only covers companies that already have PR.
+
+So: **Form D for recall, news for context, an LLM for the judgement in between.**
 
 See [`docs/VISION.md`](docs/VISION.md) for the longer argument.
 
 ## How it works
 
-**[docs/OVERVIEW.md](docs/OVERVIEW.md) is the two-minute version, with a diagram.**
+```mermaid
+flowchart TD
+    A["SEC Form D<br/><small>1,575 filings / 10 days</small>"] --> C
+    B["Funding news RSS<br/><small>7 feeds</small>"] --> C
+    C["merge — join by exact name<br/><small>324 companies</small>"] --> D
+    D["prefilter — deterministic<br/><small>324 → 120 · free</small>"] --> E
+    E["llm screen — batched, no web<br/><small>120 scored · ≈$1</small>"] --> F
+    F["research — web search<br/><small>15 dossiers · ≈$4</small>"] --> G & H
+    G["reports/latest.md"]
+    H["reports/latest.html"]
+```
 
 Five stages, each independently runnable:
 
@@ -55,8 +66,21 @@ Five stages, each independently runnable:
 | `research` | Claude reads the web on the top ~15 | ~$3-7 |
 | `report` | Write the digest and dashboard | free |
 
-The split matters: you can re-run `score` and `report` against already-ingested
-data while tuning your profile, without re-paying for research.
+**Why a funnel.** Cost per company rises ~40x from screening to research, so each
+tier has to narrow the field before the next one runs — researching all 324
+companies would cost ~$100 instead of ~$4. Because stages persist to disk
+independently, you can re-run `score` and `report` while tuning your profile
+without re-paying for research.
+
+**Where the judgement lives.** `config/profile.yaml` — themes and weights,
+round-size window, geography, and a free-text description of you passed verbatim
+to the model. It is policy; everything else is mechanism.
+
+To read the exact prompt the screening stage sends, without spending anything:
+
+```bash
+pnpm sf prompt --limit 3
+```
 
 ```bash
 pnpm sf run                        # everything (the normal entry point)
@@ -64,6 +88,7 @@ pnpm sf run --days 3 --budget 2    # quick, cheap pass
 pnpm sf score && pnpm sf report    # re-screen after editing your profile
 pnpm sf stats                      # what's in data/
 pnpm sf show oxide-computer        # everything known about one company
+pnpm sf prompt                     # the exact LLM screening prompt, free
 ```
 
 Run `pnpm sf --help` for all options.
