@@ -244,7 +244,13 @@ async function cmdShow(id: string): Promise<void> {
   const companies = await loadResearched();
   const found = companies.find((c) => c.id === id || c.name.toLowerCase() === id.toLowerCase());
   if (!found) {
-    const near = companies.filter((c) => c.id.includes(id.toLowerCase())).slice(0, 8);
+    // Match in both directions: the query may be a fragment of the id, or the
+    // id may be a fragment of an over-long query ("oxide-computer-co" when the
+    // legal suffix was stripped to give "oxide-computer").
+    const needle = id.toLowerCase();
+    const near = companies
+      .filter((c) => c.id.includes(needle) || needle.includes(c.id) || c.name.toLowerCase().includes(needle))
+      .slice(0, 8);
     process.stderr.write(
       `No company "${id}".${near.length ? `\nDid you mean:\n${near.map((c) => `  ${c.id}`).join('\n')}\n` : '\n'}`,
     );

@@ -61,7 +61,7 @@ pnpm sf run                        # everything (the normal entry point)
 pnpm sf run --days 3 --budget 2    # quick, cheap pass
 pnpm sf score && pnpm sf report    # re-screen after editing your profile
 pnpm sf stats                      # what's in data/
-pnpm sf show oxide-computer-co     # everything known about one company
+pnpm sf show oxide-computer        # everything known about one company
 ```
 
 Run `pnpm sf --help` for all options.
