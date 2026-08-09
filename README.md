@@ -43,6 +43,8 @@ See [`docs/VISION.md`](docs/VISION.md) for the longer argument.
 
 ## How it works
 
+**[docs/OVERVIEW.md](docs/OVERVIEW.md) is the two-minute version, with a diagram.**
+
 Five stages, each independently runnable:
 
 | Stage | What it does | Cost |
