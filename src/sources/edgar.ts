@@ -271,6 +271,82 @@ export function parseFormD(xml: string, ctx: { cik: string; filedDate: string; a
 // Public entry point
 // ---------------------------------------------------------------------------
 
+/**
+ * Hard ceiling on an automatic lookback. One HTTP request per filing, throttled
+ * to ~8/s for the SEC, means ~160 filings/day of window — 90 days is already
+ * ~30 minutes. Beyond that the user should decide deliberately.
+ */
+export const MAX_AUTO_LOOKBACK_DAYS = 90;
+
+export interface LookbackDecision {
+  days: number;
+  /** Human-readable explanation, logged so coverage is never a mystery. */
+  reason: string;
+  /** True when the gap was larger than we are willing to fetch automatically. */
+  clamped: boolean;
+  /** Days of history that will NOT be fetched because of the clamp. */
+  uncoveredDays: number;
+}
+
+/**
+ * Choose the lookback window when the user did not pass `--days`.
+ *
+ * The window used to be a fixed N days back from *today*, which silently lost
+ * everything between runs: run on day 1 and again on day 100 with the default
+ * of 7, and days 2-93 were never fetched. For a tool meant to run like a
+ * newsletter that is a real defect, and exactly the kind of loss the user
+ * cannot detect from the output.
+ *
+ * So we derive the window from the newest filing already on disk. `filedDate`
+ * is the day a filing appeared in EDGAR, so the newest one marks the last day
+ * we successfully read an index — self-healing, and it needs no extra state
+ * file that could drift from reality.
+ *
+ * @param latestFiledDate newest `filedDate` in data/filings.jsonl, or null on a
+ *   first run.
+ */
+export function autoLookbackDays(
+  latestFiledDate: string | null,
+  now: Date = new Date(),
+  opts: { defaultDays?: number; overlapDays?: number; maxDays?: number } = {},
+): LookbackDecision {
+  const { defaultDays = 7, overlapDays = 2, maxDays = MAX_AUTO_LOOKBACK_DAYS } = opts;
+
+  const parsed = latestFiledDate ? Date.parse(`${latestFiledDate}T00:00:00Z`) : NaN;
+  if (!Number.isFinite(parsed)) {
+    return {
+      days: defaultDays,
+      reason: `no prior filings on disk — using the default ${defaultDays}-day window`,
+      clamped: false,
+      uncoveredDays: 0,
+    };
+  }
+
+  const elapsed = Math.floor((now.getTime() - parsed) / (24 * 60 * 60 * 1000));
+  // A couple of days of overlap: a day whose filings were all filtered out as
+  // funds leaves no trace in filings.jsonl and would otherwise look "covered".
+  const needed = Math.max(defaultDays, elapsed + overlapDays);
+
+  if (needed > maxDays) {
+    return {
+      days: maxDays,
+      reason: `last filing was ${elapsed} days ago; capped at ${maxDays} days`,
+      clamped: true,
+      uncoveredDays: needed - maxDays,
+    };
+  }
+
+  return {
+    days: needed,
+    reason:
+      elapsed <= 0
+        ? `already current — using a ${needed}-day window`
+        : `last filing was ${elapsed} days ago — widening the window to ${needed} days to close the gap`,
+    clamped: false,
+    uncoveredDays: 0,
+  };
+}
+
 export interface EdgarIngestOptions {
   /** How many days back from today to scan. */
   days: number;

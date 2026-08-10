@@ -6,7 +6,7 @@
 # an ordinary script — run it by hand any time to produce an issue now.
 #
 # Environment:
-#   SF_DAYS      lookback window in days           (default 8)
+#   SF_DAYS      lookback window in days           (default: auto-catch-up)
 #   SF_LIMIT     companies sent to the LLM screen  (default 120)
 #   SF_RESEARCH  companies given a dossier         (default 15)
 #   SF_BUDGET    plan-usage cap in $-equivalents   (default 6)
@@ -22,7 +22,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
 
-DAYS="${SF_DAYS:-8}"
+DAYS="${SF_DAYS:-}"
 LIMIT="${SF_LIMIT:-120}"
 RESEARCH="${SF_RESEARCH:-15}"
 BUDGET="${SF_BUDGET:-6}"
@@ -63,11 +63,21 @@ command -v claude >/dev/null 2>&1 || fail "claude CLI not on PATH (PATH=$PATH)"
 command -v git    >/dev/null 2>&1 || fail "git not on PATH (PATH=$PATH)"
 
 say "startup-finder weekly issue — $STAMP"
-say "days=$DAYS limit=$LIMIT research=$RESEARCH budget=$BUDGET push=$PUSH"
+say "days=${DAYS:-auto} limit=$LIMIT research=$RESEARCH budget=$BUDGET push=$PUSH"
 
 # --- run -------------------------------------------------------------------
+# Omitting --days lets the pipeline widen its window to cover everything since
+# the last run, so a laptop that was closed for three weeks catches up instead
+# of silently skipping those weeks.
+#
+# The `[@]+` guard is required: macOS ships bash 3.2, where expanding an empty
+# array as "${arr[@]}" under `set -u` is an "unbound variable" error. Without
+# it every scheduled run would die before reaching the pipeline.
+DAYS_ARG=()
+[ -n "$DAYS" ] && DAYS_ARG=(--days "$DAYS")
+
 pnpm sf run \
-  --days "$DAYS" \
+  ${DAYS_ARG[@]+"${DAYS_ARG[@]}"} \
   --limit "$LIMIT" \
   --research "$RESEARCH" \
   --budget "$BUDGET" \
@@ -83,7 +93,7 @@ if [ -n "$(git status --porcelain data reports)" ]; then
   git add data reports
   git commit -q -m "Digest $STAMP
 
-Automated weekly run: --days $DAYS --research $RESEARCH --budget $BUDGET."
+Automated weekly run: --days ${DAYS:-auto} --research $RESEARCH --budget $BUDGET."
   say "committed $(git rev-parse --short HEAD)"
 
   if [ "$PUSH" = "1" ]; then
