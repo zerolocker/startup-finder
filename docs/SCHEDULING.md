@@ -66,7 +66,7 @@ silently skips runs while the machine is asleep. `launchd`:
 
 | Variable | Default | What it does |
 |---|---:|---|
-| `SF_DAYS` | 8 | Lookback window. 8 gives a day of overlap on a weekly cadence, so nothing falls between issues. |
+| `SF_DAYS` | auto | Lookback window. Left unset, each run covers everything since the last one — so a laptop that was closed for three weeks catches up instead of skipping them. Set a number to pin it. |
 | `SF_LIMIT` | 120 | Companies sent to the LLM screen. |
 | `SF_RESEARCH` | 15 | Companies given a full dossier. |
 | `SF_BUDGET` | 6 | Plan-usage cap in $-equivalents. |

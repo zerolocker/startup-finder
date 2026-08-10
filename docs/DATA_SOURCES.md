@@ -68,6 +68,20 @@ This list matters more than the one above:
 - Form **D/A** amendments are follow-on closes on an existing round; we ingest them
   and merge them into the same company.
 
+### The lookback window
+
+Ingestion walks one daily index per day, backwards from today. With `--days`
+omitted the window is derived from the newest `filedDate` already in
+`data/filings.jsonl` (plus 2 days of overlap, floored at 7, capped at 90), so
+consecutive runs never leave a hole. `autoLookbackDays()` in `edgar.ts` is the
+pure function that decides, and it is unit-tested.
+
+The overlap matters: a day whose filings were all filtered out as funds leaves
+no trace in `filings.jsonl`, so without it that day would look "already
+covered". The cap matters because cost is linear — ~160 filings per day of
+window, throttled to ~8/s. A clamped run logs a warning naming the exact number
+of uncovered days and the command to backfill them; it never skips silently.
+
 ### Filtering heuristics, and their bias
 
 `isLikelyOperatingStartup()` is deliberately biased toward **exclusion**. A false

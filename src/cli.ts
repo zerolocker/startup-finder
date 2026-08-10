@@ -43,7 +43,7 @@ import {
   SCORED_PATH,
 } from './paths.ts';
 import { appendAll, readAll, upsertAll, writeAll } from './store/jsonl.ts';
-import { ingestEdgar } from './sources/edgar.ts';
+import { autoLookbackDays, ingestEdgar } from './sources/edgar.ts';
 import { ingestNews } from './sources/news.ts';
 import { mergeSources } from './pipeline/merge.ts';
 import { rankCompanies } from './pipeline/prefilter.ts';
@@ -72,7 +72,9 @@ Commands:
   prompt     Print the exact LLM screening prompt for the top candidates
 
 Options:
-  --days <n>        Lookback window for ingestion (default 7)
+  --days <n>        Lookback window for ingestion. Omit to auto-catch-up from
+                    the newest filing on disk, so gaps between runs close
+                    themselves. First run defaults to 7 days.
   --limit <n>       Companies sent to the LLM scorer (default 120)
   --research <n>    Companies given a deep-dive dossier (default 15)
   --budget <n>      Cap on plan usage for this run, in $-equivalents (default 8)
@@ -92,6 +94,39 @@ Examples:
 // ---------------------------------------------------------------------------
 // Stage implementations. Each is independently runnable and idempotent.
 // ---------------------------------------------------------------------------
+
+/**
+ * Resolve the ingestion window.
+ *
+ * An explicit `--days` always wins. Otherwise we widen the window to cover
+ * everything since the newest filing on disk, so a run after a long gap does
+ * not silently skip the months in between.
+ */
+async function resolveDays(explicit: string | undefined): Promise<number> {
+  if (explicit !== undefined) {
+    const n = Number(explicit);
+    if (!Number.isFinite(n) || n < 1) throw new Error(`--days must be a positive number (got "${explicit}")`);
+    return n;
+  }
+
+  const filings = await readAll<FormDFiling>(FILINGS_PATH);
+  const latest = filings.reduce<string | null>(
+    (max, f) => (f.filedDate && (max === null || f.filedDate > max) ? f.filedDate : max),
+    null,
+  );
+
+  const decision = autoLookbackDays(latest, new Date());
+  log.info(`Lookback: ${decision.days} days (${decision.reason})`);
+
+  if (decision.clamped) {
+    // Never let a coverage gap pass silently — it is invisible in the output.
+    log.warn(
+      `Gap too large to close in one run: ${decision.uncoveredDays} day(s) before this window will NOT be fetched. ` +
+        `To backfill them, run: pnpm sf ingest --days ${decision.days + decision.uncoveredDays} (slow: ~160 filings/day of window)`,
+    );
+  }
+  return decision.days;
+}
 
 async function stageIngest(days: number): Promise<{ filings: number; news: number }> {
   const [edgar, news] = await Promise.all([ingestEdgar({ days }), ingestNews()]);
@@ -372,7 +407,7 @@ async function main(): Promise<void> {
     args: process.argv.slice(2),
     allowPositionals: true,
     options: {
-      days: { type: 'string', default: '7' },
+      days: { type: 'string' },
       limit: { type: 'string', default: '120' },
       research: { type: 'string', default: '15' },
       budget: { type: 'string', default: '8' },
@@ -403,7 +438,6 @@ async function main(): Promise<void> {
     return v === undefined ? fallback : n;
   };
 
-  const days = num(values.days, 'days', 7);
   const limit = num(values.limit, 'limit', 120);
   const research = num(values.research, 'research', 15);
   const budget = num(values.budget, 'budget', 8);
@@ -411,7 +445,7 @@ async function main(): Promise<void> {
   switch (command) {
     case 'run':
       await cmdRun({
-        days,
+        days: await resolveDays(values.days),
         limit,
         research,
         budget,
@@ -421,7 +455,7 @@ async function main(): Promise<void> {
       });
       break;
     case 'ingest':
-      await stageIngest(days);
+      await stageIngest(await resolveDays(values.days));
       break;
     case 'merge':
       await stageMerge();
@@ -444,7 +478,7 @@ async function main(): Promise<void> {
       const lastRun = runs.at(-1);
       await stageReport(companies, {
         runId: lastRun?.runId ?? 'report-only',
-        windowDays: days,
+        windowDays: Number(values.days ?? 7),
         costUsd: lastRun?.costUsd ?? 0,
         totalCandidates: companies.length,
       });

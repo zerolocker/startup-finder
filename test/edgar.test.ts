@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { isLikelyOperatingStartup, parseFormD, parseFormIndex, primaryDocUrl } from '../src/sources/edgar.ts';
+import {
+  autoLookbackDays,
+  isLikelyOperatingStartup,
+  parseFormD,
+  parseFormIndex,
+  primaryDocUrl,
+} from '../src/sources/edgar.ts';
 import type { FormDFiling } from '../src/types.ts';
 
 /** Trimmed from a real filing (Flo Artificial Intelligence, accession 0001798621-26-000003). */
@@ -188,4 +194,62 @@ describe('isLikelyOperatingStartup', () => {
       expect(isLikelyOperatingStartup(filing({ entityName })).keep).toBe(true);
     },
   );
+});
+
+describe('autoLookbackDays', () => {
+  const NOW = new Date('2026-08-09T12:00:00Z');
+
+  it('uses the default window on a first run', () => {
+    const d = autoLookbackDays(null, NOW);
+    expect(d.days).toBe(7);
+    expect(d.clamped).toBe(false);
+    expect(d.reason).toMatch(/no prior filings/);
+  });
+
+  it('closes a gap that fits under the cap', () => {
+    // The bug this fixes: a fixed 7-day window silently skipped everything
+    // between runs.
+    const d = autoLookbackDays('2026-07-10', NOW); // 30 days earlier
+    expect(d.days).toBe(32); // 30 elapsed + 2 overlap
+    expect(d.clamped).toBe(false);
+    expect(d.uncoveredDays).toBe(0);
+  });
+
+  it('clamps a 100-day gap and says exactly how much it is leaving out', () => {
+    // Run on day 1, again on day 100: the auto window covers 90 days and the
+    // remaining 12 are reported, never silently dropped.
+    const d = autoLookbackDays('2026-05-01', NOW); // 100 days earlier
+    expect(d.days).toBe(90);
+    expect(d.clamped).toBe(true);
+    expect(d.uncoveredDays).toBe(12); // 100 + 2 overlap - 90
+  });
+
+  it('keeps a small overlap so a fully-filtered day is not treated as covered', () => {
+    const d = autoLookbackDays('2026-08-08', NOW); // yesterday
+    // 1 day elapsed + 2 overlap = 3, but never below the 7-day floor.
+    expect(d.days).toBe(7);
+  });
+
+  it('never goes below the default window', () => {
+    expect(autoLookbackDays('2026-08-09', NOW).days).toBe(7);
+  });
+
+  it('clamps an enormous gap and reports what it is leaving out', () => {
+    const d = autoLookbackDays('2024-01-01', NOW); // ~1.6 years
+    expect(d.days).toBe(90);
+    expect(d.clamped).toBe(true);
+    expect(d.uncoveredDays).toBeGreaterThan(400);
+    expect(d.reason).toMatch(/capped at 90/);
+  });
+
+  it('treats an unparseable date as no prior data rather than crashing', () => {
+    const d = autoLookbackDays('not-a-date', NOW);
+    expect(d.days).toBe(7);
+    expect(d.clamped).toBe(false);
+  });
+
+  it('respects a future filedDate without producing a negative window', () => {
+    const d = autoLookbackDays('2026-09-01', NOW);
+    expect(d.days).toBeGreaterThanOrEqual(7);
+  });
 });

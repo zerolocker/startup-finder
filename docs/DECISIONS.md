@@ -332,3 +332,48 @@ auditable rather than silent.
 
 **Revisit when.** The user wants protection that also covers their own pushes
 (add a GitHub ruleset), or the hook proves too coarse in practice.
+
+---
+
+## ADR-010: Derive the lookback window from data on disk, not a fixed N days
+
+**Status:** accepted · after a user question exposed the gap
+
+**Context.** Ingestion looked back a fixed `--days` (default 7) from *today*.
+Asked "if I run on day 1 and again on day 100, does it fetch what happened in
+between?", the answer was no: the day-100 run covered days 94-100 and days 2-93
+were never fetched. Nothing in the output revealed the hole — precisely the
+silent loss CLAUDE.md rule 5 exists to prevent, and fatal for a tool the user
+had just asked to run like a newsletter.
+
+**Decision.** When `--days` is omitted, derive the window from the newest
+`filedDate` in `data/filings.jsonl`: `max(7, elapsed + 2)`, capped at 90 days.
+An explicit `--days` always wins.
+
+**Why derive it from the data rather than track "last run".** `filedDate` is the
+day a filing appeared in EDGAR, so the newest one already marks the last index
+we successfully read. A separate state file would be a second source of truth
+that could drift — deleting `filings.jsonl` and re-running would then under-fetch
+rather than rebuild. This is self-healing.
+
+**Why the 2-day overlap.** A day whose filings were all filtered out as funds
+leaves no trace in `filings.jsonl`, so it would otherwise look covered.
+
+**Why cap at 90 days.** Cost is linear: ~160 filings per day of window, one HTTP
+request each, throttled to ~8/s for the SEC. 90 days is ~30 minutes; a year
+would be ~2 hours. Too long to spend without the user choosing it.
+
+**Consequences.** A gap larger than 90 days is not fully closed. The run logs a
+warning naming the uncovered day count and the exact backfill command — the loss
+is visible and actionable rather than silent. `scripts/weekly.sh` now omits
+`--days` by default so a machine that was off for weeks catches up on its next
+scheduled run.
+
+**News cannot be backfilled.** RSS feeds only carry recent items, so a long gap
+permanently loses the press side for that period. The Form D spine still covers
+US funding for the whole window; what is lost is round labels, investor names,
+and non-US rounds. Stated in the README limitations.
+
+**Revisit when.** SEC full-text search (`efts.sec.gov`, already verified working)
+could replace the day-by-day index crawl for large backfills and would make the
+cap unnecessary. See DATA_SOURCES.md.

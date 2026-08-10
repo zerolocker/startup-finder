@@ -116,6 +116,11 @@ pnpm typecheck
 
 ## Limitations
 
+- **Lookback auto-catches-up, up to 90 days.** Omit `--days` and the window
+  widens to cover everything since your last run. Gaps longer than 90 days are
+  capped, and the run tells you exactly how many days it skipped and what to run
+  to backfill them. News feeds cannot be backfilled at all — RSS only carries
+  recent items.
 - **US-centric.** Form D is a US filing; non-US startups appear only via press.
 - **Name matching is exact-only** by design, so one company can appear twice under
   different spellings ([ADR-004](docs/DECISIONS.md)).

@@ -120,9 +120,14 @@ Small, real, and worth fixing when nearby:
 - **The dashboard inlines the whole dataset** (~300 KB/run). Committing one per
   run will bloat the repo over time; keeping only `latest.*` plus a monthly
   archive is the first mitigation.
-- **`--days` beyond ~14 gets slow** on a cold cache — one HTTP request per filing,
-  throttled to ~8/s for the SEC. ~1,600 filings ≈ 3.5 minutes. Cached reruns are
-  instant.
+- **Long lookbacks are slow** on a cold cache — one HTTP request per filing,
+  throttled to ~8/s for the SEC, so roughly 160 filings per day of window.
+  ~1,600 filings ≈ 3.5 minutes; the 90-day auto-catch-up cap is ~30 minutes.
+  Cached reruns are instant.
+- **News cannot be backfilled.** Auto-catch-up widens the EDGAR window, but RSS
+  feeds only carry recent items, so a long gap permanently loses the press side
+  for that period. Only affects non-US rounds and round labels — the Form D
+  spine still covers US funding for the whole window.
 - **Research quality varies with name ambiguity.** Companies with generic names
   ("Core Automation") produce low-confidence dossiers. The prompt handles this
   honestly, but a domain-resolution step (see item 2) would help a lot.
