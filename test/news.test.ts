@@ -167,6 +167,31 @@ describe('junk-subject rejection', () => {
   });
 });
 
+describe('bare-infinitive false positives', () => {
+  // All four produced a bogus company in a real run. The first three share one
+  // cause: the verb list accepted bare stems, which are also nouns/adjectives.
+  it.each([
+    ['QMUL spinouts looking to raise', 'bare "raise"; subject is a truncated clause'],
+    ['The browser is where attacks land. Why is security still focused on the endpoint?', 'bare "land" as a verb of "attacks"'],
+    ['How to build secure and user-friendly AI: data in a silo sees part of the picture', 'bare "secure" as an adjective'],
+    ['Edtech platform raises $4.5M to help teach students how to vibe code', 'subject is a category, not a name'],
+  ])('rejects %s', (title) => {
+    expect(extractHeadlineFacts(title).company).toBeNull();
+  });
+
+  it.each([
+    ['Mironid raises €39.9 million in Series B', 'Mironid'],
+    ['Platter lands follow-on funding from Verb Ventures', 'Platter'],
+    ['Omilia secures €58.1 million in Series B funding', 'Omilia'],
+    ['Monava closes funding round as demand grows', 'Monava'],
+    ['10x Banking banks £40M in debt and equity raise', '10x Banking'],
+    ['HappyRobot lands $150M Series C', 'HappyRobot'],
+    ['Inevitable AI Group raises €5.2 million from Aleph', 'Inevitable AI Group'],
+  ])('still extracts %s', (title, expected) => {
+    expect(extractHeadlineFacts(title).company).toBe(expected);
+  });
+});
+
 describe('isFundAnnouncement', () => {
   it.each([
     'White Star Capital closes $250M Fund IV to back global startups from Series A to B',

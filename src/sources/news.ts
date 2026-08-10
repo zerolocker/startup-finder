@@ -196,7 +196,16 @@ export function extractHeadlineFacts(title: string): HeadlineFacts {
     : null;
 
   // The company is almost always the subject, i.e. the text before the verb.
-  const verbMatch = /^(.*?)\s+\b(raises?|raised|secures?|secured|closes?|closed|lands?|landed|nets?|netted|bags?|snags?|announces?|announced|scores?|picks? up|pulls? in|banks?)\b/i.exec(
+  //
+  // Only INFLECTED verb forms count ("raises"/"raised", never "raise"). The
+  // bare stems are all common nouns or adjectives, and accepting them produced
+  // three bogus companies on real headlines:
+  //   "The browser is where attacks land."  -> "The browser is where attacks"
+  //   "How to build secure ... AI"          -> "How to build"
+  //   "QMUL spinouts looking to raise"      -> "QMUL spinouts looking to"
+  // A genuine funding headline is always "X raises" or "X raised", so requiring
+  // inflection costs nothing and removes the whole class.
+  const verbMatch = /^(.*?)\s+\b(raises|raised|secures|secured|closes|closed|lands|landed|nets|netted|bags|snags|announces|announced|scores|picks up|pulls in|banks)\b/i.exec(
     title,
   );
   let company = verbMatch?.[1]?.trim() ?? null;
@@ -237,6 +246,17 @@ export function cleanCompanyName(raw: string): string | null {
   company = company.trim().replace(/^[,\-–—:]+|[,\-–—:]+$/g, '').trim();
 
   if (!company) return null;
+
+  // A subject made only of category words names no company — the headline left
+  // the name to the article body. "Edtech platform raises $4.5M" is real news
+  // about a real company, but "Edtech platform" is not its name.
+  const CATEGORY_WORDS =
+    /^(edtech|fintech|healthtech|insurtech|proptech|adtech|legaltech|deeptech|biotech|climatetech|agritech|foodtech|regtech|martech|hrtech|ai|ml|saas|b2b|b2c|platform|startup|scaleup|company|firm|app|tool|service|marketplace|network|group|studio|lab|labs|maker|provider|developer|business|venture|tech)$/i;
+  if (company.split(/\s+/).every((w) => CATEGORY_WORDS.test(w.replace(/[^\w]/g, '')))) return null;
+
+  // A subject ending in a function word is a truncated clause, not a name:
+  // "QMUL spinouts looking to".
+  if (/\b(to|for|in|on|at|by|of|with|and|or|from|as|into)$/i.test(company)) return null;
 
   // A possessive that survived the prefix strip means the subject is a person
   // or a description, not a name: "Travis Kalanick's robotics company".
