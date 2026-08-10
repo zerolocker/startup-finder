@@ -194,7 +194,10 @@ export function renderDashboard(companies: readonly ResearchedCompany[], opts: H
 
   <footer>
     Scores measure fit against <code>config/profile.yaml</code>, not company quality.<br>
-    Unlinked claims are model-generated — verify before acting. Sources: SEC EDGAR Form D + funding press.
+    Scores below ~30 are ambiguous: either the model judged the company poorly, or nothing ever
+    screened it. Only screened rows carry a confidence badge and a "why this score".<br>
+    Unlinked claims are model-generated — verify before acting. Sources: SEC EDGAR Form D + funding press.<br>
+    <a href="../docs/READING_THE_REPORT.md">How to read this report</a>
   </footer>
 </div>
 

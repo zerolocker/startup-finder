@@ -127,4 +127,7 @@ pnpm typecheck
 - **Research can be wrong.** It is a model reading the web. Anything not backed by
   a link in the report should be verified before you act on it.
 
-More in [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md).
+**[`docs/READING_THE_REPORT.md`](docs/READING_THE_REPORT.md) is the one to read
+before acting on a digest** — what a score actually means, where every ranking
+signal comes from, and what never reaches you. More on coverage in
+[`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md).

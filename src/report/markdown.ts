@@ -110,6 +110,7 @@ export function renderDigest(companies: readonly ResearchedCompany[], opts: Dige
   out.push('');
   out.push('> Scores are this app\'s judgement of fit against `config/profile.yaml`, not a measure of company quality.');
   out.push('> Anything not backed by a link came from a model and should be verified before you act on it.');
+  out.push('> Scores below ~30 are ambiguous — see [Reading the report](../docs/READING_THE_REPORT.md).');
   out.push('');
 
   // --- The scannable table -------------------------------------------------
@@ -181,6 +182,12 @@ export function renderDigest(companies: readonly ResearchedCompany[], opts: Dige
     out.push('');
     out.push('<details>');
     out.push('<summary>Expand — ranked, but not researched in depth</summary>');
+    out.push('');
+    out.push(
+      '_Mixed scores below. Rows with a note in the last column were screened by the model; ' +
+        'rows showing only triage notes were never looked at, and their score is capped at 45. ' +
+        'A low number here usually means "not examined", not "examined and rejected"._',
+    );
     out.push('');
     out.push('| Fit | Company | Raised | Date | Location | Note |');
     out.push('|---:|---|---:|---|---|---|');

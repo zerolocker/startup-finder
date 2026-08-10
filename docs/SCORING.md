@@ -2,6 +2,10 @@
 
 _How a company gets a number, why the weights are what they are, and how to tune it._
 
+_This file is for people changing the scoring. If you are reading a digest and
+want to know how much to trust a row, see
+[READING_THE_REPORT.md](READING_THE_REPORT.md) instead._
+
 ---
 
 ## Two scores, different jobs
