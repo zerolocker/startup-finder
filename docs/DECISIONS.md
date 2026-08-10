@@ -155,6 +155,35 @@ curated **alias map** in `config/` (`"acme artificial intelligence" →
 "acme-ai"`), not a looser comparison. Aliases are auditable; fuzzy thresholds are
 not.
 
+### Measured: the matcher is not currently the bottleneck
+
+A later audit found **zero** companies carrying both an EDGAR filing and a news
+item — which looks damning for exact matching until you check the headroom.
+Token-overlap matching every news-derived company against all 316 filed entity
+names produced no plausible pair either. There is nothing to merge, for two
+structural reasons:
+
+1. **Geography.** Most news-derived companies are European (Mironid, NavVis,
+   Omilia, Relu, SeeTrue, FuVeX, Neuraspace — three of the seven feeds are EU
+   publications). No Form D exists for them, at any name.
+2. **Timing.** Form D is due within 15 days of *first sale*; press reports at
+   *announcement*. The two can be weeks apart, so they rarely land in the same
+   ingestion window. HappyRobot's $150M Series C was covered on 2026-08-04 and
+   has no Form D in our data at all.
+
+This matters because it means **a smarter matcher — fuzzy, embedding-based, or
+LLM-adjudicated — would currently buy nothing.** Do not build one on the theory
+that `both: 0` proves exact matching is too strict; measure the headroom first,
+by checking whether candidate pairs exist at all.
+
+Timing partly solves itself: `merge` runs against the whole accumulated
+`filings.jsonl`, not just the current window, so as filing history builds up
+month over month, late-filed Form Ds will start meeting earlier press. Re-measure
+then. If real candidate pairs do appear, the right architecture is cheap blocking
+(shared token / prefix) to generate candidates, then an LLM adjudicating only
+those few pairs with location, date, amount, and officers as context — never
+pairwise LLM comparison, which is O(n·m) calls for no benefit.
+
 ---
 
 ## ADR-005: Three-tier funnel with widening cost per item
