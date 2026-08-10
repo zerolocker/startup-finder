@@ -142,10 +142,23 @@ The interesting part is what gets **rejected**. Every one of these produced a bo
 | `Travis Kalanick's robotics company raises $1.7B` | "Travis Kalanick's robotics company" | possessive + generic noun |
 | `Repeat founder Ryan Williams raises $10M` | "Repeat founder Ryan Williams" | role noun ⇒ a person |
 | `Defense tech Hadrian raises $1.37B` | "Defense tech Hadrian" | descriptor prefix stripped ⇒ "Hadrian" |
+| `The browser is where attacks land.` | "The browser is where attacks" | bare-stem verb — inflected forms only |
+| `How to build secure … AI` | "How to build" | bare "secure" was an adjective |
+| `QMUL spinouts looking to raise` | "QMUL spinouts looking to" | bare "raise"; subject ends in a function word |
+| `Edtech platform raises $4.5M` | "Edtech platform" | subject is only category words, no name |
 
 The lesson generalizes: **funding vocabulary is identical for startups raising
 rounds, VCs raising funds, and journalists summarizing both.** Any new headline
 parsing needs to distinguish the subject, not just detect the keywords.
+
+A second lesson, from the last four rows: **only inflected verbs count.** Every
+bare stem in the funding vocabulary is also a common noun or adjective — "attacks
+land", "build secure AI", "looking to raise" — so accepting `raise` alongside
+`raises` invented three companies out of opinion pieces. A real funding headline
+is always "X raises" or "X raised", so requiring inflection costs nothing.
+
+Measured on the 52 items then on disk: 25 companies extracted, 4 of them junk
+(16%). After the fix: 21 real companies, 0 junk.
 
 ---
 
