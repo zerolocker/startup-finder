@@ -1,9 +1,10 @@
-# Startup digest — 2026-08-09
+# Startup digest — 2026-08-10
 
-Covering funding activity from the last **10 days**. 324 candidates screened, 324 ranked, 17 researched in depth, top 12 written up below.
+Covering funding activity from the last **7 days**. 324 candidates screened, 324 ranked, 17 researched in depth, top 12 written up below.
 
 > Scores are this app's judgement of fit against `config/profile.yaml`, not a measure of company quality.
 > Anything not backed by a link came from a model and should be verified before you act on it.
+> Scores below ~30 are ambiguous — see [Reading the report](../docs/READING_THE_REPORT.md).
 
 ## At a glance
 
@@ -504,6 +505,8 @@ Neuraspace is a Coimbra, Portugal-based space-tech company building an AI-driven
 <details>
 <summary>Expand — ranked, but not researched in depth</summary>
 
+_Mixed scores below. Rows with a note in the last column were screened by the model; rows showing only triage notes were never looked at, and their score is capped at 45. A low number here usually means "not examined", not "examined and rejected"._
+
 | Fit | Company | Raised | Date | Location | Note |
 |---:|---|---:|---|---|---|
 | 70 | [KEA Cloud, Inc.](https://www.sec.gov/Archives/edgar/data/2073579/000207357926000001/0002073579-26-000001-index.htm) | $15.9M | 2025-05-30 | PALO ALTO, CA | Unknown in detail, but 'KEA Cloud' plus 'Other Technology' industry code, a Pa… |
@@ -713,4 +716,4 @@ _…and 112 more in `data/scored.jsonl`._
 
 ---
 
-<sub>Generated 2026-08-09T03:45:04.257Z · run `report-only` · Sources: SEC EDGAR Form D + funding press. See `docs/DATA_SOURCES.md` for coverage limits.</sub>
+<sub>Generated 2026-08-10T03:43:58.772Z · run `report-only` · Sources: SEC EDGAR Form D + funding press. See `docs/DATA_SOURCES.md` for coverage limits.</sub>
