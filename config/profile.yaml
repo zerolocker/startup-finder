@@ -9,10 +9,9 @@
 # ============================================================================
 
 about: |
-  Software engineer evaluating early-stage startups, primarily to join one as
-  an employee rather than to invest. Comfortable across the stack and
-  interested in technically substantial work — systems where the engineering
-  is the hard part, not just a CRUD wrapper on someone else's model API.
+  Software engineer & product manager evaluating early-stage startups, primarily
+  to join one as an employee rather than to invest. Comfortable across the stack and
+  is product-minded.
 
   Values: strong technical founders, a real product (not a deck), a team small
   enough that the work is high-leverage, and a market that could plausibly get
@@ -28,26 +27,26 @@ intent:
 interests:
   # weight is 0..1 and acts as an importance multiplier in the LLM rubric.
   themes:
-    - name: AI/ML infrastructure and developer tools
-      weight: 1.0
+    - name: Consumer apps and marketplaces
+      weight: 1
+    - name: Applied AI in a specific vertical (legal, health, finance, logistics)
+      weight: 1
     - name: Agent frameworks, evaluation, and LLM tooling
-      weight: 0.95
+      weight: 1
     - name: Databases, distributed systems, and cloud infrastructure
-      weight: 0.9
-    - name: Developer platforms and productivity tooling
-      weight: 0.85
+      weight: 1
+    - name: SaaS platforms and productivity tooling
+      weight: 1
+    - name: AI/ML infrastructure and developer tools
+      weight: 0.8
     - name: Data infrastructure, streaming, and analytics
       weight: 0.8
-    - name: Cybersecurity and privacy engineering
-      weight: 0.75
-    - name: Applied AI in a specific vertical (legal, health, finance, logistics)
-      weight: 0.7
     - name: Fintech, payments, and financial infrastructure
       weight: 0.6
-    - name: Consumer apps and marketplaces
-      weight: 0.45
+    - name: Cybersecurity and privacy engineering
+      weight: 0.6
     - name: Robotics, hardware, and embedded systems
-      weight: 0.4
+      weight: 0.5
 
   # These subtract. Be specific — vague anti-themes cause false rejections.
   antiThemes:
