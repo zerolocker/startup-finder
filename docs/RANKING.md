@@ -123,6 +123,55 @@ The prefilter is *worse* on the broad band than on the narrow one. It is not
 merely imprecise at the margin; it is close to uninformative about the middle of
 the distribution.
 
+### 6. Measured on a live incremental run
+
+Ingesting one further business day (206 filings → 52 kept → 378 companies) and
+re-running `score --limit 120` exposed two failures that the static analysis above
+only implied.
+
+**The gate evicts companies that were already paid for.** `stageScore` reads
+`companies.jsonl`, never `scored.jsonl`, and rewrites the whole file — so any
+company outside *this* run's top 120 is reset to `llm: null` even if a previous
+run had scored it. One day of new filings discarded **211 existing LLM scores**,
+among them:
+
+```
+was fit 88  ->  now unscreened   Taktile Holding, Inc.
+was fit 78  ->  now unscreened   ProrataAI, Inc.
+was fit 65  ->  now unscreened   KEA Cloud, Inc.
+```
+
+The best company this app has ever surfaced — the subject of the recall
+measurement in [SCORING.md](SCORING.md) — silently left the corpus because
+unrelated companies filed on a later date. This is not merely a ranking miss:
+it is destroying results that plan usage was already spent on, and it gets worse
+every week as the corpus grows. Ungating (B) removes the mechanism entirely;
+until then, `stageScore` should merge prior scores forward.
+
+**Batch-composition dependence is large.** Of 101 companies re-scored in both
+runs from byte-identical input data, **89 changed score**, mean |Δ| = **7.0**,
+max **29**:
+
+```
+33 ->  62   (+29)  Malted AI Ltd
+62 ->  40   (−22)  Valoros, Inc.
+58 ->  36   (−22)  Proactive AI Lab, Inc.
+34 ->  55   (+21)  Contrivian Inc
+```
+
+A ±7 average wobble is comparable to the width of the scoring bands, so batch
+composition alone reshuffles the ranking. This is the defect
+[ADR-015](DECISIONS.md) describes, now with a number, and it also means **cross-run
+score comparisons are not currently meaningful** — including any eval built on
+them.
+
+**Cost.** Ingest and merge are free. Screening cost **$0.027/company**
+(~$0.18–0.22 per batch of 8); research cost **~$0.40/company** on a cache miss.
+The whole incremental run — 378 companies merged, 120 screened, 8 researched,
+both reports — came to **$3.20-equivalent in about nine minutes**. Screening the
+full 378 instead of the top 120 would be roughly **$8–10** per run at today's
+prices, which is the price of (B).
+
 ## What these numbers are, and are not
 
 There are **no ground-truth relevance labels** in this repo. Every figure above

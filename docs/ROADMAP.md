@@ -156,6 +156,15 @@ and the reports reveal which companies the user is tracking.
 
 Small, real, and worth fixing when nearby:
 
+- **Re-scoring discards LLM scores it already paid for.** `stageScore` reads
+  `companies.jsonl`, never `scored.jsonl`, then rewrites the file — so any company
+  outside *this* run's top `--limit` is reset to `llm: null` even if an earlier run
+  scored it. One extra day of filings destroyed **211 existing scores**, including
+  Taktile at fit 88, the best result this app has produced. Fix: merge prior scores
+  forward in `stageScore` before writing. Ungating
+  ([ADR-014](DECISIONS.md#adr-014-retrieval-orders-it-does-not-gate)) removes the
+  mechanism, but this is worth fixing on its own — it is cheap, and it is currently
+  throwing away plan usage every run. Measured in [RANKING.md](RANKING.md).
 - **Duplicate companies** under name variants — see
   [ADR-004](DECISIONS.md#adr-004-exact-name-matching-only). The intended fix is a
   curated alias map in `config/`, not fuzzy matching.

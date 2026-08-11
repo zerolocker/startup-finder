@@ -609,6 +609,12 @@ adequate for a cutoff and wrong for a ranking, as [ROADMAP](ROADMAP.md) item 2b
 notes. Separately, `recency` — 30 of the prefilter's ~111 points, its heaviest
 signal — correlates **−0.103** with the screen's judgement.
 
+The batching effect has since been measured. Ingesting one more day reshuffled
+every batch; of 101 companies re-scored from byte-identical input, **89 changed
+score**, mean |Δ| **7.0**, max **29**. That is the width of a scoring band, so
+batch composition alone reorders the list — and cross-run score comparisons are
+not currently meaningful. See [RANKING.md](RANKING.md).
+
 **Decision.** Score pointwise over the whole corpus for the displayed value
 (`fit`, `rationale`, `confidence`), then re-rank **listwise over the top ~40 only**
 for order. Move freshness out of relevance entirely: it becomes the lookback
