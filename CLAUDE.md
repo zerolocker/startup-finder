@@ -27,7 +27,7 @@ file to read for a fast mental model.
 
 ```bash
 pnpm install
-pnpm test           # 135 tests, no network, <1s
+pnpm test           # 157 tests, no network, <1s
 pnpm typecheck      # tsc --noEmit, strict
 pnpm sf --help      # all CLI options
 
@@ -56,9 +56,15 @@ the CLI reports is a dollar-*equivalent* of tokens used, and we track it because
 it is the best proxy for how much of the subscription's rate limit a run eats.
 
 That limit is the real scarce resource: a fan-out bug can lock the user out of
-Claude entirely for hours. Always pass `--budget`. Never remove the disk cache or
-the budget reservation in `src/llm/claude.ts`. When testing changes, prefer
-`--days 2 --limit 8 --research 2 --budget 1`.
+Claude entirely for hours. **There is no spend cap** — it was removed on purpose
+([ADR-011](docs/DECISIONS.md#adr-011-report-plan-usage-instead-of-capping-it)),
+because it fired mid-run and threw away the research stage after the money was
+already spent. What bounds a run instead is `--limit` and `--research`, so keep
+them small while iterating: `--days 2 --limit 8 --research 2`.
+
+Never remove the disk cache in `src/llm/claude.ts` — with no cap above it, the
+cache is now the main thing standing between a careless re-run and a real dent
+in the user's rate limit.
 
 **3. Branch and PR, never commit to `main`.**
 Start work with `git checkout -b <type>/<short-description>`, then
@@ -105,7 +111,7 @@ how to record a fix.
 A cheap end-to-end check:
 
 ```bash
-pnpm sf ingest --days 2 && pnpm sf merge && pnpm sf score --limit 8 --budget 1 && pnpm sf report
+pnpm sf ingest --days 2 && pnpm sf merge && pnpm sf score --limit 8 && pnpm sf report
 ```
 
 ## Data and git

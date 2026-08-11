@@ -56,7 +56,7 @@ src/
     score.ts          Batched LLM fit scoring against the profile.
     research.ts       Per-company deep research with web search.
 
-  llm/claude.ts       `claude -p` wrapper: caching, budget, retries, JSON extraction.
+  llm/claude.ts       `claude -p` wrapper: caching, cost accounting, retries, JSON extraction.
   store/jsonl.ts      The entire persistence layer.
   report/
     markdown.ts       The digest.
@@ -126,9 +126,13 @@ Break these and things get subtly wrong:
    `CLAUDE.md` from its cwd; running from the repo root would inject this
    project's dev instructions into every scoring prompt. `llm/claude.ts` runs it
    from an empty temp dir.
-5. **The budget is reserved before dispatch, not after.** Otherwise concurrent
-   calls all pass the check and collectively overshoot. This actually happened;
-   `test/budget.test.ts` is the regression test.
+5. **Plan usage is reported, not capped.** A run costs what the work costs; the
+   figure lands in the run summary, `runs.jsonl`, and the report header
+   ([ADR-011](DECISIONS.md#adr-011-report-plan-usage-instead-of-capping-it)).
+   What bounds a run is `--limit` and `--research`, not a dollar figure. If you
+   ever reintroduce a cap, reserve before dispatch or concurrent calls will
+   collectively overshoot — that already happened once, see
+   [ADR-006](DECISIONS.md#adr-006-reserve-llm-budget-before-dispatch).
 6. **Data embedded in the dashboard's `<script>` block goes through
    `toScriptJson()`, never bare `JSON.stringify`.** Company names come from SEC
    filings and RSS feeds, so a crafted entity name containing `</script>` would

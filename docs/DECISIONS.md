@@ -217,7 +217,9 @@ which would materially improve ranking quality.
 
 ## ADR-006: Reserve LLM budget before dispatch
 
-**Status:** accepted · after a real overshoot
+**Status:** superseded by [ADR-011](#adr-011-report-plan-usage-instead-of-capping-it) ·
+the cap it made accurate no longer exists. Kept because the concurrency bug it
+describes will recur the moment anyone reintroduces a pre-dispatch check.
 
 **Context.** Runs take a `--budget` cap. Originally the check compared *settled*
 spend against the cap immediately before each call.
@@ -294,8 +296,9 @@ work:
 2. **Disk caching keyed by prompt hash.** Re-runs cost almost nothing. A
    rebuild during development re-scored 120 companies for $0.35-equiv instead of
    $2.67 because most batches hit cache.
-3. **The budget reservation.** A hard pre-dispatch cap on how much rate limit a
-   run can consume ([ADR-006](#adr-006-reserve-llm-budget-before-dispatch)).
+3. **Per-stage item limits.** `--limit` and `--research` bound how much rate
+   limit a run can consume, and the accounting to report it afterwards
+   ([ADR-011](#adr-011-report-plan-usage-instead-of-capping-it)).
 4. **Headless, schedulable, resumable stages.** `sf score` and `sf report` re-run
    against on-disk data without a human or a live session.
 
@@ -406,3 +409,49 @@ and non-US rounds. Stated in the README limitations.
 **Revisit when.** SEC full-text search (`efts.sec.gov`, already verified working)
 could replace the day-by-day index crawl for large backfills and would make the
 cap unnecessary. See DATA_SOURCES.md.
+
+---
+
+## ADR-011: Report plan usage instead of capping it
+
+**Status:** accepted · at the user's request, superseding [ADR-006](#adr-006-reserve-llm-budget-before-dispatch)
+
+**Context.** Every run took a `--budget` cap in dollar-equivalents. Exceeding it
+threw `BudgetExceededError` before dispatching a call, which aborted the stage
+and, in a `sf run`, the whole pipeline.
+
+**Decision.** Remove the cap. `llm/claude.ts` still accumulates
+`total_cost_usd` from every CLI call and still reports it — in the run summary,
+in `runs.jsonl`, and in the report header — but nothing reads it to decide
+whether to make a call. `--budget` is parsed and warned about rather than
+rejected, so existing cron jobs and scripts keep working.
+
+**Why.** The cap was protecting the wrong thing at the wrong moment. It fired
+mid-run, after the expensive ingestion and screening stages had already been
+paid for, and its effect was to throw away the research stage — the part the
+user actually wants. A run that stops at company 9 of 15 has spent nearly all
+the plan usage and delivered a partial digest, which is the worst of both
+outcomes. Worse, the failure mode it guarded against (a fan-out bug) is already
+bounded upstream by `--limit` and `--research`: the number of LLM calls a run
+can make is a function of item counts, not of a dollar figure, and item counts
+are the knob a human actually reasons about.
+
+**Consequences.**
+
+- A run costs what the work costs. At the defaults that is ~$4-equivalent; the
+  figure is logged at the end and persisted per run.
+- There is no longer a hard stop if something does fan out unexpectedly. The
+  mitigations are the item limits, the disk cache, and the fact that both LLM
+  stages are batched or top-N by construction.
+- `test/budget.test.ts` became `test/cost.test.ts` and is much thinner. The old
+  suite could exercise the rejection path offline because a zero cap short-
+  circuited before spawning; with no cap there is no way to reach `runClaude`
+  in a test without hitting the real CLI, so it now only pins the odometer.
+- The concurrency lesson in ADR-006 is *not* obsolete. Any future pre-dispatch
+  check must reserve before dispatch or it will overshoot by
+  `(concurrency − 1) × cost_per_call`, exactly as it did before.
+
+**Revisit when.** A run actually locks the user out of their subscription, or a
+fan-out bug ships that the item limits do not bound. The cheap middle ground, if
+so, is a warning threshold that logs loudly and keeps going, rather than a hard
+stop that discards completed work.

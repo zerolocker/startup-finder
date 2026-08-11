@@ -52,7 +52,7 @@ re-report without re-running the expensive research.
 
 ```bash
 pnpm sf run                        # everything (the normal entry point)
-pnpm sf run --days 3 --budget 2    # quick pass
+pnpm sf run --days 3 --research 5  # quick pass
 pnpm sf score && pnpm sf report    # re-screen after editing your profile
 pnpm sf stats                      # what's in data/
 pnpm sf show oxide-computer        # everything known about one company
@@ -88,8 +88,12 @@ to identify themselves.
 ## Cost
 
 Runs on your Claude subscription. **Nothing is billed to a card.** A full run
-uses roughly $4-equivalent of tokens; `--budget` caps it, and responses are
-cached so re-runs cost almost nothing.
+uses roughly $4-equivalent of tokens, reported at the end of the run and kept in
+`data/runs.jsonl`. Responses are cached, so re-runs cost almost nothing.
+
+There is no spend cap — a run uses what the work needs. `--limit` (companies
+screened) and `--research` (dossiers written) are the knobs that make a run
+cheaper.
 
 ## Repo layout
 
@@ -98,7 +102,7 @@ config/profile.yaml   what you care about — the only file most users edit
 src/sources/          EDGAR and RSS ingestion
 src/pipeline/         merge, prefilter, LLM scoring, research
 src/report/           markdown digest + HTML dashboard
-src/llm/claude.ts     the claude -p wrapper (caching, budget, retries)
+src/llm/claude.ts     the claude -p wrapper (caching, cost accounting, retries)
 data/*.jsonl          all persisted data, committed to git on purpose
 reports/              generated digests, committed
 docs/                 why things are the way they are — read before changing

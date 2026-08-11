@@ -52,7 +52,7 @@ import { buildResearchPrompt, researchCompanies } from './pipeline/research.ts';
 import { renderDigest } from './report/markdown.ts';
 import { renderDashboard } from './report/html.ts';
 import { loadProfile, profileToPrompt } from './config.ts';
-import { budgetSpent, isClaudeAvailable, startBudget } from './llm/claude.ts';
+import { isClaudeAvailable, resetSpend, spentUsd } from './llm/claude.ts';
 import { log } from './util/log.ts';
 import { formatUsd } from './util/text.ts';
 
@@ -77,10 +77,10 @@ Options:
                     the newest filing on disk, so gaps between runs close
                     themselves. First run defaults to 7 days.
   --limit <n>       Companies sent to the LLM scorer (default 120)
+                    This, and --research, are what bound a run's plan usage.
   --research <n>    Companies given a deep-dive dossier (default 15)
-  --budget <n>      Cap on plan usage for this run, in $-equivalents (default 8)
-                    Runs on your Claude subscription — nothing is billed to a
-                    card. This guards your rate limit, not your wallet.
+  --budget <n>      Accepted and ignored. Runs are no longer capped; plan usage
+                    is reported at the end instead. See ADR-011.
   --model <name>    haiku | sonnet | opus (default sonnet)
   --refresh         Re-research companies that already have a dossier
   --no-research     Skip the expensive research stage
@@ -88,7 +88,7 @@ Options:
 
 Examples:
   pnpm sf run                          # weekly digest, ~15 min
-  pnpm sf run --days 3 --budget 2      # quick pass, lighter on your rate limit
+  pnpm sf run --days 3 --research 5    # quick pass, lighter on your rate limit
   pnpm sf score --limit 200 && pnpm sf report   # rescore after editing profile
 `;
 
@@ -331,7 +331,6 @@ async function cmdRun(opts: {
   days: number;
   limit: number;
   research: number;
-  budget: number;
   model: 'haiku' | 'sonnet' | 'opus';
   refresh: boolean;
   skipResearch: boolean;
@@ -344,7 +343,7 @@ async function cmdRun(opts: {
 
   const runId = `${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
   const record: RunRecord = { runId, startedAt: new Date().toISOString(), finishedAt: null, stages: {}, costUsd: 0 };
-  startBudget(opts.budget);
+  resetSpend();
 
   const time = async <T>(name: string, fn: () => Promise<T>, count: (r: T) => number): Promise<T> => {
     const t0 = Date.now();
@@ -366,7 +365,7 @@ async function cmdRun(opts: {
     ? await loadResearched()
     : await time('research', () => stageResearch(opts.research, opts.model, opts.refresh), (r) => r.length);
 
-  record.costUsd = budgetSpent();
+  record.costUsd = spentUsd();
   const scoredCount = companies.length;
 
   await time(
@@ -421,7 +420,8 @@ async function main(): Promise<void> {
       days: { type: 'string' },
       limit: { type: 'string', default: '120' },
       research: { type: 'string', default: '15' },
-      budget: { type: 'string', default: '8' },
+      // No default: its only remaining job is to be detected and warned about.
+      budget: { type: 'string' },
       model: { type: 'string', default: 'sonnet' },
       refresh: { type: 'boolean', default: false },
       'no-research': { type: 'boolean', default: false },
@@ -452,7 +452,13 @@ async function main(): Promise<void> {
 
   const limit = num(values.limit, 'limit', 120);
   const research = num(values.research, 'research', 15);
-  const budget = num(values.budget, 'budget', 8);
+
+  // Still parsed so that older scripts and cron jobs keep running, but it no
+  // longer does anything (ADR-011). Warn rather than fail: silently accepting
+  // it would leave someone believing their run is capped when it is not.
+  if (values.budget !== undefined) {
+    log.warn('--budget is ignored: runs are no longer capped. Use --limit/--research to bound a run.');
+  }
 
   switch (command) {
     case 'run':
@@ -460,7 +466,6 @@ async function main(): Promise<void> {
         days: await resolveDays(values.days),
         limit,
         research,
-        budget,
         model,
         refresh: values.refresh,
         skipResearch: values['no-research'],
@@ -473,14 +478,14 @@ async function main(): Promise<void> {
       await stageMerge();
       break;
     case 'score':
-      startBudget(budget);
+      resetSpend();
       await stageScore(limit, model);
-      log.info(`Plan usage ~$${budgetSpent().toFixed(2)}-equiv (subscription, not billed)`);
+      log.info(`Plan usage ~$${spentUsd().toFixed(2)}-equiv (subscription, not billed)`);
       break;
     case 'research':
-      startBudget(budget);
+      resetSpend();
       await stageResearch(research, model, values.refresh);
-      log.info(`Plan usage ~$${budgetSpent().toFixed(2)}-equiv (subscription, not billed)`);
+      log.info(`Plan usage ~$${spentUsd().toFixed(2)}-equiv (subscription, not billed)`);
       break;
     case 'report': {
       const companies = await loadResearched();
