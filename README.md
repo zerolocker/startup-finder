@@ -37,12 +37,12 @@ So: **Form D for recall, news for context, an LLM for the judgement in between.*
 
 ```mermaid
 flowchart TD
-    A["SEC Form D<br/><small>1,575 filings / 10 days</small>"] --> C
-    B["Funding news RSS<br/><small>7 feeds</small>"] --> C
-    C["merge — join by exact name<br/><small>324 companies</small>"] --> D
-    D["prefilter — deterministic<br/><small>324 → 120 · free</small>"] --> E
-    E["llm screen — batched, no web<br/><small>120 scored · ≈$1</small>"] --> F
-    F["research — web search<br/><small>15 dossiers · ≈$4</small>"] --> G & H
+    A["SEC Form D (1,575 filings / 10 days)"] --> C
+    B["Funding news RSS (7 feeds)"] --> C
+    C["merge — join by exact name (324 companies)"] --> D
+    D["prefilter — deterministic (324 → 120, free)"] --> E
+    E["llm screen — batched, no web (120 scored, ≈$1)"] --> F
+    F["research — web search (15 dossiers, ≈$4)"] --> G & H
     G["reports/latest.md"]
     H["reports/latest.html"]
 ```
