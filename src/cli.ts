@@ -49,6 +49,7 @@ import { mergeSources } from './pipeline/merge.ts';
 import { rankCompanies } from './pipeline/prefilter.ts';
 import { buildScorePrompt, effectiveScore, scoreCompanies } from './pipeline/score.ts';
 import { buildResearchPrompt, researchCompanies } from './pipeline/research.ts';
+import { resolveValuation } from './pipeline/valuation.ts';
 import { renderDigest } from './report/markdown.ts';
 import { renderDashboard } from './report/html.ts';
 import { loadProfile, profileToPrompt } from './config.ts';
@@ -324,7 +325,12 @@ async function cmdShow(id: string): Promise<void> {
     process.exitCode = 1;
     return;
   }
-  process.stdout.write(`${JSON.stringify(found, null, 2)}\n`);
+  // Valuation is computed at render time rather than stored (ADR-011), so it is
+  // absent from the record itself. Attach it here under an underscored key —
+  // otherwise `sf show` is the one view that silently lacks a number the report
+  // puts front and centre, and the reader assumes the app never found one.
+  const view = { ...found, _valuation: resolveValuation(found) };
+  process.stdout.write(`${JSON.stringify(view, null, 2)}\n`);
 }
 
 async function cmdRun(opts: {

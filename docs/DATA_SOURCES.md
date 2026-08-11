@@ -43,7 +43,9 @@ This list matters more than the one above:
 - **No round label.** "Series A" appears nowhere in a Form D. Any round label in
   this app came from press.
 - **No investor names.** Related persons are officers/directors, not funds.
-- **No valuation.**
+- **No valuation.** It reaches the report only via press, picked up during
+  research. When press is silent the app derives a *range* from the raise
+  instead — see [ADR-011](DECISIONS.md) and `src/pipeline/valuation.ts`.
 - **No description of the business.** The industry group is one of ~40 buckets;
   most tech companies land in `Other Technology`, which tells you almost nothing.
 - **No non-US companies.** This is a US securities filing.

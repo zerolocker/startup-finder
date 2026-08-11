@@ -27,7 +27,7 @@ file to read for a fast mental model.
 
 ```bash
 pnpm install
-pnpm test           # 135 tests, no network, <1s
+pnpm test           # 198 tests, no network, <1s
 pnpm typecheck      # tsc --noEmit, strict
 pnpm sf --help      # all CLI options
 

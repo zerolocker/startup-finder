@@ -111,7 +111,7 @@ Start with [`CLAUDE.md`](CLAUDE.md), then
 [`docs/DECISIONS.md`](docs/DECISIONS.md) records what was tried and rejected.
 
 ```bash
-pnpm test        # 135 tests, no network required
+pnpm test        # 198 tests, no network required
 pnpm typecheck
 ```
 

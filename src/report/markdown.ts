@@ -13,6 +13,7 @@
 
 import type { Dossier, ResearchedCompany } from '../types.ts';
 import { effectiveScore } from '../pipeline/score.ts';
+import { resolveValuation, valuationLabel, valuationRange, type Valuation } from '../pipeline/valuation.ts';
 import { formatUsd } from '../util/text.ts';
 
 function confidenceBadge(confidence: 'low' | 'medium' | 'high' | undefined): string {
@@ -49,13 +50,86 @@ export function describeCompany(company: ResearchedCompany): string {
   return company.llm?.whatTheyDo ?? '—';
 }
 
-function renderDossier(dossier: Dossier): string {
+/** "$9.0M Seed", or just "$9.0M" when press never gave the round a name. */
+function raisedCell(company: ResearchedCompany): string {
+  const funding = company.latestFunding;
+  const amount = formatUsd(funding?.amountUsd ?? null);
+  return funding?.round ? `${amount} ${funding.round}` : amount;
+}
+
+/**
+ * The valuation block for a write-up.
+ *
+ * A derived range never appears without the arithmetic that produced it — the
+ * formula is the entire justification for showing a number nobody published,
+ * so the two travel together or not at all (ADR-011).
+ */
+function renderValuation(valuation: Valuation): string {
+  switch (valuation.kind) {
+    case 'reported': {
+      const { amountUsd, basis, asOf, sourceUrl } = valuation.fact;
+      const qualifier = basis === 'unspecified' ? '' : ` ${basis}`;
+      const when = asOf ? `, as of ${asOf}` : '';
+      return `**Valuation** — ${formatUsd(amountUsd)}${qualifier}, [reported](${sourceUrl})${when}.\n`;
+    }
+    case 'estimated': {
+      const { estimate } = valuation;
+      const caveats = estimate.caveats.map((c) => `\n  - ${c}`).join('');
+      return (
+        `**Valuation (estimated)** — ${valuationRange(estimate)}. ` +
+        `No valuation was reported; this is derived, not a fact: ${estimate.method}.${caveats}\n`
+      );
+    }
+    case 'unknown':
+      return `**Valuation** — not available (${valuation.reason}).\n`;
+  }
+}
+
+/** Prior rounds, one per line. Only rendered when research actually found any. */
+function renderFundingHistory(dossier: Dossier): string {
+  const history = dossier.fundingHistory ?? [];
+  if (history.length === 0) return '';
+
+  const rows = history.map((round) => {
+    const parts = [round.date ?? 'date unknown', round.round ?? 'unlabelled', formatUsd(round.amountUsd)];
+    const lead = round.leadInvestor ? ` — led by ${round.leadInvestor}` : '';
+    const others = round.investors.length > 0 ? ` (${round.investors.join(', ')})` : '';
+    const cite = round.sourceUrl ? ` [source](${round.sourceUrl})` : '';
+    return `- ${parts.join(' · ')}${lead}${others}${cite}`;
+  });
+  return `**Prior rounds**\n${rows.join('\n')}\n`;
+}
+
+/**
+ * "Founded 2019 · ~40 people · $745M raised to date".
+ *
+ * Every part is dropped when null rather than shown as a placeholder — an empty
+ * slot says "not found", which is the truth, where "Team size: unknown" three
+ * times over just adds noise to a page meant to be skimmed.
+ */
+function renderFacts(dossier: Dossier): string {
+  const parts: string[] = [];
+  if (dossier.foundedYear != null) parts.push(`Founded ${dossier.foundedYear}`);
+  if (dossier.teamSize != null) parts.push(`~${dossier.teamSize} people`);
+  if (dossier.totalRaisedUsd != null) parts.push(`${formatUsd(dossier.totalRaisedUsd)} raised to date`);
+  return parts.length > 0 ? `${parts.join(' · ')}\n` : '';
+}
+
+function renderDossier(dossier: Dossier, valuation: Valuation): string {
   const out: string[] = [];
   out.push(`${dossier.summary}\n`);
+
+  const facts = renderFacts(dossier);
+  if (facts) out.push(facts);
 
   if (dossier.product) out.push(`**Product** — ${dossier.product}\n`);
   if (dossier.team) out.push(`**Team** — ${dossier.team}\n`);
   if (dossier.funding) out.push(`**Funding** — ${dossier.funding}\n`);
+
+  const history = renderFundingHistory(dossier);
+  if (history) out.push(history);
+
+  out.push(renderValuation(valuation));
 
   if (dossier.openRoles.length > 0) {
     out.push(`**Open roles** — ${dossier.openRoles.map((r) => `\`${r}\``).join(', ')}\n`);
@@ -117,17 +191,22 @@ export function renderDigest(companies: readonly ResearchedCompany[], opts: Dige
   if (featured.length > 0) {
     out.push('## At a glance');
     out.push('');
-    out.push('| | Fit | Company | What they do | Raised | Confidence |');
-    out.push('|---|---:|---|---|---:|---|');
+    out.push('| | Fit | Company | What they do | Raised | Valuation | Confidence |');
+    out.push('|---|---:|---|---|---:|---:|---|');
     for (const company of featured) {
       const score = Math.round(effectiveScore(company));
       const what = describeCompany(company);
       out.push(
         `| ${scoreBadge(score)} | **${score}** | [${mdEscape(company.name)}](#${anchor(company.name)}) | ${mdEscape(
-          what.length > 90 ? `${what.slice(0, 88)}…` : what,
-        )} | ${formatUsd(company.latestFunding?.amountUsd ?? null)} | ${confidenceBadge(company.llm?.confidence)} |`,
+          // Tighter than it used to be: the valuation column needs the width.
+          what.length > 70 ? `${what.slice(0, 68)}…` : what,
+        )} | ${raisedCell(company)} | ${valuationLabel(resolveValuation(company))} | ${confidenceBadge(
+          company.llm?.confidence,
+        )} |`,
       );
     }
+    out.push('');
+    out.push('_A valuation marked `est.` was not reported anywhere — it is derived from the raise. Each write-up shows the arithmetic._');
     out.push('');
   }
 
@@ -140,16 +219,16 @@ export function renderDigest(companies: readonly ResearchedCompany[], opts: Dige
       out.push(`### ${company.name}`);
       out.push('');
 
+      const valuation = resolveValuation(company);
       const meta: string[] = [`**Fit ${score}/100**`];
       if (company.latestFunding) {
-        const f = company.latestFunding;
-        meta.push(`${formatUsd(f.amountUsd)}${f.round ? ` ${f.round}` : ''} · ${f.date}`);
+        meta.push(`${raisedCell(company)} · ${company.latestFunding.date}`);
       }
       if (company.location) meta.push(company.location);
       out.push(meta.join(' · '));
       out.push('');
 
-      if (company.dossier) out.push(renderDossier(company.dossier));
+      if (company.dossier) out.push(renderDossier(company.dossier, valuation));
 
       if (company.llm) {
         out.push(`**Why this scored ${score}** — ${company.llm.rationale}`);
@@ -196,8 +275,11 @@ export function renderDigest(companies: readonly ResearchedCompany[], opts: Dige
       const note = company.llm?.whatTheyDo ?? company.prefilter.notes.slice(0, 2).join('; ') ?? '';
       const url = company.sources[0]?.url;
       const name = url ? `[${mdEscape(company.name)}](${url})` : mdEscape(company.name);
+      // No valuation column here on purpose: these rows were never examined, and
+      // a derived range is just the raise times a constant. Printing one would
+      // imply an analysis that did not happen.
       out.push(
-        `| ${score} | ${name} | ${formatUsd(company.latestFunding?.amountUsd ?? null)} | ${
+        `| ${score} | ${name} | ${raisedCell(company)} | ${
           company.latestFunding?.date ?? '—'
         } | ${mdEscape(company.location ?? '—')} | ${mdEscape(note.length > 80 ? `${note.slice(0, 78)}…` : note)} |`,
       );

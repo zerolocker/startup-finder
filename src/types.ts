@@ -178,15 +178,99 @@ export interface ScoredCompany extends Company {
   llm: LlmScore | null;
 }
 
-/** Deep-research dossier, produced only for the top-ranked companies. */
+// ---------------------------------------------------------------------------
+// Valuation — see ADR-011. Two shapes that must never be conflated.
+// ---------------------------------------------------------------------------
+
+/**
+ * A valuation someone actually published.
+ *
+ * `sourceUrl` is required, not optional. A valuation is the number a person
+ * uses to decide whether equity is worth taking, so an unattributed one is the
+ * most expensive kind of wrong this app can produce (CLAUDE.md rule 1). If the
+ * research stage cannot point at a page saying it, the field is `null`.
+ */
+export const ValuationFactSchema = z.object({
+  amountUsd: z.number(),
+  /** Press frequently does not say which. Never assume post-money. */
+  basis: z.enum(['post-money', 'pre-money', 'unspecified']),
+  /** Valuations go stale. ISO date, or "YYYY-MM" when that is all press gives. */
+  asOf: z.string().nullable(),
+  sourceUrl: z.string(),
+});
+export type ValuationFact = z.infer<typeof ValuationFactSchema>;
+
+/**
+ * A valuation *derived* from the disclosed raise — never a reported fact.
+ *
+ * Deliberately a range and not a point number: the input is one dollar figure
+ * and a convention about how much of a company a round typically buys, which
+ * supports a band and nothing tighter. See src/pipeline/valuation.ts for the
+ * arithmetic and ADR-011 for why this is allowed to exist at all.
+ *
+ * Never persisted — it is recomputed from the raise on every render so it
+ * cannot go stale, and it never appears without `method` next to it.
+ */
+export interface ValuationEstimate {
+  lowUsd: number;
+  highUsd: number;
+  /** Rendered verbatim, e.g. "$19.3M raise ÷ 15–25% dilution (Series A)". */
+  method: string;
+  /** Anything that materially weakens the estimate. Rendered alongside it. */
+  caveats: string[];
+}
+
+/** One historical round. Everything is nullable — press coverage is patchy. */
+export const FundingRoundSchema = z.object({
+  /** ISO date, or "YYYY-MM" when that is all press gives. */
+  date: z.string().nullable(),
+  round: z.string().nullable(),
+  amountUsd: z.number().nullable(),
+  leadInvestor: z.string().nullable(),
+  investors: z.array(z.string()),
+  sourceUrl: z.string().nullable(),
+});
+export type FundingRound = z.infer<typeof FundingRoundSchema>;
+
+/**
+ * Deep-research dossier, produced only for the top-ranked companies.
+ *
+ * Fields added after the first release are `.nullish()` on purpose. This schema
+ * validates the model's output, but records read back from data/dossiers.jsonl
+ * are *not* revalidated (see src/cli.ts), so dossiers written by older code hand
+ * renderers `undefined` for anything new. `.nullish()` puts `| undefined` in the
+ * inferred type, which makes the compiler force every call site to handle it.
+ */
 export const DossierSchema = z.object({
   summary: z.string(),
   /** The problem they solve and for whom. */
   product: z.string(),
   /** Team background — prior companies, notable founders. */
   team: z.string(),
-  /** Funding history and investors, as far as the web reveals. */
+  /**
+   * Funding history and investors as prose, as far as the web reveals.
+   *
+   * Kept alongside the structured `fundingHistory` rather than replaced by it,
+   * because it carries nuance the structured form cannot: "raised in tranches",
+   * "an extension of the 2023 Series A", "the round may still be filling".
+   */
   funding: z.string(),
+  /** Reported valuation, with attribution. `null` unless a page says it. */
+  valuation: ValuationFactSchema.nullish(),
+  /** Year the company was founded, when stated. Never inferred. */
+  foundedYear: z.number().int().nullish(),
+  /** Headcount, when stated. Never inferred from how big the company "feels". */
+  teamSize: z.number().int().nullish(),
+  /**
+   * Lifetime capital raised, when reported or fully summable.
+   *
+   * Not derivable from `Company.fundingEvents` — that array only holds rounds
+   * seen inside the current ingest window, so summing it understates lifetime
+   * raise for any company funded before this app first ran.
+   */
+  totalRaisedUsd: z.number().nullish(),
+  /** Prior rounds found on the web, newest first. Partial history is expected. */
+  fundingHistory: z.array(FundingRoundSchema).nullish(),
   /** Roles they are hiring for — the key signal for "should I join". */
   openRoles: z.array(z.string()),
   /** Publicly visible tech stack, when discoverable. */

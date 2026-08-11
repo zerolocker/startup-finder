@@ -55,6 +55,7 @@ src/
     prefilter.ts      Deterministic triage ranking. No LLM.
     score.ts          Batched LLM fit scoring against the profile.
     research.ts       Per-company deep research with web search.
+    valuation.ts      Reported vs derived valuation. Pure, no LLM. See ADR-011.
 
   llm/claude.ts       `claude -p` wrapper: caching, budget, retries, JSON extraction.
   store/jsonl.ts      The entire persistence layer.
@@ -105,6 +106,13 @@ correct output here.
 **research** — `pipeline/research.ts`. Per-company, with `WebSearch` and
 `WebFetch`. The only stage that learns anything genuinely new.
 
+**valuation** — `pipeline/valuation.ts`. Not a stage: a pure function the report
+calls per company. Returns a discriminated union — a valuation press reported, a
+range derived from the raise, or `unknown` with a reason. Estimates are computed
+at render time rather than stored, so they cannot go stale against the raise they
+came from. The union shape is deliberate: it stops a caller rendering a derived
+range as a fact. See [ADR-011](DECISIONS.md).
+
 **report** — `report/*.ts`. Pure functions from `ResearchedCompany[]` to strings.
 No I/O, so they are trivially testable.
 
@@ -151,7 +159,7 @@ re-run one stage without the others is what makes iteration affordable.
 
 ## Testing
 
-135 tests, no network, sub-second. Everything pure is tested; the network and
+198 tests, no network, sub-second. Everything pure is tested; the network and
 subprocess boundaries are not mocked, they are simply not unit-tested — the real
 verification for those is running the pipeline.
 

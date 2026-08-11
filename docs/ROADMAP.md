@@ -131,6 +131,20 @@ Small, real, and worth fixing when nearby:
 - **Research quality varies with name ambiguity.** Companies with generic names
   ("Core Automation") produce low-confidence dossiers. The prompt handles this
   honestly, but a domain-resolution step (see item 2) would help a lot.
+- **Derived valuation ranges are wide because round labels are rare.** The
+  dilution band is only narrow when the stage is known, and fewer than 2% of
+  companies carry a round label (Form D has no round field). Anything that
+  recovers stage — more press coverage, SEC full-text search, a funding API —
+  tightens every estimate at once. See [ADR-011](DECISIONS.md).
+- **Valuation is shown but not scored.** `config/profile.yaml` has a raise window
+  (`minRaiseUsd`/`maxRaiseUsd`) but no equivalent for valuation, so a company
+  priced far past the interesting equity window is not penalised for it. Adding
+  it means a new rubric weight in [SCORING.md](SCORING.md) and a taste decision
+  about what "too expensive" means for this user.
+- **Structured company facts only exist for researched companies.** Founding
+  year, team size, and funding history come from the research stage, so the ~300
+  companies in the long tail have none. The 17 dossiers predating these fields
+  stay blank until re-researched with `--refresh`.
 
 ## Explicitly not planned
 

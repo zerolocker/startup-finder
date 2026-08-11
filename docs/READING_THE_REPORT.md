@@ -117,7 +117,8 @@ and only the research stage actually went and looked.
 
 ## Reading the money
 
-- The figure is **amount raised in this round**, never a valuation.
+- The **Raised** figure is amount raised in this round. It is never a valuation —
+  valuation is its own column, described below.
 - We prefer `totalAmountSold` (what investors actually wired) and fall back to
   `totalOfferingAmount` (the target). A fresh filing often shows `sold: 0`
   against a large offering.
@@ -127,6 +128,48 @@ and only the research stage actually went and looked.
   `39,900,000`. Fine for bucketing, wrong for precise comparison.
 - People listed under "On the SEC filing" are **officers and directors, not
   investors**. Form D does not name funds.
+
+## Reading the valuation
+
+There are two kinds of valuation in the report and the difference matters more
+than the numbers do.
+
+| Looks like | Means |
+|---|---|
+| `$2.0B` | **Reported.** Someone published it. The write-up links the page that says so. |
+| `~$77.2M–$128.7M est.` | **Derived.** Nobody published one. This is arithmetic on the raise. |
+| `—` | Neither was possible. The write-up says why. |
+
+A derived range is `raise ÷ typical dilution for the stage`, and the write-up
+always shows the working — `$19.3M raise ÷ 15–25% dilution (series a)`. It is not
+a claim about what the company is worth; it is what the round size implies if the
+company sold a normal fraction of itself. You can check it in your head, which is
+exactly the point. In the dashboard, derived valuations are shown in dashed
+italics; reported ones are solid.
+
+**The ranges are wide, and that is the honest answer.** Dilution bands are only
+narrow when the round's stage is known, and round labels come only from press —
+Form D has no round field. In a typical run fewer than 2% of companies carry one,
+so most estimates use the widest band (10–25%). A four-fold range is telling you
+the truth about how little is known.
+
+**Where a derived range is most wrong:**
+
+- **A round still closing.** Form D reports capital *sold so far*, so the raise —
+  and therefore the estimate — is a floor, not a midpoint.
+- **Non-USD raises.** Amounts are stored unconverted, so a €15.6M round produces
+  a euro-denominated range printed with a dollar sign.
+- **Amended filings.** The amount may be cumulative across several closes.
+
+Each of these prints as a caveat directly beneath the number. Read them.
+
+**Token and SAFT raises get no estimate at all** — buying tokens does not buy a
+share of the company, so the math describes nothing.
+
+**Valuation does not affect the fit score.** It is shown, not scored.
+
+Founding year, team size, and lifetime raised appear only when research found
+them stated somewhere. A missing one means "not found", never "small".
 
 ## What you never see
 

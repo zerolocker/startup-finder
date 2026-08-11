@@ -81,12 +81,36 @@ BE HONEST ABOUT UNCERTAINTY. This is the most important instruction:
 - Prefer the company's own site and reputable press over aggregator pages,
   which are frequently stale or wrong.
 
+THE NUMERIC FIELDS ARE HELD TO A HIGHER STANDARD than the prose ones, because
+the reader will act on them directly:
+- "valuation": only when a specific page states it, and you must return the URL
+  in "sourceUrl". "raised $10M at a $50M post-money valuation" is a fact you can
+  report. "reportedly valued at around $50M", with no attribution, is not — that
+  is null. A missing valuation is the normal, expected answer for a company that
+  just filed; do not reach for one. Do not compute a valuation yourself from the
+  round size — something downstream already does that, correctly labelled as an
+  estimate, and a guess from you would be indistinguishable from a real one.
+- "foundedYear" and "teamSize": only when stated on the company's own site,
+  LinkedIn, or in press. Never infer them from the founders' career length, the
+  domain registration date, the office photo, or how large the company feels.
+- "fundingHistory": one entry per round you actually found, newest first, each
+  with the URL that supports it. A partial history is expected and useful.
+- "totalRaisedUsd": only when a source states a cumulative figure, or when every
+  entry in "fundingHistory" has an amount and you are confident the list is
+  complete. Never present a partial sum as a total — an understated lifetime
+  raise reads as a much earlier-stage company than it is.
+
 Respond with ONLY a JSON object, no prose and no markdown fences:
 {
   "summary": "<2-4 sentences: who they are, what they do, why it may or may not matter. If you could not identify them, say so here.>",
   "product": "<what they build and for whom, or \\"\\" if unknown>",
   "team": "<founder and team backgrounds you actually found, or \\"\\" if unknown>",
   "funding": "<funding history and named investors you actually found, or \\"\\" if unknown>",
+  "valuation": null | {"amountUsd": <number>, "basis": "post-money" | "pre-money" | "unspecified", "asOf": "<YYYY-MM-DD or YYYY-MM>" | null, "sourceUrl": "<url that states it>"},
+  "foundedYear": <number> | null,
+  "teamSize": <number> | null,
+  "totalRaisedUsd": <number> | null,
+  "fundingHistory": [{"date": "<YYYY-MM-DD or YYYY-MM>" | null, "round": "<e.g. Seed, Series A>" | null, "amountUsd": <number> | null, "leadInvestor": "<name>" | null, "investors": ["<name>"], "sourceUrl": "<url>" | null}],
   "openRoles": ["<specific role titles found on their careers page>"],
   "techStack": ["<technologies you found evidence of>"],
   "competitors": ["<named competitors>"],

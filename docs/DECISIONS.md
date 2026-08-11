@@ -406,3 +406,91 @@ and non-US rounds. Stated in the README limitations.
 **Revisit when.** SEC full-text search (`efts.sec.gov`, already verified working)
 could replace the day-by-day index crawl for large backfills and would make the
 cap unnecessary. See DATA_SOURCES.md.
+
+---
+
+## ADR-011: Derive a valuation range when none is reported
+
+**Status:** accepted · 2026-08-10, at user request
+
+**Context.** Valuation is the number a reader uses to judge whether equity is
+worth taking, and nothing in the pipeline supplied it. Form D omits it entirely
+(DATA_SOURCES.md), and ADR-001 rejected the commercial databases that would fill
+it in. Worse, the research stage was already *finding* valuations — 8 of the 17
+dossiers in the 2026-08-10 run mentioned one, roughly half of them real
+press-backed figures — and dropping them into free-text prose where they could
+not be shown in a table, sorted, or filtered.
+
+Recovering the reported ones was uncontroversial. The hard question was what to
+do for the majority of companies where the press says nothing, which is the
+normal case for a round filed days ago.
+
+**Decision.** Two structurally separate things, which must never merge:
+
+1. **Reported** — a point figure from press, in `Dossier.valuation`. It carries a
+   required `sourceUrl`. No URL, no valuation; `resolveValuation` drops an
+   unattributed figure even if one reaches it from an older dossier on disk.
+2. **Derived** — a *range*, computed in `src/pipeline/valuation.ts` as
+   `raise ÷ typical dilution for the stage`. Never persisted, never a point
+   number, and never rendered without the arithmetic that produced it.
+
+`Valuation` is a discriminated union (`reported | estimated | unknown`) rather
+than a nullable number specifically so the compiler stops a caller rendering a
+derived range as a fact.
+
+**Why this does not violate rule 1.** CLAUDE.md rule 1 says unknown is cheap and
+wrong is expensive, and a fabricated valuation is about the most expensive thing
+this app could print. The estimate survives that test because it is not a claim
+about the world — it is arithmetic on a disclosed number plus a stated
+convention, shown with its own formula, and labelled `est.` everywhere it
+appears. A reader can check it in their head. The failure mode rule 1 guards
+against is a confident number whose provenance the reader cannot reconstruct;
+this is the opposite.
+
+**Why a range and never a point.** The input is one dollar figure and a
+convention about how much of a company a round buys. That supports a band and
+nothing tighter. A point estimate would imply precision the method does not have
+and would be indistinguishable, at a glance, from a reported figure.
+
+**Why the bands stay wide.** Round labels come only from press — Form D has no
+round field — so in the 2026-08-10 run just 5 of 324 companies carried one, and
+most estimates use the widest `unknown` band (10–25%). That width is honest
+signal about how little is known. Narrowing it to make the report look sharper
+would be the actual violation of rule 1.
+
+**Rejected: letting the LLM estimate from comparables.** The research model could
+reason about sector and stage comps and return a figure. It was rejected because
+it is unauditable: no formula, no link, not reproducible between runs, and it
+reads exactly as authoritative as a reported number. The research prompt now
+explicitly tells the model *not* to compute a valuation from the round size,
+because a guess from it would be indistinguishable from a real one.
+
+**Skipped cases.** Token and SAFT raises return `unknown` — buying tokens does
+not buy equity, so dilution math describes nothing. Matching is on the instrument
+words, not on crypto topicality, so an equity-funded company that merely works on
+blockchain still gets an estimate. A missing or zero raise is `unknown`, never a
+$0 valuation (rule 6).
+
+**Known-weak inputs, surfaced as caveats rather than hidden.** Form D reports
+capital *sold so far*, so a round still closing understates the raise and the
+estimate is a floor. Amendments may be cumulative across closes. Non-USD amounts
+are stored unconverted, so a €15.6M raise yields a euro-denominated range wearing
+a dollar sign. Each of these emits a caveat next to the number.
+
+**Valuation does not feed the score.** SCORING.md is deliberately untouched.
+Whether a valuation is *good* — cheap entry, or priced past the interesting
+window — is a taste judgement that deserves its own decision and its own rubric
+weight, not a silent side effect of making the number visible.
+
+**Consequences.** Dossiers written before this change lack the new fields, and
+are read back without revalidation, so they arrive `undefined`. The new schema
+fields are `.nullish()` so the compiler forces call sites to guard. Those
+dossiers still get an estimated valuation, because that derives from the raise
+alone; they show no founding year, team size, or funding history until
+re-researched with `--refresh`.
+
+**Revisit when.** If round labels ever become reliably available — a jobs or
+funding-API source, or SEC full-text search recovering more press — the `unknown`
+band shrinks in usefulness and the estimates get materially tighter. If ADR-001
+is ever reversed, reported valuations become the norm and the derived path should
+shrink to a fallback for the long tail.

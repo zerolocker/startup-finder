@@ -9,6 +9,7 @@
 
 import type { ResearchedCompany } from '../types.ts';
 import { effectiveScore } from '../pipeline/score.ts';
+import { resolveValuation, valuationLabel, valuationSortValue, type Valuation } from '../pipeline/valuation.ts';
 import { describeCompany } from './markdown.ts';
 import { formatUsd } from '../util/text.ts';
 
@@ -59,6 +60,16 @@ interface Row {
   confidence: string;
   hiring: number;
   roles: string[];
+  /**
+   * `kind` drives the styling, so a derived range can never be mistaken for a
+   * reported figure on a page where both sit in the same column (ADR-011).
+   * `detail` is the arithmetic or the attribution, shown in the details panel.
+   */
+  valuation: { kind: Valuation['kind']; label: string; detail: string; sort: number };
+  foundedYear: number | null;
+  teamSize: number | null;
+  totalRaised: string;
+  round: string;
   summary: string;
   green: string[];
   red: string[];
@@ -68,10 +79,29 @@ interface Row {
   rationale: string;
 }
 
+/** The sentence that justifies the number — attribution, or the arithmetic. */
+function valuationDetail(valuation: Valuation): string {
+  switch (valuation.kind) {
+    case 'reported': {
+      const { basis, asOf, sourceUrl } = valuation.fact;
+      const qualifier = basis === 'unspecified' ? 'Basis not stated' : `Reported ${basis}`;
+      return `${qualifier}${asOf ? `, as of ${asOf}` : ''}. Source: ${sourceUrl}`;
+    }
+    case 'estimated': {
+      const { method, caveats } = valuation.estimate;
+      return [`Not reported. Derived: ${method}.`, ...caveats].join(' ');
+    }
+    case 'unknown':
+      return `No valuation available — ${valuation.reason}.`;
+  }
+}
+
 export function renderDashboard(companies: readonly ResearchedCompany[], opts: HtmlOptions): string {
   const rows: Row[] = [...companies]
     .sort((a, b) => effectiveScore(b) - effectiveScore(a))
-    .map((c) => ({
+    .map((c) => {
+      const valuation = resolveValuation(c);
+      return {
       id: c.id,
       name: c.name,
       score: Math.round(effectiveScore(c)),
@@ -83,6 +113,19 @@ export function renderDashboard(companies: readonly ResearchedCompany[], opts: H
       confidence: c.llm?.confidence ?? '',
       hiring: c.dossier?.openRoles.length ?? 0,
       roles: c.dossier?.openRoles ?? [],
+      valuation: {
+        kind: valuation.kind,
+        label: valuationLabel(valuation),
+        detail: valuationDetail(valuation),
+        sort: valuationSortValue(valuation),
+      },
+      // `?? null` rather than a bare read: dossiers written before these fields
+      // existed are read back from disk without revalidation, so they arrive
+      // undefined and would render as the string "undefined".
+      foundedYear: c.dossier?.foundedYear ?? null,
+      teamSize: c.dossier?.teamSize ?? null,
+      totalRaised: c.dossier?.totalRaisedUsd != null ? formatUsd(c.dossier.totalRaisedUsd) : '',
+      round: c.latestFunding?.round ?? '',
       summary: c.dossier?.summary ?? '',
       green: c.dossier?.greenFlags ?? [],
       red: [...(c.dossier?.redFlags ?? []), ...(c.llm?.concerns ?? [])],
@@ -90,7 +133,8 @@ export function renderDashboard(companies: readonly ResearchedCompany[], opts: H
       sources: c.sources.map((s) => ({ label: s.kind, url: s.url })),
       people: c.people.slice(0, 6).map((p) => `${p.name}${p.relationships.length ? ` (${p.relationships.join(', ')})` : ''}`),
       rationale: c.llm?.rationale ?? '',
-    }));
+      };
+    });
 
   const generated = new Date().toISOString();
 
@@ -154,6 +198,10 @@ export function renderDashboard(companies: readonly ResearchedCompany[], opts: H
     border: 1px solid var(--line); color: var(--muted);
   }
   .tag.hiring { color: var(--good); border-color: currentColor; }
+  /* A reported valuation is evidence; a derived one is arithmetic. They sit in
+     the same row, so the styling has to carry the difference: solid vs dashed. */
+  .tag.val-reported { color: var(--text); border-color: var(--accent); }
+  .tag.val-estimated { border-style: dashed; font-style: italic; }
   details { margin-top: .7rem; }
   summary { cursor: pointer; color: var(--muted); font-size: .85rem; }
   summary:hover { color: var(--text); }
@@ -184,7 +232,8 @@ export function renderDashboard(companies: readonly ResearchedCompany[], opts: H
     </select></label>
     <label><input type="checkbox" id="hiringOnly"> hiring only</label>
     <label>Sort <select id="sort">
-      <option value="score">fit</option><option value="amount">raise</option><option value="date">date</option>
+      <option value="score">fit</option><option value="amount">raise</option>
+      <option value="valuation">valuation</option><option value="date">date</option>
     </select></label>
     <span class="count" id="count"></span>
   </div>
@@ -196,6 +245,8 @@ export function renderDashboard(companies: readonly ResearchedCompany[], opts: H
     Scores measure fit against <code>config/profile.yaml</code>, not company quality.<br>
     Scores below ~30 are ambiguous: either the model judged the company poorly, or nothing ever
     screened it. Only screened rows carry a confidence badge and a "why this score".<br>
+    A valuation shown in <em>dashed italics</em> was not reported anywhere — it is derived from the
+    raise, and the card's Details panel shows the arithmetic. Solid means someone published it.<br>
     Unlinked claims are model-generated — verify before acting. Sources: SEC EDGAR Form D + funding press.<br>
     <a href="../docs/READING_THE_REPORT.md">How to read this report</a>
   </footer>
@@ -218,11 +269,19 @@ function card(r) {
     .join(' · ');
 
   const tags = [];
+  if (r.valuation.kind !== 'unknown') {
+    tags.push('<span class="tag val-' + r.valuation.kind + '">' + esc(r.valuation.label) + ' valuation</span>');
+  }
   if (r.hiring > 0) tags.push('<span class="tag hiring">' + r.hiring + ' open role' + (r.hiring > 1 ? 's' : '') + '</span>');
   if (r.confidence) tags.push('<span class="tag">' + esc(r.confidence) + ' confidence</span>');
+  if (r.round) tags.push('<span class="tag">' + esc(r.round) + '</span>');
+  if (r.foundedYear) tags.push('<span class="tag">founded ' + esc(r.foundedYear) + '</span>');
+  if (r.teamSize) tags.push('<span class="tag">~' + esc(r.teamSize) + ' people</span>');
+  if (r.totalRaised) tags.push('<span class="tag">' + esc(r.totalRaised) + ' raised to date</span>');
   if (r.location) tags.push('<span class="tag">' + esc(r.location) + '</span>');
 
-  const detail = list(r.roles, 'Open roles') + list(r.green, 'Reasons to look closer') +
+  const detail = '<h4>Valuation</h4><p>' + esc(r.valuation.detail) + '</p>' +
+    list(r.roles, 'Open roles') + list(r.green, 'Reasons to look closer') +
     list(r.red, 'Reasons for caution') + list(r.people, 'On the SEC filing') +
     (r.rationale ? '<h4>Why this score</h4><p>' + esc(r.rationale) + '</p>' : '') +
     (r.summary && r.summary !== r.what ? '<h4>Summary</h4><p>' + esc(r.summary) + '</p>' : '') +
@@ -252,8 +311,11 @@ function render() {
       .toLowerCase().includes(q);
   });
 
+  // Estimates sort on the midpoint of their range. They stay individually
+  // tagged, so a sorted column never disguises a derived range as a fact.
   out.sort((a, b) =>
     sort === 'amount' ? (b.amount || 0) - (a.amount || 0)
+    : sort === 'valuation' ? b.valuation.sort - a.valuation.sort
     : sort === 'date' ? String(b.date).localeCompare(String(a.date))
     : b.score - a.score);
 
