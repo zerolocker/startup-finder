@@ -16,10 +16,21 @@ they opened three infra companies last week. Every run starts from zero.
 This is the single biggest gap between the app as built and the app as described
 in [VISION.md](VISION.md), which calls the judgement layer the whole point.
 
-**Sketch.** Add `data/feedback.jsonl` with `{companyId, verdict, note, at}` where
-verdict is something like `interested` / `not-interested` / `applied`. Add
-`pnpm sf mark <id> <verdict> [note]`. Then feed a compact history of past
-verdicts into the scoring prompt as few-shot calibration:
+**Collection is shipped.** The `review-startups` skill plus the grading controls
+in the HTML dashboard write `data/labels.jsonl` —
+`{companyId, grade, rank, at, runId}`, graded `0 = ignored · 1 = opened ·
+2 = saved`. Grading is mostly passive: scrolling past a card records *seen*,
+expanding Details records *opened*, and only ★ save is a click. A CLI
+`sf mark` was considered and dropped — grading happens while reading the digest,
+which is a browser, not a terminal.
+
+Two properties to preserve if this is ever rewritten, both explained in
+[RANKING.md](RANKING.md): companies that were never displayed are **absent**
+rather than `0`, and the on-screen `rank` is recorded so an eval can truncate
+where attention actually ran out.
+
+**Still to build.** Feed a compact history of past verdicts into the scoring
+prompt as few-shot calibration:
 
 > Previously rated interesting: … Previously rejected: …
 
@@ -65,13 +76,20 @@ that ranking happens on a name before anything knows what the company does.
 **Sketch.** Invert the order: resolve every candidate to a domain and homepage
 description *first* (the research stage already proves this works — it turned
 "Proactive AI Lab, Inc." into "Palona AI, voice agents for restaurants"), then
-rank on that text. Embeddings over enriched descriptions give a globally
-comparable ordering, which batched pointwise LLM scores do not.
+rank on that text.
 
 **Related defect.** Screening scores batches of 8 independently, so a 72 in one
 batch and a 72 in another were produced without reference to each other. That is
 fine for a cutoff but wrong for a ranking. Listwise reranking over a single slate
 would fix it.
+
+**Now specified in full: [RANKING.md](RANKING.md).** That document supersedes this
+sketch in two places. It argues *against* the embeddings suggested above — once
+nothing is gated, a retriever's only remaining job is a tie-break
+([ADR-014](DECISIONS.md#adr-014-retrieval-orders-it-does-not-gate)) — and it
+scopes listwise reranking to the top ~40 rather than the whole corpus, because
+NDCG@k depends only on the head
+([ADR-015](DECISIONS.md#adr-015-listwise-order-over-the-head-pointwise-label-everywhere)).
 
 **Blocked on.** Nothing technical — it is a cost question, and enrichment is
 permanently cacheable per company.
@@ -89,7 +107,11 @@ expected bands (not exact scores — bands). Add `pnpm sf eval` that re-scores t
 fixture and reports band accuracy, plus the score distribution and
 low-confidence share, both of which are documented regression signals.
 
-Combines well with item 1: user feedback is the natural source of labels.
+**Unblocked.** Item 1 now writes `data/labels.jsonl`, which is the label source
+this needs. [RANKING.md](RANKING.md) specifies what `sf eval` should report and
+records the baselines to beat: NDCG@12 = 0.500, ρ = 0.374, recall@120 = 75%. It
+also names the trap — pseudo-labels derived from the screen's own `fit` can
+measure any stage *below* the screen but are circular on the screen itself.
 
 ---
 

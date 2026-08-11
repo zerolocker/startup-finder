@@ -95,7 +95,13 @@ This is the documented silent-miss mode, quantified: the prefilter ranks on a
 name, so a company whose name carries no signal is buried regardless of quality.
 Widening `--limit` treats the symptom. The structural fix is to enrich candidates
 (resolve name → domain → description) *before* ranking, so ranking sees what a
-company does rather than what it is called — see [ROADMAP.md](ROADMAP.md).
+company does rather than what it is called — specified in [RANKING.md](RANKING.md).
+
+The rank-aware companion to the table above is **NDCG@12 = 0.500** for the
+prefilter's ordering, with Spearman ρ = 0.374 against the screen. Both use the
+same pseudo-labels, and both therefore measure *agreement with the screen*, not
+quality — see [RANKING.md](RANKING.md) for why that distinction decides which
+questions these numbers can answer.
 
 Reproduce with `pnpm sf score --limit <corpus size>` and compare against
 `rankCompanies()` order. The figures above are lower bounds: 12 companies were
@@ -154,19 +160,25 @@ Four instructions in the prompt do the real work:
 
 ### Observed distribution
 
-From the reference run (120 companies scored):
+From the reference run, now that the full corpus is screened (312 companies scored):
 
 ```
-80s:  1    70s:  6    60s: 11    50s:  7    40s: 12
-30s: 22    20s: 23    10s: 16     0s: 22
-confidence:  high 19  ·  medium 47  ·  low 54
+80s:  2    70s:  6    60s: 10    50s: 22    40s: 21
+30s: 52    20s: 52    10s: 71     0s: 76
+confidence:  high 41  ·  medium 107  ·  low 164
+whatTheyDo begins "Unknown":  191 / 312  (61%)
 ```
 
 That shape is healthy. The long left tail means the model is willing to say "no",
-and the ~45% low-confidence share honestly reflects how little a Form D reveals.
+and the ~53% low-confidence share honestly reflects how little a Form D reveals.
 **If you change the rubric and the distribution bunches up in the 50s–70s, or
 low-confidence share collapses, the model has started guessing.** That is a
 regression even if the top of the list looks fine.
+
+The 61% "Unknown" rate is not a rubric problem — it is the model correctly
+reporting that a name and a dollar amount do not say what a company does. It is
+the ceiling on everything this stage can do, and the reason
+[RANKING.md](RANKING.md) argues for enriching documents before ranking them.
 
 ---
 

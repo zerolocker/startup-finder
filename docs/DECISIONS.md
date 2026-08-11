@@ -455,3 +455,197 @@ are the knob a human actually reasons about.
 fan-out bug ships that the item limits do not bound. The cheap middle ground, if
 so, is a warning threshold that logs loudly and keeps going, rather than a hard
 stop that discards completed work.
+
+---
+
+## ADR-012: Treat the pipeline as a cascade ranker with a labeled eval set
+
+**Status:** accepted · after measuring the prefilter against the screen
+
+**Context.** Every tuning decision so far has been validated by eyeballing the top
+20. [SCORING.md](SCORING.md) says so explicitly, and [ROADMAP.md](ROADMAP.md) item
+3 has long noted that this "makes prompt changes risky and discourages
+improvement." Measuring the prefilter's ordering against the screen's `fit` put a
+number on the cost: **NDCG@12 = 0.500**, Spearman **ρ = 0.374**.
+
+**Decision.** Treat the app explicitly as a cascade ranker with one user and a
+persistent query, with **NDCG@12** as the objective and **recall@k of every gate**
+as the guardrail. Collect human relevance labels (`data/labels.jsonl`, via the
+`review-startups` skill), and adopt the rule that **no ranking change ships
+without an eval delta**. Specification in [RANKING.md](RANKING.md).
+
+**Why.** A gate is unrecoverable — nothing downstream can rank a company it never
+saw — so recall at each gate is the quantity that actually bounds output quality,
+and it was never being measured. Labels are the only thing that makes it
+measurable.
+
+**Consequences.**
+
+- Three label tiers, which must never be conflated: **pseudo** (the screen's own
+  `fit`, free, valid only for stages *below* the screen — circular on the screen
+  itself), **oracle** (a strong model grading the pool, cheap-ish, carries its own
+  taste bias), and **human** (scarce, the only ground truth).
+- Grades are `0 = ignored · 1 = opened · 2 = saved`. No level 3: the user almost
+  never contacts a founder, so it would stay permanently empty.
+- **Unexamined companies are absent from the labels, never `0`.** This is the
+  load-bearing detail. Exporting them as 0 would teach every future eval that
+  whatever the ranker buried deserved burying — a bias that is both invisible and
+  self-confirming. The dashboard therefore tracks what was actually on screen, and
+  records the on-screen `rank` so an eval can truncate where attention ran out.
+- Labels must be pooled across ranker variants, or the metric only ever sees what
+  the current system already surfaces.
+
+**Rejected.** Continuing to tune by inspection. It is not that eyeballing is
+uninformative — it is that it cannot detect a regression in the part of the list
+nobody looks at, which is precisely where the measured losses are.
+
+**Revisit when.** Enough human labels accumulate that the pseudo-label tier can be
+retired for anything except quick offline sweeps.
+
+---
+
+## ADR-013: Spend on document representation, not on scoring empty records
+
+**Status:** accepted · partially supersedes [ADR-005](#adr-005-three-tier-funnel-with-widening-cost-per-item)
+
+**Context.** For 299 of 324 companies the entire document is a legal entity name,
+a dollar amount, an SEC industry code, a state, and a few officer names. The screen
+says `whatTheyDo: "Unknown…"` for **61%** of what it scores, and the prefilter's
+`theme` signal — a keyword regex whose only available haystack is the name — is
+zero for **234 of 312** companies, including **6 of the 8** that scored ≥ 70.
+
+**Decision.** Add an enrichment stage between `merge` and ranking: resolve each
+company to a domain, fetch its homepage/about/careers text, extract a structured
+description, and persist to `data/profiles.jsonl` keyed by company id. Rank on
+that. Details in [RANKING.md](RANKING.md).
+
+**Why.** This is a document-representation problem wearing a ranking problem's
+clothes. No ranker can order documents that contain no orderable content, so
+effort spent on better scoring of bare Form D records is capped no matter how much
+is spent. ADR-005's cost argument against web search at tier 2 still stands on its
+own terms — but it priced *per-run per-company search*, and enrichment is neither:
+a company's website does not change week to week, so a resolved profile is fetched
+once and reused for every subsequent run.
+
+**Consequences.**
+
+- Resolution must be able to return `null`, with a recorded confidence. A wrong
+  domain is worse than no domain: it fabricates an entire document, and every
+  downstream stage then describes the wrong company fluently and consistently.
+  This is exactly the failure "unknown is cheap, wrong is expensive" exists to
+  prevent, and enrichment is the most likely place for it to enter the system.
+- First run is expensive; steady state is not.
+- A resolved domain is a much better join key than a name. This does **not**
+  reopen [ADR-004](#adr-004-exact-name-matching-only) — a domain is auditable in
+  the way that ADR demands of an alias map, merely derived rather than curated.
+- Hiring signals arrive early enough to rank on, which is
+  [ROADMAP](ROADMAP.md) item 2 as a byproduct.
+
+**Rejected.** Raising `--limit` and screening more companies with the same empty
+documents. It costs proportionally more and moves the ceiling not at all.
+
+**Revisit when.** Domain resolution turns out to be unreliable enough that the
+`null` rate rivals today's 61% Unknown rate — in which case the bottleneck is
+entity resolution, not enrichment, and should be attacked directly.
+
+---
+
+## ADR-014: Retrieval orders; it does not gate
+
+**Status:** accepted · depends on [ADR-013](#adr-013-spend-on-document-representation-not-on-scoring-empty-records)
+
+**Context.** The prefilter's justification is stated in
+[SCORING.md](SCORING.md): it "is a cost-control mechanism wearing the costume of a
+score," worth having because scoring 330 companies costs 3x what scoring 120 does
+"for essentially the same top-20." Measurement contradicts the second half.
+Recall@120 is **75%** at fit ≥ 70 and **72.5%** at fit ≥ 50 — worse on the broad
+band — and the single best company in the corpus (Taktile, fit 88) ranked **#131**.
+
+**Decision.** The prefilter stops gating. The 111-point composite,
+`rankCompanies()`, the `slice(0, --limit)` cut, `effectiveScore()`'s 45-point cap,
+and the `llm: null` state all go. A thinner *eligibility* check may remain — is
+this an operating company, is it inside the funding window. Re-examine the ingest
+regex on the same grounds.
+
+**Why.** A gate is unrecoverable, and this one was cutting inside the densest part
+of its own score distribution on a signal that correlates ρ = 0.374 with the
+judgement it is meant to approximate. With the spend cap gone
+([ADR-011](#adr-011-report-plan-usage-instead-of-capping-it)) the cost argument
+that justified the risk is much weaker.
+
+**Consequences.**
+
+- Every company gets a real score, which dissolves the sub-30 ambiguity documented
+  in [READING_THE_REPORT.md](READING_THE_REPORT.md) — a low score will mean
+  "judged and rejected" rather than "judged and rejected *or* never looked at".
+- Runs cost more, roughly in proportion to corpus size.
+- The largest gate in the system is at ingest, not here: `isLikelyOperatingStartup()`
+  drops ~1,258 of ~1,575 filings by regex and has never been measured. Routing the
+  dropped set through one triage pass to estimate its false-negative rate is the
+  obvious next measurement.
+- The 200-row cap in the long-tail table already violates ARCHITECTURE.md's
+  "nothing silently dropped after merge" invariant for ~35% of the tail. Ungating
+  upstream does not fix that; it is a separate presentation bug.
+
+**Rejected.** Adding dense retrieval / embeddings, which
+[ROADMAP](ROADMAP.md) item 2b proposes. Once nothing is gated, a retriever's only
+remaining job is a tie-break, which does not justify either a new runtime
+dependency or an embedding provider this repo does not have. If gating ever
+returns — because the corpus grows an order of magnitude — reconsider then, and
+calibrate `k` against a measured recall target rather than picking a round number.
+
+**Revisit when.** The corpus outgrows what is affordable to score end-to-end. At
+that point the gate should be reintroduced deliberately, with recall@k measured.
+
+---
+
+## ADR-015: Listwise order over the head, pointwise label everywhere
+
+**Status:** accepted · depends on [ADR-013](#adr-013-spend-on-document-representation-not-on-scoring-empty-records)
+
+**Context.** The screen scores batches of 8 independently, so a 72 produced in one
+batch and a 72 produced in another were never compared against each other. That is
+adequate for a cutoff and wrong for a ranking, as [ROADMAP](ROADMAP.md) item 2b
+notes. Separately, `recency` — 30 of the prefilter's ~111 points, its heaviest
+signal — correlates **−0.103** with the screen's judgement.
+
+**Decision.** Score pointwise over the whole corpus for the displayed value
+(`fit`, `rationale`, `confidence`), then re-rank **listwise over the top ~40 only**
+for order. Move freshness out of relevance entirely: it becomes the lookback
+window, not a ranking term. Rank on topical fit, show joinability beside it, and
+diversify the final twelve with MMR.
+
+**Why.** NDCG@k depends only on the head, so a globally consistent order is not
+worth buying — the relative position of #200 and #201 is unobservable to the user.
+Splitting the two jobs also keeps what the report needs: an interpretable per-company
+score with a rationale and a confidence, which a pure permutation output does not give.
+
+Freshness is not a relevance dimension; it is an eligibility criterion that was
+being summed into a relevance score, where it dominated and pointed the wrong way.
+SCORING.md's defence of recency is a premise argument ("recency is a fact, every
+other signal is a guess") and is not contradicted by this — it had simply never
+been measured against an outcome.
+
+**Consequences.**
+
+- **Batch-composition dependence and position bias are different failures and must
+  not be conflated.** The first is the existing defect: independent batches with no
+  shared anchor. The second is a property of listwise prompting — items appearing
+  early in the input tend to rank higher — and is therefore a risk *introduced* by
+  this change. Order-shuffled ensembling (re-running a slate with shuffled input,
+  aggregating by Borda count) defends against the second; calibration anchors
+  present in every slate defend against the first.
+- Cheap experiment before building any of it: re-score one company in a strong
+  batch and a weak batch and measure the delta. If small, anchors alone may do.
+
+**Rejected.**
+
+- **RankGPT-style sliding window over all 324**, swept bottom-to-top. It does
+  globalize — overlapping windows let a bottom item reach the top in a single pass
+  — but it needs a reasonable *initial* order, which
+  [ADR-014](#adr-014-retrieval-orders-it-does-not-gate) removes.
+- **Merge sort with an LLM comparator.** O(n log n) calls, and it assumes a
+  transitivity that LLM pairwise comparators do not reliably satisfy.
+
+**Revisit when.** The batch-composition experiment shows the effect is large even
+with anchors, which would argue for listwise over a wider slice than the head.

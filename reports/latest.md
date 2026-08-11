@@ -716,4 +716,4 @@ _…and 112 more in `data/scored.jsonl`._
 
 ---
 
-<sub>Generated 2026-08-11T04:35:27.721Z · run `report-only` · Sources: SEC EDGAR Form D + funding press. See `docs/DATA_SOURCES.md` for coverage limits.</sub>
+<sub>Generated 2026-08-11T06:26:29.005Z · run `report-only` · Sources: SEC EDGAR Form D + funding press. See `docs/DATA_SOURCES.md` for coverage limits.</sub>

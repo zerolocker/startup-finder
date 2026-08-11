@@ -164,6 +164,22 @@ export function renderDashboard(companies: readonly ResearchedCompany[], opts: H
   a { color: var(--accent); }
   .empty { text-align: center; color: var(--muted); padding: 3rem 1rem; }
   footer { margin-top: 2rem; color: var(--muted); font-size: .8rem; text-align: center; }
+
+  /* Grading. Only "saved" needs a click: "seen" comes from the scroll observer
+     and "opened" from the <details> toggle, so a normal read-through produces
+     labels without the user grading 300 companies by hand. */
+  .save {
+    font: inherit; font-size: .78rem; cursor: pointer; margin-left: .5rem;
+    padding: .12rem .5rem; border-radius: 20px; background: transparent;
+    border: 1px solid var(--line); color: var(--muted);
+  }
+  .save:hover { color: var(--text); }
+  .save[aria-pressed=true] { color: var(--good); border-color: currentColor; font-weight: 600; }
+  .card.saved { border-left: 3px solid var(--good); }
+  #save { font: inherit; font-size: .85rem; padding: .4rem .7rem; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text); cursor: pointer; }
+  #save:hover { border-color: var(--accent); color: var(--accent); }
+  #graded { font-size: .85rem; color: var(--muted); white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -187,6 +203,8 @@ export function renderDashboard(companies: readonly ResearchedCompany[], opts: H
       <option value="score">fit</option><option value="amount">raise</option><option value="date">date</option>
     </select></label>
     <span class="count" id="count"></span>
+    <span id="graded"></span>
+    <button id="save" type="button" title="Export grades for the review-startups skill">Save grades</button>
   </div>
 
   <div id="list"></div>
@@ -203,9 +221,107 @@ export function renderDashboard(companies: readonly ResearchedCompany[], opts: H
 
 <script>
 const ROWS = ${toScriptJson(rows)};
+const RUN_ID = ${toScriptJson(opts.runId)};
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/**
+ * Grades for the review-startups skill. 0 = ignored, 1 = opened, 2 = saved.
+ *
+ * Only "saved" is a deliberate click. "opened" is the <details> toggle and
+ * "seen" is the scroll observer below, so reading the digest normally already
+ * produces most of the signal.
+ *
+ * A company is exported ONLY once it has been seen. That distinction is the
+ * whole point: "ignored" has to mean "looked at it and moved on", never "was
+ * filtered out" or "never scrolled that far". Treating an unexamined company
+ * as a 0 would teach any future eval that whatever the ranker already buried
+ * deserved to be buried — the bias would be invisible and self-confirming.
+ *
+ * The rank field records the on-screen position at the moment it was seen, so
+ * a later eval can cut off at the point attention realistically ran out rather
+ * than trusting 300 rows equally.
+ */
+const LABELS_KEY = 'sf-labels-v1';
+let LABELS = {};
+try { LABELS = JSON.parse(localStorage.getItem(LABELS_KEY)) || {}; } catch (e) { LABELS = {}; }
+
+const gradeOf = (l) => (l.saved ? 2 : l.opened ? 1 : 0);
+
+function mark(id, patch) {
+  const prev = LABELS[id] || { seen: false, opened: false, saved: false, rank: null };
+  LABELS[id] = { ...prev, ...patch, at: new Date().toISOString(), runId: RUN_ID };
+  try { localStorage.setItem(LABELS_KEY, JSON.stringify(LABELS)); } catch (e) {}
+  updateGradedCount();
+}
+
+function updateGradedCount() {
+  const seen = Object.values(LABELS).filter((l) => l.seen);
+  const saved = seen.filter((l) => l.saved).length;
+  const opened = seen.filter((l) => l.opened && !l.saved).length;
+  $('graded').textContent = seen.length
+    ? seen.length + ' seen · ' + opened + ' opened · ' + saved + ' saved'
+    : '';
+}
+
+// A card counts as seen once it has been at least half visible for a full
+// second — long enough to exclude rows that merely flew past during a fast
+// scroll to the bottom.
+const timers = new Map();
+const observer = new IntersectionObserver((entries) => {
+  for (const e of entries) {
+    const id = e.target.dataset.id;
+    if (e.isIntersecting) {
+      if (!timers.has(id)) {
+        timers.set(id, setTimeout(() => {
+          const rank = [...document.querySelectorAll('.card')].findIndex((c) => c.dataset.id === id);
+          if (!(LABELS[id] || {}).seen) mark(id, { seen: true, rank: rank + 1 });
+          timers.delete(id);
+        }, 1000));
+      }
+    } else {
+      clearTimeout(timers.get(id));
+      timers.delete(id);
+    }
+  }
+}, { threshold: 0.5 });
+
+function exportLabels() {
+  const out = Object.entries(LABELS)
+    .filter(([, l]) => l.seen)
+    .map(([companyId, l]) => ({ companyId, grade: gradeOf(l), rank: l.rank, at: l.at, runId: l.runId }))
+    .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
+  if (!out.length) { alert('Nothing graded yet — scroll through some companies first.'); return; }
+  return JSON.stringify({ exportedAt: new Date().toISOString(), runId: RUN_ID, labels: out }, null, 2);
+}
+
+async function saveLabels() {
+  const json = exportLabels();
+  if (!json) return;
+  // Chrome can write straight to disk, which keeps the file where the skill
+  // expects it. Everything else falls back to an ordinary download.
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: 'labels.json',
+        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+      });
+      const w = await handle.createWritable();
+      await w.write(json);
+      await w.close();
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return; // user cancelled — not a failure
+    }
+  }
+  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'labels.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function list(items, title) {
   if (!items || !items.length) return '';
@@ -228,9 +344,14 @@ function card(r) {
     (r.summary && r.summary !== r.what ? '<h4>Summary</h4><p>' + esc(r.summary) + '</p>' : '') +
     (links ? '<h4>Links</h4><p>' + links + '</p>' : '');
 
-  return '<div class="card' + (r.score >= 85 ? ' hot' : '') + '">' +
+  const saved = (LABELS[r.id] || {}).saved === true;
+
+  return '<div class="card' + (r.score >= 85 ? ' hot' : '') + (saved ? ' saved' : '') +
+    '" data-id="' + esc(r.id) + '">' +
     '<div class="head"><span class="score">' + r.score + '</span>' +
     '<span class="name">' + esc(r.name) + '</span>' +
+    '<button class="save" type="button" aria-pressed="' + saved + '">' +
+      (saved ? '★ saved' : '☆ save') + '</button>' +
     '<span class="meta">' + esc(r.amountLabel) + (r.date ? ' · ' + esc(r.date) : '') + '</span></div>' +
     (r.what ? '<p class="what">' + esc(r.what) + '</p>' : '') +
     (tags.length ? '<div class="tags">' + tags.join('') + '</div>' : '') +
@@ -260,11 +381,40 @@ function render() {
   $('list').innerHTML = out.map(card).join('');
   $('count').textContent = out.length + ' of ' + ROWS.length;
   $('empty').hidden = out.length > 0;
+
+  // innerHTML replaced every node, so the old observations are gone with them.
+  observer.disconnect();
+  timers.clear();
+  document.querySelectorAll('.card').forEach((c) => observer.observe(c));
 }
 
 ['q', 'minScore', 'hiringOnly', 'sort'].forEach((id) =>
   $(id).addEventListener(id === 'q' ? 'input' : 'change', render));
+
+$('list').addEventListener('click', (e) => {
+  const btn = e.target.closest('.save');
+  if (!btn) return;
+  const cardEl = btn.closest('.card');
+  const id = cardEl.dataset.id;
+  const saved = !((LABELS[id] || {}).saved);
+  // Saving implies having seen it, even if the observer has not fired yet.
+  mark(id, { saved, seen: true });
+  btn.setAttribute('aria-pressed', String(saved));
+  btn.textContent = saved ? '★ saved' : '☆ save';
+  cardEl.classList.toggle('saved', saved);
+});
+
+// The toggle event does not bubble, so it has to be captured.
+$('list').addEventListener('toggle', (e) => {
+  if (e.target.tagName !== 'DETAILS' || !e.target.open) return;
+  const id = e.target.closest('.card').dataset.id;
+  mark(id, { opened: true, seen: true });
+}, true);
+
+$('save').addEventListener('click', saveLabels);
+
 render();
+updateGradedCount();
 </script>
 </body>
 </html>

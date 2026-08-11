@@ -15,6 +15,7 @@ code. **Read before you change.**
 | Anything at all | [docs/VISION.md](docs/VISION.md) — why this exists, non-goals |
 | Change structure or add a stage | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Change what gets surfaced | [docs/SCORING.md](docs/SCORING.md) |
+| Change filtering, ordering, or recall | [docs/RANKING.md](docs/RANKING.md) — the measured redesign |
 | Add or modify a data source | [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md) |
 | Replace something fundamental | [docs/DECISIONS.md](docs/DECISIONS.md) — check it wasn't already rejected |
 | Pick up new work | [docs/ROADMAP.md](docs/ROADMAP.md) |
@@ -130,6 +131,7 @@ behavior, update the doc that describes it **in the same change**:
 
 - New/changed source → `docs/DATA_SOURCES.md`
 - Weights, rubric, or bands → `docs/SCORING.md`
+- How candidates are filtered or ordered → `docs/RANKING.md`
 - New stage, file, or invariant → `docs/ARCHITECTURE.md`
 - A choice a future agent might undo → a new ADR in `docs/DECISIONS.md`
 - Shipped a roadmap item, or found a new rough edge → `docs/ROADMAP.md`

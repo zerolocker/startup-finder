@@ -112,7 +112,9 @@ docs/                 why things are the way they are — read before changing
 
 Start with [`CLAUDE.md`](CLAUDE.md), then
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
-[`docs/DECISIONS.md`](docs/DECISIONS.md) records what was tried and rejected.
+[`docs/DECISIONS.md`](docs/DECISIONS.md) records what was tried and rejected, and
+[`docs/RANKING.md`](docs/RANKING.md) is the measured redesign of how candidates
+are filtered and ordered — read it before touching either.
 
 ```bash
 pnpm test        # 135 tests, no network required

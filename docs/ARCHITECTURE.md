@@ -98,6 +98,12 @@ for why fuzzy matching is banned here.
 unit-tested. It is a *triage* score, not a quality judgement: its only job is
 deciding who is worth an LLM call. Optimize it for recall, not precision.
 
+Its recall has since been measured and is poor — NDCG@12 = 0.500 against the
+screen's own ordering, and recall@120 of 75% at fit ≥ 70.
+[RANKING.md](RANKING.md) diagnoses why (it ranks on a legal entity name, before
+anything knows what the company does) and specifies the replacement. Read it
+before tuning any weight here.
+
 **score** — `pipeline/score.ts`. Batched LLM calls, no web access. Judges only
 what EDGAR and headlines provide. "I don't know what this company does" is a
 correct output here.
