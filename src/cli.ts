@@ -48,10 +48,10 @@ import { ingestNews } from './sources/news.ts';
 import { mergeSources } from './pipeline/merge.ts';
 import { rankCompanies } from './pipeline/prefilter.ts';
 import { buildScorePrompt, effectiveScore, scoreCompanies } from './pipeline/score.ts';
-import { researchCompanies } from './pipeline/research.ts';
+import { buildResearchPrompt, researchCompanies } from './pipeline/research.ts';
 import { renderDigest } from './report/markdown.ts';
 import { renderDashboard } from './report/html.ts';
-import { loadProfile } from './config.ts';
+import { loadProfile, profileToPrompt } from './config.ts';
 import { budgetSpent, isClaudeAvailable, startBudget } from './llm/claude.ts';
 import { log } from './util/log.ts';
 import { formatUsd } from './util/text.ts';
@@ -69,7 +69,8 @@ Commands:
   report     Regenerate reports/ from existing scored data
   stats      Summarize what is currently in data/
   show <id>  Print everything known about one company
-  prompt     Print the exact LLM screening prompt for the top candidates
+  prompt     Print the exact LLM prompt for the top candidates
+             (--stage screen | research, default screen)
 
 Options:
   --days <n>        Lookback window for ingestion. Omit to auto-catch-up from
@@ -287,13 +288,23 @@ async function cmdStats(): Promise<void> {
  * The fastest way to debug "why did this company score like that" is to read
  * exactly what the model was told about it.
  */
-async function cmdPrompt(count: number): Promise<void> {
+async function cmdPrompt(count: number, stage: string): Promise<void> {
   const [companies, profile] = await Promise.all([readAll<Company>(COMPANIES_PATH), loadProfile()]);
   if (companies.length === 0) {
     throw new Error('No companies yet — run `pnpm sf ingest && pnpm sf merge` first.');
   }
-  const batch = rankCompanies(companies, profile).slice(0, count);
-  process.stdout.write(`${buildScorePrompt(batch, profile)}\n`);
+  const ranked = rankCompanies(companies, profile).slice(0, count);
+
+  if (stage === 'research') {
+    // One prompt per company here — research is not batched.
+    const profileText = profileToPrompt(profile);
+    ranked.forEach(({ company }, i) => {
+      if (i > 0) process.stdout.write(`\n${'='.repeat(78)}\n\n`);
+      process.stdout.write(`${buildResearchPrompt(company, profileText)}\n`);
+    });
+    return;
+  }
+  process.stdout.write(`${buildScorePrompt(ranked, profile)}\n`);
 }
 
 async function cmdShow(id: string): Promise<void> {
@@ -414,6 +425,7 @@ async function main(): Promise<void> {
       model: { type: 'string', default: 'sonnet' },
       refresh: { type: 'boolean', default: false },
       'no-research': { type: 'boolean', default: false },
+      stage: { type: 'string', default: 'screen' },
       quiet: { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false },
     },
@@ -489,7 +501,7 @@ async function main(): Promise<void> {
       break;
     case 'prompt':
       // --limit doubles as the batch size to render; 3 keeps it readable.
-      await cmdPrompt(values.limit === '120' ? 3 : limit);
+      await cmdPrompt(values.limit === '120' ? 3 : limit, values.stage);
       break;
     case 'show': {
       const id = positionals[1];

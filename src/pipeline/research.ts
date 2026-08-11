@@ -49,7 +49,15 @@ function knownFacts(company: Company): string {
   return lines.join('\n');
 }
 
-function researchPrompt(company: Company, profileText: string): string {
+/**
+ * Build the exact prompt sent for one company.
+ *
+ * Exported for the same reason as buildScorePrompt: this stage is the most
+ * expensive and the most capable of confident nonsense, so being able to read
+ * the literal text — free, via `pnpm sf prompt --stage research` — is the
+ * fastest way to understand or debug a dossier.
+ */
+export function buildResearchPrompt(company: Company, profileText: string): string {
   return `Research this recently-funded startup and write a briefing for the person described below. Use web search — you have it available and you should use it.
 
 ${profileText}
@@ -131,7 +139,7 @@ export async function researchCompanies(
     }
 
     try {
-      const { value, costUsd: cost } = await runClaudeJson(researchPrompt(company, profileText), DossierSchema, {
+      const { value, costUsd: cost } = await runClaudeJson(buildResearchPrompt(company, profileText), DossierSchema, {
         model,
         allowedTools: ['WebSearch', 'WebFetch'],
         timeoutMs,
