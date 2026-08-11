@@ -141,7 +141,13 @@ toward dropping things:
    score reach the LLM. The prefilter has never seen what a company does — it
    works from a name, an amount, an industry code, and a location. **A great
    company with an uninformative name can rank low and never be looked at.**
-   This is the app's main silent-miss mode.
+
+   This is measured, not hypothetical: screening the full corpus put
+   **recall@120 at 75%** for strong matches, and the two missed companies
+   included the highest-scoring company in the entire run — buried at rank #131
+   because its name contained no recognizable keyword. If you suspect something
+   was missed, raise `--limit` and re-score; it is cheap. Details in
+   [SCORING.md](SCORING.md).
 
 Nothing is deleted, though. Everything that survived merge is in the digest's
 long-tail table and in `data/scored.jsonl`. If you know a company raised and

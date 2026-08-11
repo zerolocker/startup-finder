@@ -64,6 +64,43 @@ company the user could have found any time in the last year.
 Form D amendments sometimes report `0`. Treating unknown as zero would
 systematically bury exactly the non-US press-only companies that Form D misses.
 
+### Measured: recall@120 is 75%, and the miss was the best company in the corpus
+
+Screening the **entire** 324-company corpus instead of the top 120 makes the
+prefilter's recall computable, treating "LLM fit ≥ 70" as relevance:
+
+| Relevance threshold | Relevant | Caught by prefilter | Missed | Recall@120 |
+|---|---:|---:|---:|---:|
+| fit ≥ 70 | 8 | 6 | 2 | **75.0%** |
+| fit ≥ 60 | 18 | 16 | 2 | 88.9% |
+| fit ≥ 50 | 40 | 29 | 11 | 72.5% |
+
+The two misses at ≥70 were `Taktile Holding, Inc.` (fit **88** — the highest
+score in the whole corpus, ranked **#131**) and `ProrataAI, Inc.` (fit 78, ranked
+#158). Both were invisible in the digest.
+
+Taktile's breakdown says exactly why:
+
+```
+theme 0 · industry 4.5 · coverage 0 · recency 19 · amount 20 · geography 8 · team 5
+```
+
+`theme: 0` — the keyword matcher saw the string `"Taktile Holding, Inc."` and
+found no "AI", "data", or "infra" to latch onto. A real decisioning-infrastructure
+company scored zero on thematic fit **because of its name**. `industry` was 4.5
+because its SEC bucket is the generic `Other`, and `coverage` 0 because no press
+merged in.
+
+This is the documented silent-miss mode, quantified: the prefilter ranks on a
+name, so a company whose name carries no signal is buried regardless of quality.
+Widening `--limit` treats the symptom. The structural fix is to enrich candidates
+(resolve name → domain → description) *before* ranking, so ranking sees what a
+company does rather than what it is called — see [ROADMAP.md](ROADMAP.md).
+
+Reproduce with `pnpm sf score --limit <corpus size>` and compare against
+`rankCompanies()` order. Note 12 companies hit the budget cap, so these are lower
+bounds on what was missed.
+
 ### Tuning the prefilter
 
 Only two failure modes matter:

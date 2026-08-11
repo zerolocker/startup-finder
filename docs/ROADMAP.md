@@ -54,6 +54,30 @@ dossier already contains the homepage URL.
 
 ---
 
+## 2b. Enrich before ranking — the measured recall fix
+
+**Problem.** Recall@120 of the prefilter is **75%** at fit ≥ 70, and the miss
+included `Taktile Holding, Inc.` at fit 88 — the best company in the corpus,
+ranked #131 because the keyword matcher found nothing in its name (`theme: 0`).
+See [SCORING.md](SCORING.md). Raising `--limit` treats the symptom; the cause is
+that ranking happens on a name before anything knows what the company does.
+
+**Sketch.** Invert the order: resolve every candidate to a domain and homepage
+description *first* (the research stage already proves this works — it turned
+"Proactive AI Lab, Inc." into "Palona AI, voice agents for restaurants"), then
+rank on that text. Embeddings over enriched descriptions give a globally
+comparable ordering, which batched pointwise LLM scores do not.
+
+**Related defect.** Screening scores batches of 8 independently, so a 72 in one
+batch and a 72 in another were produced without reference to each other. That is
+fine for a cutoff but wrong for a ranking. Listwise reranking over a single slate
+would fix it.
+
+**Blocked on.** Nothing technical — it is a cost question, and enrichment is
+permanently cacheable per company.
+
+---
+
 ## 3. An evaluation harness for scoring changes
 
 **Problem.** [SCORING.md](SCORING.md) has to tell you to eyeball the top 20 before
