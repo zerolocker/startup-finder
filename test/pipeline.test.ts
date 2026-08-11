@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mergeSources, shouldMerge } from '../src/pipeline/merge.ts';
 import { prefilterScore, rankCompanies } from '../src/pipeline/prefilter.ts';
 import { buildScorePrompt, effectiveScore } from '../src/pipeline/score.ts';
+import { buildResearchPrompt } from '../src/pipeline/research.ts';
 import { extractJson } from '../src/llm/claude.ts';
 import type { Company, FormDFiling, NewsItem, Profile, ScoredCompany } from '../src/types.ts';
 
@@ -288,5 +289,38 @@ describe('buildScorePrompt', () => {
   it('includes anti-themes so mismatches can be scored down', () => {
     expect(prompt).toContain('ACTIVELY NOT INTERESTED IN');
     expect(prompt).toContain('crypto');
+  });
+});
+
+describe('buildResearchPrompt', () => {
+  const company = mergeSources([filing()], []).companies[0]!;
+  const prompt = buildResearchPrompt(company, 'ABOUT THE PERSON:\nengineer who likes infra');
+
+  it('hands over what we already know, so the model does not re-derive it', () => {
+    expect(prompt).toContain('Company name (as filed): Acme AI, Inc.');
+    expect(prompt).toContain('San Francisco, CA');
+    expect(prompt).toContain('Ada Lovelace');
+    expect(prompt).toContain('https://sec.test/acme');
+  });
+
+  it('embeds the profile so the briefing is written for this person', () => {
+    expect(prompt).toContain('engineer who likes infra');
+  });
+
+  it('tells the model to actually search, unlike the screening stage', () => {
+    expect(prompt).toContain('Use web search');
+  });
+
+  it('carries the anti-fabrication rules that keep dossiers honest', () => {
+    // These are the difference between a useful empty dossier and a
+    // confident, wrong one — see VISION.md "unknown is cheap, wrong is expensive".
+    expect(prompt).toContain('An empty dossier is a useful\n  result; a fabricated one is actively harmful');
+    expect(prompt).toContain('Never invent open roles, investor names');
+    expect(prompt).toContain('If the search results are about a DIFFERENT');
+  });
+
+  it('asks for one company only — research is not batched', () => {
+    expect(prompt).not.toContain('COMPANIES TO SCORE');
+    expect((prompt.match(/Company name \(as filed\)/g) ?? []).length).toBe(1);
   });
 });

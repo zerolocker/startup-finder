@@ -36,6 +36,7 @@ pnpm sf score && pnpm sf report    # re-screen without re-ingesting or re-resear
 pnpm sf stats                      # what's in data/
 pnpm sf show <company-id>          # full record for one company, incl. score breakdown
 pnpm sf prompt --limit 3           # the literal screening prompt, no LLM call
+pnpm sf prompt --stage research    # the literal research prompt, no LLM call
 ```
 
 ## The rules that matter

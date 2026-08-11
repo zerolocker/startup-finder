@@ -168,5 +168,6 @@ pnpm sf score --limit 200 && pnpm sf report
 ```
 
 Re-scoring is cheap and research is cached. `pnpm sf prompt --limit 3` prints the
-exact text the screening stage sends, so you can see precisely how your profile
-is being described to the model.
+exact text the screening stage sends, and `pnpm sf prompt --stage research`
+prints what the research stage sends — both free, so you can see precisely how
+your profile is described to the model at each step.

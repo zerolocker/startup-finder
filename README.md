@@ -56,7 +56,8 @@ pnpm sf run --days 3 --budget 2    # quick pass
 pnpm sf score && pnpm sf report    # re-screen after editing your profile
 pnpm sf stats                      # what's in data/
 pnpm sf show oxide-computer        # everything known about one company
-pnpm sf prompt --limit 3           # the exact LLM screening prompt, no LLM call
+pnpm sf prompt --limit 3           # the exact screening prompt, no LLM call
+pnpm sf prompt --stage research    # the research prompt, no LLM call
 ```
 
 ## Run it weekly
