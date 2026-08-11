@@ -69,14 +69,19 @@ silently skips runs while the machine is asleep. `launchd`:
 | `SF_DAYS` | auto | Lookback window. Left unset, each run covers everything since the last one — so a laptop that was closed for three weeks catches up instead of skipping them. Set a number to pin it. |
 | `SF_LIMIT` | 120 | Companies sent to the LLM screen. |
 | `SF_RESEARCH` | 15 | Companies given a full dossier. |
-| `SF_BUDGET` | 6 | Plan-usage cap in $-equivalents. |
 | `SF_PUSH` | 0 | `1` to push after committing. |
 | `SF_NOTIFY` | 1 | `0` to suppress the macOS notification. |
+
+There is no plan-usage cap. `SF_LIMIT` and `SF_RESEARCH` are what bound an
+unattended run's cost — a scheduled run at the defaults uses roughly
+$4-equivalent, and the actual figure is logged and written to `runs.jsonl`.
+`SF_BUDGET` was removed in [ADR-011](DECISIONS.md#adr-011-report-plan-usage-instead-of-capping-it);
+if your plist still sets it, it is simply ignored.
 
 Set them in the plist's `EnvironmentVariables`, or inline for a one-off:
 
 ```bash
-SF_DAYS=14 SF_BUDGET=10 ./scripts/weekly.sh
+SF_DAYS=14 SF_RESEARCH=25 ./scripts/weekly.sh
 ```
 
 ## When it doesn't run

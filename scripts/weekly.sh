@@ -9,7 +9,6 @@
 #   SF_DAYS      lookback window in days           (default: auto-catch-up)
 #   SF_LIMIT     companies sent to the LLM screen  (default 120)
 #   SF_RESEARCH  companies given a dossier         (default 15)
-#   SF_BUDGET    plan-usage cap in $-equivalents   (default 6)
 #   SF_PUSH      1 to `git push` after committing  (default 0)
 #   SF_NOTIFY    1 for a macOS notification        (default 1)
 #
@@ -25,7 +24,6 @@ cd "$REPO"
 DAYS="${SF_DAYS:-}"
 LIMIT="${SF_LIMIT:-120}"
 RESEARCH="${SF_RESEARCH:-15}"
-BUDGET="${SF_BUDGET:-6}"
 PUSH="${SF_PUSH:-0}"
 NOTIFY="${SF_NOTIFY:-1}"
 
@@ -63,7 +61,7 @@ command -v claude >/dev/null 2>&1 || fail "claude CLI not on PATH (PATH=$PATH)"
 command -v git    >/dev/null 2>&1 || fail "git not on PATH (PATH=$PATH)"
 
 say "startup-finder weekly issue — $STAMP"
-say "days=${DAYS:-auto} limit=$LIMIT research=$RESEARCH budget=$BUDGET push=$PUSH"
+say "days=${DAYS:-auto} limit=$LIMIT research=$RESEARCH push=$PUSH"
 
 # --- run -------------------------------------------------------------------
 # Omitting --days lets the pipeline widen its window to cover everything since
@@ -80,7 +78,6 @@ pnpm sf run \
   ${DAYS_ARG[@]+"${DAYS_ARG[@]}"} \
   --limit "$LIMIT" \
   --research "$RESEARCH" \
-  --budget "$BUDGET" \
   || fail "pipeline returned non-zero"
 
 DIGEST="reports/$STAMP-digest.md"
@@ -93,7 +90,7 @@ if [ -n "$(git status --porcelain data reports)" ]; then
   git add data reports
   git commit -q -m "Digest $STAMP
 
-Automated weekly run: --days ${DAYS:-auto} --research $RESEARCH --budget $BUDGET."
+Automated weekly run: --days ${DAYS:-auto} --limit $LIMIT --research $RESEARCH."
   say "committed $(git rev-parse --short HEAD)"
 
   if [ "$PUSH" = "1" ]; then

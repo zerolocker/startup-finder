@@ -98,8 +98,10 @@ Widening `--limit` treats the symptom. The structural fix is to enrich candidate
 company does rather than what it is called — see [ROADMAP.md](ROADMAP.md).
 
 Reproduce with `pnpm sf score --limit <corpus size>` and compare against
-`rankCompanies()` order. Note 12 companies hit the budget cap, so these are lower
-bounds on what was missed.
+`rankCompanies()` order. The figures above are lower bounds: 12 companies were
+cut short by the spend cap that existed at the time of the measurement. That cap
+is gone ([ADR-011](DECISIONS.md#adr-011-report-plan-usage-instead-of-capping-it)),
+so a re-run today would screen the full corpus — and cost proportionally more.
 
 ### Tuning the prefilter
 

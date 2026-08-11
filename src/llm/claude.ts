@@ -17,15 +17,17 @@
  * much of that limit a run consumes. Read every "$" in this file as "plan
  * usage, expressed in dollar-equivalents" — not as money leaving an account.
  *
- * Three things here are load-bearing and should not be removed casually:
+ * Spend is **tracked and reported, never enforced.** There is no cap: a run
+ * uses whatever the work needs and tells you what it used. See ADR-011 for why
+ * the hard cap was removed. The two remaining guards against a runaway run are
+ * the per-stage item limits (`--limit`, `--research`) and the disk cache.
+ *
+ * Two things here are load-bearing and should not be removed casually:
  *
  *   1. **Disk caching.** A research call is ~$0.13-equivalent and ~15s.
  *      Re-running the pipeline without a cache would re-spend that usage for
  *      every company every time.
- *   2. **The budget cap.** A bug that fans out over 3000 companies instead of
- *      50 would burn through the plan's rate limit and lock the user out of
- *      Claude entirely for hours. That is the real failure mode it prevents.
- *   3. **The sandbox cwd.** `claude` reads CLAUDE.md from its working
+ *   2. **The sandbox cwd.** `claude` reads CLAUDE.md from its working
  *      directory. Run from the repo root it would ingest *this project's* dev
  *      instructions into every scoring prompt — irrelevant, costly, and
  *      confusing. We run it from an empty scratch directory instead.
@@ -69,47 +71,26 @@ interface ClaudeCliEnvelope {
 }
 
 // ---------------------------------------------------------------------------
-// Budget tracking
+// Cost tracking
 // ---------------------------------------------------------------------------
 
-export class BudgetExceededError extends Error {
-  constructor(spent: number, cap: number) {
-    super(`LLM budget exceeded: spent $${spent.toFixed(2)} of $${cap.toFixed(2)} cap`);
-    this.name = 'BudgetExceededError';
-  }
-}
-
-let spentUsd = 0;
-let budgetCapUsd = Number(process.env.SF_BUDGET_USD ?? 10);
-
 /**
- * Cost we assume a call will incur while it is in flight.
+ * Plan usage accumulated by this process, in dollar-equivalents.
  *
- * Without this, the cap is only checked against *settled* spend, so N
- * concurrent calls can all pass the check and then collectively blow past it.
- * That is not hypothetical — an early run overshot an $6 cap by $1.22 with
- * concurrency 3. Reserving up front makes the cap hold to within one call's
- * cost rather than one call's cost times the concurrency.
- *
- * Tuned to the observed cost of the most expensive call type (web-search
- * research, ~$0.50). Over-reserving only makes the cap slightly conservative;
- * under-reserving reintroduces the overshoot.
+ * Purely an odometer. Nothing reads it to decide whether to make a call — see
+ * ADR-011. It exists so the run summary, `runs.jsonl`, and the report header
+ * can tell the user what a run actually consumed.
  */
-const ASSUMED_CALL_COST_USD = 0.5;
+let totalSpentUsd = 0;
 
-let reservedUsd = 0;
+/** Zero the odometer at the start of a run. */
+export function resetSpend(): void {
+  totalSpentUsd = 0;
+}
 
-/** Reset the accumulator and set a cap for this run. */
-export function startBudget(capUsd: number): void {
-  spentUsd = 0;
-  reservedUsd = 0;
-  budgetCapUsd = capUsd;
-}
-export function budgetSpent(): number {
-  return spentUsd;
-}
-export function budgetRemaining(): number {
-  return Math.max(0, budgetCapUsd - spentUsd - reservedUsd);
+/** Plan usage so far this process, in dollar-equivalents. */
+export function spentUsd(): number {
+  return totalSpentUsd;
 }
 
 // ---------------------------------------------------------------------------
@@ -152,12 +133,7 @@ async function writeLlmCache(key: string, result: ClaudeResult): Promise<void> {
   await writeFile(join(dir, `${key}.json`), JSON.stringify({ text: result.text, costUsd: result.costUsd }), 'utf8');
 }
 
-/**
- * Run one prompt through `claude -p` and return its text output.
- *
- * Throws {@link BudgetExceededError} before spending anything if the run is
- * already over budget.
- */
+/** Run one prompt through `claude -p` and return its text output. */
 export async function runClaude(prompt: string, opts: ClaudeOptions = {}): Promise<ClaudeResult> {
   const { model = 'sonnet', allowedTools = [], timeoutMs = 180_000, cache = true } = opts;
 
@@ -170,18 +146,7 @@ export async function runClaude(prompt: string, opts: ClaudeOptions = {}): Promi
     }
   }
 
-  // Reserve before dispatch so concurrent calls cannot collectively overshoot.
-  if (spentUsd + reservedUsd + ASSUMED_CALL_COST_USD > budgetCapUsd) {
-    throw new BudgetExceededError(spentUsd + reservedUsd, budgetCapUsd);
-  }
-  reservedUsd += ASSUMED_CALL_COST_USD;
-
-  try {
-    return await withRetry(() => invoke(prompt, { model, allowedTools, timeoutMs }, key, cache));
-  } finally {
-    // Release the reservation; actual cost was added to spentUsd inside.
-    reservedUsd = Math.max(0, reservedUsd - ASSUMED_CALL_COST_USD);
-  }
+  return withRetry(() => invoke(prompt, { model, allowedTools, timeoutMs }, key, cache));
 }
 
 /**
@@ -191,8 +156,6 @@ export async function runClaude(prompt: string, opts: ClaudeOptions = {}): Promi
  * non-zero exit or an API error and succeeds immediately on retry. Without this,
  * a failed scoring batch silently drops 8 companies from the run — which is
  * exactly the kind of quiet data loss that is hard to notice in a report.
- *
- * Budget errors are never retried: they are a deliberate stop, not a blip.
  */
 async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
   let lastError: unknown;
@@ -200,7 +163,6 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
     try {
       return await fn();
     } catch (err) {
-      if (err instanceof BudgetExceededError) throw err;
       lastError = err;
       if (attempt < attempts) {
         const backoff = 1000 * 2 ** (attempt - 1);
@@ -265,7 +227,7 @@ async function invoke(
 
   const ms = Date.now() - started;
   const costUsd = envelope.total_cost_usd ?? 0;
-  spentUsd += costUsd;
+  totalSpentUsd += costUsd;
 
   if (envelope.is_error || typeof envelope.result !== 'string') {
     throw new Error(`claude reported an error: ${envelope.subtype ?? 'unknown'} ${envelope.api_error_status ?? ''}`);
