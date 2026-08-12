@@ -176,6 +176,17 @@ export type LlmScore = z.infer<typeof LlmScoreSchema>;
 export interface ScoredCompany extends Company {
   prefilter: PrefilterScore;
   llm: LlmScore | null;
+  /**
+   * When `llm` was produced. Absent on records written before this field
+   * existed, and always absent when `llm` is null.
+   *
+   * A run only screens its top `--limit`, but it keeps scores earlier runs
+   * produced for everyone else, so one file legitimately mixes scores from
+   * several runs. Scores are not comparable across runs — re-batching alone
+   * moves them by ~7 points (docs/RANKING.md) — so anything that compares or
+   * aggregates them needs to know which run each came from.
+   */
+  llmScoredAt?: string;
 }
 
 /** Deep-research dossier, produced only for the top-ranked companies. */

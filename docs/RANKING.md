@@ -145,8 +145,15 @@ The best company this app has ever surfaced — the subject of the recall
 measurement in [SCORING.md](SCORING.md) — silently left the corpus because
 unrelated companies filed on a later date. This is not merely a ranking miss:
 it is destroying results that plan usage was already spent on, and it gets worse
-every week as the corpus grows. Ungating (B) removes the mechanism entirely;
-until then, `stageScore` should merge prior scores forward.
+every week as the corpus grows.
+
+**Fixed.** `carryForwardScores()` in `pipeline/score.ts` keeps prior scores for
+any company this run did not screen, and `ScoredCompany.llmScoredAt` records
+which run produced each one. All 211 lost scores were recovered from git history
+with the same function. A carried score is stale by construction — the company's
+evidence may have moved since — but that is strictly better than discarding a
+paid-for judgement and ranking on the prefilter's capped guess instead. Ungating
+(B) removes the mechanism that creates the problem.
 
 **Batch-composition dependence is large.** Of 101 companies re-scored in both
 runs from byte-identical input data, **89 changed score**, mean |Δ| = **7.0**,

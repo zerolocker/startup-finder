@@ -47,7 +47,12 @@ import { autoLookbackDays, ingestEdgar } from './sources/edgar.ts';
 import { ingestNews } from './sources/news.ts';
 import { mergeSources } from './pipeline/merge.ts';
 import { rankCompanies } from './pipeline/prefilter.ts';
-import { buildScorePrompt, effectiveScore, scoreCompanies } from './pipeline/score.ts';
+import {
+  buildScorePrompt,
+  carryForwardScores,
+  effectiveScore,
+  scoreCompanies,
+} from './pipeline/score.ts';
 import { buildResearchPrompt, researchCompanies } from './pipeline/research.ts';
 import { renderDigest } from './report/markdown.ts';
 import { renderDashboard } from './report/html.ts';
@@ -162,7 +167,12 @@ async function stageScore(limit: number, model: 'haiku' | 'sonnet' | 'opus'): Pr
   const shortlist = ranked.slice(0, limit);
   log.info(`Prefilter: ${companies.length} companies -> top ${shortlist.length} go to the LLM`);
 
+  // Read before writing: the file we are about to overwrite holds LLM scores
+  // earlier runs paid for, and anything outside this run's shortlist would
+  // otherwise be thrown away.
+  const previous = await readAll<ScoredCompany>(SCORED_PATH);
   const { scored } = await scoreCompanies(shortlist, profile, { model });
+  const scoredAt = new Date().toISOString();
 
   // Companies below the cutoff still belong in the dataset, ranked by
   // prefilter alone, so nothing silently disappears between runs.
@@ -171,7 +181,13 @@ async function stageScore(limit: number, model: 'haiku' | 'sonnet' | 'opus'): Pr
     .filter(({ company }) => !scoredIds.has(company.id))
     .map(({ company, prefilter }) => ({ ...company, prefilter, llm: null }));
 
-  const all = [...scored, ...remainder].sort((a, b) => effectiveScore(b) - effectiveScore(a));
+  const all = carryForwardScores([...scored, ...remainder], previous, scoredAt).sort(
+    (a, b) => effectiveScore(b) - effectiveScore(a),
+  );
+
+  const carried = all.filter((c) => c.llm && c.llmScoredAt !== scoredAt).length;
+  if (carried > 0) log.info(`Kept ${carried} LLM scores from earlier runs`);
+
   await writeAll(SCORED_PATH, all);
   return all;
 }

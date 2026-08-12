@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { mergeSources, shouldMerge } from '../src/pipeline/merge.ts';
 import { prefilterScore, rankCompanies } from '../src/pipeline/prefilter.ts';
-import { buildScorePrompt, effectiveScore } from '../src/pipeline/score.ts';
+import { buildScorePrompt, carryForwardScores, effectiveScore } from '../src/pipeline/score.ts';
 import { buildResearchPrompt } from '../src/pipeline/research.ts';
 import { extractJson } from '../src/llm/claude.ts';
 import type { Company, FormDFiling, NewsItem, Profile, ScoredCompany } from '../src/types.ts';
@@ -222,6 +222,56 @@ describe('effectiveScore', () => {
   it('caps unscored companies so they cannot outrank a validated one', () => {
     expect(effectiveScore(scored(null))).toBeLessThanOrEqual(45);
     expect(effectiveScore(scored(50))).toBeGreaterThan(effectiveScore(scored(null)));
+  });
+});
+
+describe('carryForwardScores', () => {
+  const company = mergeSources([filing()], []).companies[0]!;
+  const at = '2026-08-11T00:00:00.000Z';
+  const make = (id: string, llmFit: number | null, llmScoredAt?: string): ScoredCompany => ({
+    ...company,
+    id,
+    prefilter: { total: 90, breakdown: {}, notes: [] },
+    llm: llmFit == null ? null : {
+      fit: llmFit, whatTheyDo: '', matchedInterests: [], concerns: [], rationale: '', confidence: 'high',
+    },
+    ...(llmScoredAt ? { llmScoredAt } : {}),
+  });
+
+  // The regression this exists for: one extra day of unrelated filings pushed
+  // a fit-88 company below --limit, and the run rewrote it as llm: null.
+  it('keeps a score from an earlier run when this run did not screen the company', () => {
+    const out = carryForwardScores([make('taktile', null)], [make('taktile', 88, '2026-08-10T00:00:00.000Z')], at);
+    expect(out[0]!.llm?.fit).toBe(88);
+    expect(out[0]!.llmScoredAt).toBe('2026-08-10T00:00:00.000Z');
+  });
+
+  it('prefers a fresh score over a stale one and stamps it with this run', () => {
+    const out = carryForwardScores([make('a', 40)], [make('a', 88, '2026-08-10T00:00:00.000Z')], at);
+    expect(out[0]!.llm?.fit).toBe(40);
+    expect(out[0]!.llmScoredAt).toBe(at);
+  });
+
+  // A batch that fails validation also arrives with llm: null.
+  it('rescues a company whose batch failed this run', () => {
+    const out = carryForwardScores([make('a', null)], [make('a', 61)], at);
+    expect(out[0]!.llm?.fit).toBe(61);
+  });
+
+  it('leaves a genuinely unscored company alone', () => {
+    const out = carryForwardScores([make('new', null)], [make('other', 70)], at);
+    expect(out[0]!.llm).toBeNull();
+    expect(out[0]!.llmScoredAt).toBeUndefined();
+  });
+
+  it('ignores prior records that were themselves unscored', () => {
+    const out = carryForwardScores([make('a', null)], [make('a', null)], at);
+    expect(out[0]!.llm).toBeNull();
+  });
+
+  it('preserves every input company', () => {
+    const out = carryForwardScores([make('a', null), make('b', 10), make('c', null)], [make('a', 88)], at);
+    expect(out.map((c) => c.id)).toEqual(['a', 'b', 'c']);
   });
 });
 

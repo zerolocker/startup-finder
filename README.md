@@ -15,12 +15,14 @@ Output: [`reports/latest.md`](reports/latest.md) and
 
 ## What it produces
 
-A real 10-day run: 1,575 SEC filings → 316 operating companies → 324 candidates
-with press → 120 LLM-screened → 15 researched in depth. About 15 minutes.
+A real incremental run — one extra business day on top of an existing corpus:
+206 SEC filings → 52 operating companies → 378 candidates → 120 LLM-screened →
+researched in depth. About nine minutes, $3.20-equivalent of plan usage.
 
-The top result was a $150M Series C company, identified as YC-backed agentic AI
-for logistics, with 13 open engineering roles, founder backgrounds, and its
-investor list — none of which appears in the SEC filing that surfaced it.
+That day's best new find was an AI evaluation and observability platform, scored
+79, with its product, customers, and two open roles — none of which appears in
+the SEC filing that surfaced it. The top of the digest overall is a $110M
+decisioning-infrastructure company at 88.
 
 ## Why it exists
 
@@ -37,18 +39,38 @@ So: **Form D for recall, news for context, an LLM for the judgement in between.*
 
 ```mermaid
 flowchart TD
-    A["SEC Form D (1,575 filings / 10 days)"] --> C
-    B["Funding news RSS (7 feeds)"] --> C
-    C["merge — join by exact name (324 companies)"] --> D
-    D["prefilter — deterministic (324 → 120, free)"] --> E
-    E["llm screen — batched, no web (120 scored, ≈$1)"] --> F
-    F["research — web search (15 dossiers, ≈$4)"] --> G & H
-    G["reports/latest.md"]
-    H["reports/latest.html"]
+    A["<b>SEC Form D</b> — 206 filings"] -->|"−154 funds, SPVs, real estate"| C
+    B["<b>funding news RSS</b> — 7 feeds, 39 items"] --> C
+    C["<b>merge</b> — exact-name join<br/>378 companies, cumulative"] --> D
+    D["<b>prefilter</b> — deterministic, free<br/>ranks all 378 · <b>gate: top 120 only</b>"]
+    D -->|"top 120"| E
+    D -->|"258 skipped, still kept"| S
+    E["<b>llm screen</b> — batched ×8, no web<br/>120 scored · $1.72 · 3.5 min"] --> S
+    S[("<b>data/scored.jsonl</b> — 331 scored<br/>120 fresh + 211 carried forward<br/>from runs that already paid for them")]
+    S --> F & R
+    F["<b>research</b> — web search<br/>top 8 → dossiers · ~$0.40 each"] --> R
+    R["<b>report</b>"] --> G["reports/latest.md"]
+    R --> H["reports/latest.html<br/>grading UI → data/labels.jsonl"]
+
+    classDef gate fill:#fde68a,stroke:#b45309,color:#1a1a19
+    classDef store fill:#d1fae5,stroke:#047857,color:#1a1a19
+    class D gate
+    class S store
 ```
 
-Each stage runs independently against on-disk data, so you can re-screen and
-re-report without re-running the expensive research.
+Numbers are one real incremental run: one extra business day of filings on top of
+an existing corpus, **$3.20-equivalent in about nine minutes**. Each stage runs
+independently against on-disk data, so you can re-screen and re-report without
+re-running the expensive research.
+
+The dashed edges are the two things worth understanding. The **prefilter is a
+gate** — only its top `--limit` are ever screened, and it ranks on a company's
+legal name before anything knows what the company does, which is why its ordering
+scores NDCG@12 = 0.500 against the screen's own judgement. And **scores carry
+forward** between runs, so a company that drifts below the cutoff keeps the
+judgement an earlier run paid for instead of silently reverting to unscored.
+Both are measured in [`docs/RANKING.md`](docs/RANKING.md), which specifies the
+replacement.
 
 ```bash
 pnpm sf run                        # everything (the normal entry point)

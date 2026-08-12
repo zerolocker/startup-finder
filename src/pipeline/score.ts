@@ -224,3 +224,34 @@ export function effectiveScore(company: ScoredCompany): number {
   if (company.llm) return company.llm.fit;
   return Math.min(45, company.prefilter.total * 0.5);
 }
+
+/**
+ * Keep LLM scores that earlier runs already paid for.
+ *
+ * Only the top `--limit` candidates are screened, and the corpus grows every
+ * week, so a company that scored well once drifts below the cutoff and would
+ * otherwise be rewritten as `llm: null`. One extra day of unrelated filings
+ * once destroyed 211 scores this way, the best of them a fit-88 company — the
+ * strongest result the app had produced. See docs/RANKING.md.
+ *
+ * A carried-forward score is stale by construction: the company's evidence may
+ * have changed since. It is still strictly better than the alternative, which
+ * is discarding a paid-for judgement and ranking on the prefilter's capped
+ * guess instead. `llmScoredAt` records which run produced each score, because
+ * scores are not comparable across runs.
+ *
+ * Applies to freshly-screened companies too — a batch that failed validation
+ * also arrives with `llm: null` and deserves the same fallback.
+ */
+export function carryForwardScores(
+  current: readonly ScoredCompany[],
+  previous: readonly ScoredCompany[],
+  scoredAt: string,
+): ScoredCompany[] {
+  const prior = new Map(previous.filter((c) => c.llm).map((c) => [c.id, c]));
+  return current.map((c) => {
+    if (c.llm) return { ...c, llmScoredAt: scoredAt };
+    const old = prior.get(c.id);
+    return old ? { ...c, llm: old.llm, llmScoredAt: old.llmScoredAt } : c;
+  });
+}

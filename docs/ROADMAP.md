@@ -156,15 +156,30 @@ and the reports reveal which companies the user is tracking.
 
 Small, real, and worth fixing when nearby:
 
-- **Re-scoring discards LLM scores it already paid for.** `stageScore` reads
-  `companies.jsonl`, never `scored.jsonl`, then rewrites the file — so any company
-  outside *this* run's top `--limit` is reset to `llm: null` even if an earlier run
-  scored it. One extra day of filings destroyed **211 existing scores**, including
-  Taktile at fit 88, the best result this app has produced. Fix: merge prior scores
-  forward in `stageScore` before writing. Ungating
-  ([ADR-014](DECISIONS.md#adr-014-retrieval-orders-it-does-not-gate)) removes the
-  mechanism, but this is worth fixing on its own — it is cheap, and it is currently
-  throwing away plan usage every run. Measured in [RANKING.md](RANKING.md).
+- **Batching defeats the response cache, so incremental runs pay full price.**
+  Batches are contiguous slices of the *prefilter-ranked* list
+  (`score.ts`), and the cache key is a hash of the whole batch prompt. Adding one
+  day of filings reorders the list, which reshuffles every batch, which changes
+  every prompt — so 101 companies whose evidence had not changed at all were
+  re-screened at full cost. Measured: **$1.72 for a run where ~$1.45 of it bought
+  nothing.**
+
+  The fix is to cache **per company** rather than per batch: key each company's
+  score on its own rendered evidence plus the rubric, look those up first, and
+  batch only the misses. That decouples caching from batch composition entirely
+  and would take a one-day incremental run from ~$1.72 to ~$0.50. It also removes
+  a coupling that makes cost depend on rank order, which is nobody's mental model.
+- **Lifetime plan usage is not actually tracked.** `runs.jsonl` is only appended by
+  `sf run`, so running stages individually — which is what the docs recommend while
+  iterating — records nothing. `pnpm sf stats` reports `Runs 0 (lifetime plan usage
+  ~$0.00-equiv)` after a session that really spent ~$3.20. Since rate limit is the
+  scarce resource, this is the one number worth getting right; each stage should
+  append its own record.
+- **A carried-forward score can be silently stale.** `stageScore` now keeps LLM
+  scores from earlier runs, which is strictly better than discarding them, but the
+  company's evidence may have changed since. `Company.lastUpdatedAt` and the new
+  `ScoredCompany.llmScoredAt` are enough to detect it — if the former is newer, the
+  score predates the evidence and the company should be preferred for re-screening.
 - **Duplicate companies** under name variants — see
   [ADR-004](DECISIONS.md#adr-004-exact-name-matching-only). The intended fix is a
   curated alias map in `config/`, not fuzzy matching.
