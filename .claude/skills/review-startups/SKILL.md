@@ -5,20 +5,18 @@ description: Run the startup grading loop — open the dashboard so the user can
 
 # Reviewing startups
 
-Human-in-the-loop relevance labels for `data/labels.jsonl`. These are the only
-ground-truth signal this app has — the screen's own `fit` can measure the stages
-*below* it, but nothing except a human can measure the screen. Design rationale:
-[docs/RANKING.md](../../../docs/RANKING.md). Two modes.
+Human-in-the-loop relevance labels for `data/labels.jsonl`. The model's own `fit`
+score cannot tell you whether the model has good taste; only the user can. These
+labels are the only ground truth this app has. Two modes.
 
 ## Mode A — review (user wants to grade)
 
-Regenerate the metadata, then serve the repo root and open the dashboard. It
-**must be served** — the page fetches `data/*.jsonl`, and `fetch` is blocked on
-`file://`, so opening `index.html` directly shows a "could not load the data"
-panel instead of the digest:
+Serve the repo root and open the dashboard. It **must be served** — the page
+fetches `data/`, and `fetch` is blocked on `file://`, so opening `index.html`
+directly shows a "could not load the data" panel instead of the issue:
 
 ```bash
-pnpm sf report && python3 -m http.server 8000 >/dev/null 2>&1 & sleep 1 && open http://localhost:8000/
+python3 -m http.server 8000 >/dev/null 2>&1 & sleep 1 && open http://localhost:8000/
 ```
 
 Run the server in the background and stop it when they are done. If port 8000 is
@@ -26,14 +24,13 @@ taken, any port works. There is nothing to build and no dependency to install.
 
 Tell them three things and then **stop and wait**:
 
-1. **Set "Min fit" to `any`.** It defaults to `70+`, which renders ~10 of 421 rows.
-   Labels only exist for companies actually displayed, so leaving the filter up
-   means grading only what the ranker already liked — the exact bias these labels
-   are meant to detect.
+1. **Pick the issue** with the Issue dropdown. Each run is one day; the dashboard
+   shows one at a time. "Min fit" already defaults to `any`, and every company in
+   the run is rendered, so no filtering is needed to see everything.
 2. **Grading is mostly automatic.** Scrolling past a card marks it *seen*
    (grade 0, ignored). Expanding **Details** marks it *opened* (grade 1). Only
    ★ **save** (grade 2) is a deliberate click. So a normal read-through produces
-   labels without grading 300 companies by hand.
+   labels without grading every company by hand.
 3. **Press "Save grades" when done**, which writes `labels.json` — to a location
    they choose in Chrome, or to `~/Downloads` elsewhere.
 
@@ -47,13 +44,13 @@ loses nothing. They can review across several sittings and export once.
    probably still in Mode A — say so rather than guessing.
 
 2. **Merge into `data/labels.jsonl`.** One JSON object per line:
-   `{companyId, grade, rank, at, runId}`. Upsert by `companyId` — a later grade
-   for the same company replaces an earlier one, since taste is allowed to
-   change, but keep every distinct `runId` observation, because a company graded
-   across two runs is signal about drift, not a duplicate.
+   `{companyId, grade, rank, at, runId}`, where `runId` is the issue date. Upsert
+   by `companyId` — a later grade replaces an earlier one, since taste is allowed
+   to change — but keep every distinct `runId` observation, because a company
+   graded in two issues is signal about drift, not a duplicate.
 
 3. **Sanity-check before writing.** Three things that mean the export is wrong:
-   - Any `companyId` absent from `data/scored.jsonl` — a stale dashboard.
+   - Any `companyId` absent from that run's `data/runs/<date>.jsonl` — a stale tab.
    - Every grade `0` — usually a fast scroll to the bottom, not real judgement.
    - Fewer than ~20 labels — say so; it is not enough to compute anything
      stable, though it is fine to bank it and continue later.
@@ -80,8 +77,8 @@ built on these labels:
   a bias that is invisible and self-confirming. Never fill missing rows with 0
   when merging.
 - **`rank` records where on screen the company was when it was seen.** Attention
-  decays down a 324-row list, so a `0` at rank 300 is much weaker evidence than a
-  `0` at rank 5. Keep the field; an eval can truncate on it.
+  decays down a long list, so a `0` near the bottom is much weaker evidence than a
+  `0` at the top. Keep the field; an eval can truncate on it.
 
 ## If the export gets fiddly
 

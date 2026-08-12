@@ -1,12 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { mergeSources, shouldMerge } from '../src/pipeline/merge.ts';
-import { prefilterScore, rankCompanies } from '../src/pipeline/prefilter.ts';
-import { buildScorePrompt, carryForwardScores, effectiveScore } from '../src/pipeline/score.ts';
-import { buildResearchPrompt } from '../src/pipeline/research.ts';
+import { buildResearchPrompt, fitOf } from '../src/pipeline/research.ts';
 import { extractJson } from '../src/llm/claude.ts';
-import type { Company, FormDFiling, NewsItem, Profile, ScoredCompany } from '../src/types.ts';
-
-const NOW = Date.parse('2026-08-08T00:00:00Z');
+import type { Assessment, FormDFiling, NewsItem, Profile, RunCompany } from '../src/types.ts';
 
 const PROFILE: Profile = {
   about: 'engineer',
@@ -148,142 +144,6 @@ describe('shouldMerge', () => {
   });
 });
 
-describe('prefilterScore', () => {
-  const score = (c: Company) => prefilterScore(c, PROFILE, NOW);
-  const base = () => mergeSources([filing()], []).companies[0]!;
-
-  it('rewards a recent, well-sized, on-theme round', () => {
-    expect(score(base()).total).toBeGreaterThan(60);
-  });
-
-  it('penalizes stale funding', () => {
-    const old = base();
-    old.latestFunding!.date = '2025-01-01';
-    expect(score(old).breakdown['recency']).toBe(0);
-  });
-
-  it('penalizes anti-theme companies', () => {
-    const crypto = base();
-    crypto.name = 'Acme Blockchain Token Inc';
-    crypto.evidence.push('Headline: Acme Blockchain raises for token launch');
-    expect(score(crypto).breakdown['antiTheme']).toBeLessThan(0);
-    expect(score(crypto).total).toBeLessThan(score(base()).total);
-  });
-
-  it('treats an unknown amount as uncertain rather than disqualifying', () => {
-    const unknown = base();
-    unknown.latestFunding!.amountUsd = null;
-    expect(score(unknown).breakdown['amount']).toBeGreaterThan(0);
-    expect(score(unknown).notes.join(' ')).toContain('unknown');
-  });
-
-  it('rewards corroboration by both SEC and press', () => {
-    const both = mergeSources([filing()], [newsItem()]).companies[0]!;
-    expect(score(both).breakdown['corroborated']).toBeGreaterThan(0);
-    expect(score(both).total).toBeGreaterThan(score(base()).total);
-  });
-
-  it('rewards a preferred location', () => {
-    const elsewhere = base();
-    elsewhere.location = 'Austin, TX';
-    expect(score(base()).breakdown['geography']).toBeGreaterThan(score(elsewhere).breakdown['geography']!);
-  });
-
-  // Stored scores are diffed by git every run. Full float precision on a
-  // clock-derived signal rewrote 72 of 421 lines per run for no reason.
-  it('rounds every component, not just the total, so re-runs are stable', () => {
-    const s = score(base());
-    for (const [k, v] of Object.entries(s.breakdown)) {
-      expect(Math.round(v * 10) / 10, `${k} should be rounded`).toBe(v);
-    }
-  });
-
-  it('flags single-officer shells', () => {
-    const shell = base();
-    shell.people = [{ name: 'Solo Founder', relationships: ['Executive Officer'] }];
-    expect(score(shell).notes.join(' ')).toContain('one officer');
-  });
-});
-
-describe('rankCompanies', () => {
-  it('orders best first', () => {
-    const good = mergeSources([filing()], []).companies[0]!;
-    const bad = mergeSources([filing({ entityName: 'Crypto Coin Mining Corp', accessionNumber: 'b' })], []).companies[0]!;
-    const ranked = rankCompanies([bad, good], PROFILE, NOW);
-    expect(ranked[0]?.company.name).toBe('Acme AI, Inc.');
-  });
-});
-
-describe('effectiveScore', () => {
-  const company = mergeSources([filing()], []).companies[0]!;
-  const scored = (llmFit: number | null): ScoredCompany => ({
-    ...company,
-    prefilter: { total: 90, breakdown: {}, notes: [] },
-    llm: llmFit == null ? null : {
-      fit: llmFit, whatTheyDo: '', matchedInterests: [], concerns: [], rationale: '', confidence: 'high',
-    },
-  });
-
-  it('uses the LLM score when present', () => {
-    expect(effectiveScore(scored(77))).toBe(77);
-  });
-
-  it('caps unscored companies so they cannot outrank a validated one', () => {
-    expect(effectiveScore(scored(null))).toBeLessThanOrEqual(45);
-    expect(effectiveScore(scored(50))).toBeGreaterThan(effectiveScore(scored(null)));
-  });
-});
-
-describe('carryForwardScores', () => {
-  const company = mergeSources([filing()], []).companies[0]!;
-  const at = '2026-08-11T00:00:00.000Z';
-  const make = (id: string, llmFit: number | null, llmScoredAt?: string): ScoredCompany => ({
-    ...company,
-    id,
-    prefilter: { total: 90, breakdown: {}, notes: [] },
-    llm: llmFit == null ? null : {
-      fit: llmFit, whatTheyDo: '', matchedInterests: [], concerns: [], rationale: '', confidence: 'high',
-    },
-    ...(llmScoredAt ? { llmScoredAt } : {}),
-  });
-
-  // The regression this exists for: one extra day of unrelated filings pushed
-  // a fit-88 company below --limit, and the run rewrote it as llm: null.
-  it('keeps a score from an earlier run when this run did not screen the company', () => {
-    const out = carryForwardScores([make('taktile', null)], [make('taktile', 88, '2026-08-10T00:00:00.000Z')], at);
-    expect(out[0]!.llm?.fit).toBe(88);
-    expect(out[0]!.llmScoredAt).toBe('2026-08-10T00:00:00.000Z');
-  });
-
-  it('prefers a fresh score over a stale one and stamps it with this run', () => {
-    const out = carryForwardScores([make('a', 40)], [make('a', 88, '2026-08-10T00:00:00.000Z')], at);
-    expect(out[0]!.llm?.fit).toBe(40);
-    expect(out[0]!.llmScoredAt).toBe(at);
-  });
-
-  // A batch that fails validation also arrives with llm: null.
-  it('rescues a company whose batch failed this run', () => {
-    const out = carryForwardScores([make('a', null)], [make('a', 61)], at);
-    expect(out[0]!.llm?.fit).toBe(61);
-  });
-
-  it('leaves a genuinely unscored company alone', () => {
-    const out = carryForwardScores([make('new', null)], [make('other', 70)], at);
-    expect(out[0]!.llm).toBeNull();
-    expect(out[0]!.llmScoredAt).toBeUndefined();
-  });
-
-  it('ignores prior records that were themselves unscored', () => {
-    const out = carryForwardScores([make('a', null)], [make('a', null)], at);
-    expect(out[0]!.llm).toBeNull();
-  });
-
-  it('preserves every input company', () => {
-    const out = carryForwardScores([make('a', null), make('b', 10), make('c', null)], [make('a', 88)], at);
-    expect(out.map((c) => c.id)).toEqual(['a', 'b', 'c']);
-  });
-});
-
 describe('extractJson', () => {
   it('parses a bare object', () => {
     expect(extractJson('{"a":1}')).toEqual({ a: 1 });
@@ -306,80 +166,63 @@ describe('extractJson', () => {
   });
 });
 
-describe('buildScorePrompt', () => {
-  const candidates = [
-    { company: mergeSources([filing()], []).companies[0]!, prefilter: { total: 70, breakdown: {}, notes: ['keyword themes: AI/ML'] } },
-  ];
-  const prompt = buildScorePrompt(candidates, PROFILE);
+describe('buildResearchPrompt', () => {
+  const company = mergeSources([filing()], [newsItem()]).companies[0]!;
+  const prompt = buildResearchPrompt(company, PROFILE);
 
-  it('embeds the profile so scoring reflects the user, not generic taste', () => {
+  it('embeds the profile, so scoring reflects this user rather than generic taste', () => {
     expect(prompt).toContain(PROFILE.about.trim());
     expect(prompt).toContain('AI/ML infrastructure');
-    expect(prompt).toContain('importance 1.00');
   });
 
-  it('states the intent, which changes the evaluation lens', () => {
-    expect(prompt).toContain('JOINING a startup as an employee');
-    expect(prompt).toContain('As a PLACE TO WORK');
+  it('states the anti-themes', () => {
+    expect(prompt).toContain('crypto');
   });
 
-  it('tells the model it has no web access and must admit ignorance', () => {
-    // The rule that keeps the app from fabricating product descriptions.
-    expect(prompt).toContain('You do NOT\n   have web access here');
-    expect(prompt).toContain('Do NOT invent a product description');
-  });
-
-  it('separates confidence from score', () => {
-    expect(prompt).toContain('A low-confidence score is not a low score');
-  });
-
-  it('renders the company facts it actually has', () => {
-    expect(prompt).toContain('id: acme-ai');
+  it('hands over everything already known, so search starts from facts', () => {
+    expect(prompt).toContain('Acme AI, Inc.');
     expect(prompt).toContain('San Francisco, CA');
     expect(prompt).toContain('Ada Lovelace');
-    expect(prompt).toContain('triage notes: keyword themes: AI/ML');
+    expect(prompt).toContain('$10.0M');
   });
 
-  it('asks for exactly one entry per company', () => {
-    expect(prompt).toContain('COMPANIES TO SCORE (1)');
-    expect(prompt).toContain('Return exactly 1 entries');
+  // The failure this stage is most capable of is confident nonsense about a
+  // company with a similar name, so the instruction has to survive edits.
+  it('tells the model to admit when it cannot identify the company', () => {
+    expect(prompt).toMatch(/Unknown/);
+    expect(prompt).toMatch(/different company with\s+a similar name/i);
+    expect(prompt).toMatch(/never invent/i);
   });
 
-  it('includes anti-themes so mismatches can be scored down', () => {
-    expect(prompt).toContain('ACTIVELY NOT INTERESTED IN');
-    expect(prompt).toContain('crypto');
+  it('asks for a score and a confidence, not just a dossier', () => {
+    expect(prompt).toContain('"fit"');
+    expect(prompt).toContain('"confidence"');
+    expect(prompt).toContain('SCORING BANDS');
+  });
+
+  // The web can tell an SPV from a company where a legal name cannot, and the
+  // ingest regex is known to let some through.
+  it('asks the model to flag entities that are not operating companies', () => {
+    expect(prompt).toContain('"isOperatingCompany"');
+    expect(prompt).toMatch(/funds, SPVs, holding companies/i);
   });
 });
 
-describe('buildResearchPrompt', () => {
-  const company = mergeSources([filing()], []).companies[0]!;
-  const prompt = buildResearchPrompt(company, 'ABOUT THE PERSON:\nengineer who likes infra');
-
-  it('hands over what we already know, so the model does not re-derive it', () => {
-    expect(prompt).toContain('Company name (as filed): Acme AI, Inc.');
-    expect(prompt).toContain('San Francisco, CA');
-    expect(prompt).toContain('Ada Lovelace');
-    expect(prompt).toContain('https://sec.test/acme');
+describe('fitOf', () => {
+  const base = mergeSources([filing()], []).companies[0]!;
+  const withFit = (fit: number | null): RunCompany => ({
+    ...base,
+    assessment: fit == null ? null : ({ fit } as Assessment),
+    researchedAt: null,
   });
 
-  it('embeds the profile so the briefing is written for this person', () => {
-    expect(prompt).toContain('engineer who likes infra');
+  it('uses the assessed fit', () => {
+    expect(fitOf(withFit(77))).toBe(77);
   });
 
-  it('tells the model to actually search, unlike the screening stage', () => {
-    expect(prompt).toContain('Use web search');
-  });
-
-  it('carries the anti-fabrication rules that keep dossiers honest', () => {
-    // These are the difference between a useful empty dossier and a
-    // confident, wrong one — see VISION.md "unknown is cheap, wrong is expensive".
-    expect(prompt).toContain('An empty dossier is a useful\n  result; a fabricated one is actively harmful');
-    expect(prompt).toContain('Never invent open roles, investor names');
-    expect(prompt).toContain('If the search results are about a DIFFERENT');
-  });
-
-  it('asks for one company only — research is not batched', () => {
-    expect(prompt).not.toContain('COMPANIES TO SCORE');
-    expect((prompt.match(/Company name \(as filed\)/g) ?? []).length).toBe(1);
+  // Research failing is a defect worth seeing, so an unassessed company sinks
+  // to the bottom of the list rather than being filtered out of it.
+  it('sorts an unassessed company below every assessed one, including a zero', () => {
+    expect(fitOf(withFit(null))).toBeLessThan(fitOf(withFit(0)));
   });
 });

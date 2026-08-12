@@ -1,41 +1,18 @@
 /**
- * The dashboard shell.
+ * The dashboard — the app's only output.
  *
- * Complements the Markdown digest: the digest is for reading once, the
- * dashboard is for coming back and filtering ("show me only >70 fit, in CA,
- * that are hiring").
+ * **It contains no data.** It reads `data/index.json` to find the runs, then
+ * fetches exactly one shard, `data/runs/<date>.jsonl`, and renders every company
+ * in it. One issue, one fetch.
  *
- * **It contains no data.** It fetches `data/scored.jsonl` and
- * `data/dossiers.jsonl` at load time and joins them in the browser.
+ * That is why runs are sharded. An earlier version inlined the whole cumulative
+ * corpus into every dated HTML file, so each run committed a ~520 KB page that
+ * was 97% a copy of records already on disk, and the page grew forever. This
+ * shell is ~18 KB and changes only when this file does.
  *
- * The previous version inlined the whole dataset, which made every run commit
- * a ~520 KB file that was 97% a verbatim copy of records already committed
- * under `data/`. This shell is ~14 KB and changes only when this file does, so
- * a run that ingests new companies now adds new bytes exactly once. The cost is
- * that `fetch` is blocked on `file://`, so the page has to be served — see
- * the `review-startups` skill for the one-line local server.
- *
- * Because it reads whatever is on disk *now*, there is one dashboard rather
- * than one per run. Dated Markdown digests remain the back issues.
+ * The cost is that `fetch` is blocked on `file://`, so the page has to be
+ * served. Opening it directly renders an error naming the fix.
  */
-
-export interface HtmlOptions {
-  runId: string;
-  windowDays: number;
-  costUsd: number;
-  totalCandidates: number;
-}
-
-/**
- * Run metadata the page cannot derive from the data files.
- *
- * Written beside the shell as a few hundred bytes. `runId` matters beyond the
- * header line: exported grades are stamped with it so a label can be traced to
- * the ranking that produced it.
- */
-export function renderDashboardMeta(opts: HtmlOptions): string {
-  return JSON.stringify({ ...opts, generatedAt: new Date().toISOString() }, null, 2);
-}
 
 export function renderDashboard(): string {
   return `<!doctype html>
@@ -43,8 +20,8 @@ export function renderDashboard(): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- The repo is public, but a digest of who someone is tracking does not need
-     to be search-indexed. See docs/DECISIONS.md ADR-016. -->
+<!-- The repo is public, but a list of who someone is tracking does not need to
+     be search-indexed. -->
 <meta name="robots" content="noindex, nofollow">
 <title>Startup digest</title>
 <style>
@@ -90,6 +67,7 @@ export function renderDashboard(): string {
     padding: 1rem 1.15rem; margin-bottom: .75rem; box-shadow: var(--shadow);
   }
   .card.hot { border-left: 3px solid var(--hot); }
+  .card.dim { opacity: .55; }
   .head { display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; }
   .score {
     font-weight: 700; font-variant-numeric: tabular-nums; font-size: 1.15rem;
@@ -104,6 +82,7 @@ export function renderDashboard(): string {
     border: 1px solid var(--line); color: var(--muted);
   }
   .tag.hiring { color: var(--good); border-color: currentColor; }
+  .tag.warn { color: var(--hot); border-color: currentColor; }
   details { margin-top: .7rem; }
   summary { cursor: pointer; color: var(--muted); font-size: .85rem; }
   summary:hover { color: var(--text); }
@@ -119,7 +98,7 @@ export function renderDashboard(): string {
 
   /* Grading. Only "saved" needs a click: "seen" comes from the scroll observer
      and "opened" from the <details> toggle, so a normal read-through produces
-     labels without the user grading 300 companies by hand. */
+     labels without grading every company by hand. */
   .save {
     font: inherit; font-size: .78rem; cursor: pointer; margin-left: .5rem;
     padding: .12rem .5rem; border-radius: 20px; background: transparent;
@@ -140,15 +119,14 @@ export function renderDashboard(): string {
   <div class="sub" id="sub">Loading…</div>
 
   <div class="controls" hidden id="controls">
+    <label>Issue <select id="run"></select></label>
     <input type="search" id="q" placeholder="Search name, description, roles…" autocomplete="off">
     <label>Min fit <select id="minScore">
-      <option value="0">any</option><option value="50">50+</option>
-      <option value="70" selected>70+</option><option value="85">85+</option>
+      <option value="0" selected>any</option><option value="50">50+</option>
+      <option value="70">70+</option><option value="85">85+</option>
     </select></label>
     <label><input type="checkbox" id="hiringOnly"> hiring only</label>
-    <label>Sort <select id="sort">
-      <option value="score">fit</option><option value="amount">raise</option><option value="date">date</option>
-    </select></label>
+    <label><input type="checkbox" id="operatingOnly" checked> real companies only</label>
     <span class="count" id="count"></span>
     <span id="graded"></span>
     <button id="save" type="button" title="Export grades for the review-startups skill">Save grades</button>
@@ -159,24 +137,16 @@ export function renderDashboard(): string {
 
   <footer>
     Scores measure fit against <code>config/profile.yaml</code>, not company quality.<br>
-    Scores below ~30 are ambiguous: either the model judged the company poorly, or nothing ever
-    screened it. Only screened rows carry a confidence badge and a "why this score".<br>
+    Every company found in a run is researched and scored, so a low score means the model
+    looked and was unimpressed — not that nothing looked.<br>
     Unlinked claims are model-generated — verify before acting. Sources: SEC EDGAR Form D + funding press.<br>
-    <a href="docs/READING_THE_REPORT.md">How to read this report</a>
+    <a href="docs/ARCHITECTURE.md">How this works</a>
   </footer>
 </div>
 
 <script type="module">
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-
-// Paths are relative, so the page works from the repo root over any static
-// server and from a GitHub Pages site rooted at the repo.
-const jsonl = async (path) => {
-  const res = await fetch(path);
-  if (!res.ok) throw new Error(path + ' -> HTTP ' + res.status);
-  return (await res.text()).split('\\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
-};
 
 const formatUsd = (a) =>
   a == null ? 'undisclosed'
@@ -185,62 +155,46 @@ const formatUsd = (a) =>
   : a >= 1e3 ? '$' + Math.round(a / 1e3) + 'K'
   : '$' + a;
 
-// Mirrors effectiveScore() in src/pipeline/score.ts. An unscored company is
-// capped so it can never outrank one a model actually looked at.
-const effectiveScore = (c) => (c.llm ? c.llm.fit : Math.min(45, c.prefilter.total * 0.5));
-
 let ROWS = [];
 let RUN_ID = 'unknown';
 
-/** Mirrors describeCompany() in src/report/markdown.ts. */
-function describe(c, dossier) {
-  if (dossier) {
-    const best = (dossier.product || '').trim() || (dossier.summary || '').trim();
-    if (best) return best;
-  }
-  return (c.llm && c.llm.whatTheyDo) || '—';
-}
-
-function toRow(c, dossier) {
+function toRow(c) {
+  const a = c.assessment;
   return {
     id: c.id,
     name: c.name,
-    score: Math.round(effectiveScore(c)),
-    what: describe(c, dossier),
-    amount: (c.latestFunding && c.latestFunding.amountUsd) ?? null,
-    amountLabel: formatUsd((c.latestFunding && c.latestFunding.amountUsd) ?? null),
-    date: (c.latestFunding && c.latestFunding.date) || '',
+    // -1 sorts unassessed companies to the bottom without hiding them. A null
+    // assessment means research failed, which is a defect worth seeing.
+    score: a ? Math.round(a.fit) : -1,
+    assessed: !!a,
+    operating: a ? a.isOperatingCompany : true,
+    what: a ? (a.product || a.whatTheyDo) : 'Not assessed — research failed for this company.',
+    amount: c.latestFunding?.amountUsd ?? null,
+    amountLabel: formatUsd(c.latestFunding?.amountUsd ?? null),
+    date: c.latestFunding?.date || '',
     location: c.location || '',
-    confidence: (c.llm && c.llm.confidence) || '',
-    hiring: dossier ? dossier.openRoles.length : 0,
-    roles: dossier ? dossier.openRoles : [],
-    summary: dossier ? dossier.summary : '',
-    green: dossier ? dossier.greenFlags : [],
-    red: [...(dossier ? dossier.redFlags : []), ...((c.llm && c.llm.concerns) || [])],
-    links: dossier ? dossier.links : [],
+    confidence: a?.confidence || '',
+    hiring: a ? a.openRoles.length : 0,
+    roles: a?.openRoles ?? [],
+    summary: a?.summary ?? '',
+    green: a?.greenFlags ?? [],
+    red: [...(a?.redFlags ?? []), ...(a?.concerns ?? [])],
+    links: a?.links ?? [],
     sources: c.sources.map((s) => ({ label: s.kind, url: s.url })),
     people: c.people.slice(0, 6).map((p) =>
       p.name + (p.relationships.length ? ' (' + p.relationships.join(', ') + ')' : '')),
-    rationale: (c.llm && c.llm.rationale) || '',
+    rationale: a?.rationale ?? '',
   };
 }
 
 /**
  * Grades for the review-startups skill. 0 = ignored, 1 = opened, 2 = saved.
  *
- * Only "saved" is a deliberate click. "opened" is the <details> toggle and
- * "seen" is the scroll observer below, so reading the digest normally already
- * produces most of the signal.
- *
  * A company is exported ONLY once it has been seen. That distinction is the
- * whole point: "ignored" has to mean "looked at it and moved on", never "was
- * filtered out" or "never scrolled that far". Treating an unexamined company
- * as a 0 would teach any future eval that whatever the ranker already buried
- * deserved to be buried — the bias would be invisible and self-confirming.
- *
- * The rank field records the on-screen position at the moment it was seen, so
- * a later eval can cut off at the point attention realistically ran out rather
- * than trusting 300 rows equally.
+ * whole point: "ignored" has to mean "looked at it and moved on", never "never
+ * scrolled that far". Treating an unexamined company as a 0 would teach any
+ * future eval that whatever the ranker buried deserved to be buried — a bias
+ * that is invisible and self-confirming.
  */
 const LABELS_KEY = 'sf-labels-v1';
 let LABELS = {};
@@ -265,8 +219,7 @@ function updateGradedCount() {
 }
 
 // A card counts as seen once it has been at least half visible for a full
-// second — long enough to exclude rows that merely flew past during a fast
-// scroll to the bottom.
+// second — long enough to exclude rows that flew past during a fast scroll.
 const timers = new Map();
 const observer = new IntersectionObserver((entries) => {
   for (const e of entries) {
@@ -311,7 +264,7 @@ async function saveLabels() {
       await w.close();
       return;
     } catch (e) {
-      if (e.name === 'AbortError') return; // user cancelled — not a failure
+      if (e.name === 'AbortError') return; // cancelled, not failed
     }
   }
   const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
@@ -333,6 +286,7 @@ function card(r) {
     .join(' · ');
 
   const tags = [];
+  if (!r.operating) tags.push('<span class="tag warn">not an operating company</span>');
   if (r.hiring > 0) tags.push('<span class="tag hiring">' + r.hiring + ' open role' + (r.hiring > 1 ? 's' : '') + '</span>');
   if (r.confidence) tags.push('<span class="tag">' + esc(r.confidence) + ' confidence</span>');
   if (r.location) tags.push('<span class="tag">' + esc(r.location) + '</span>');
@@ -346,8 +300,8 @@ function card(r) {
   const saved = (LABELS[r.id] || {}).saved === true;
 
   return '<div class="card' + (r.score >= 85 ? ' hot' : '') + (saved ? ' saved' : '') +
-    '" data-id="' + esc(r.id) + '">' +
-    '<div class="head"><span class="score">' + r.score + '</span>' +
+    (r.operating ? '' : ' dim') + '" data-id="' + esc(r.id) + '">' +
+    '<div class="head"><span class="score">' + (r.assessed ? r.score : '—') + '</span>' +
     '<span class="name">' + esc(r.name) + '</span>' +
     '<button class="save" type="button" aria-pressed="' + saved + '">' +
       (saved ? '★ saved' : '☆ save') + '</button>' +
@@ -362,65 +316,83 @@ function render() {
   const q = $('q').value.toLowerCase().trim();
   const min = Number($('minScore').value);
   const hiringOnly = $('hiringOnly').checked;
-  const sort = $('sort').value;
+  const operatingOnly = $('operatingOnly').checked;
 
-  let out = ROWS.filter((r) => {
-    if (r.score < min) return false;
+  const out = ROWS.filter((r) => {
+    if (operatingOnly && !r.operating) return false;
+    // An unassessed company has no score, not a score of -1. "any" has to mean
+    // any, or research failures vanish from the one view meant to show them.
+    if (min > 0 && (!r.assessed || r.score < min)) return false;
     if (hiringOnly && r.hiring === 0) return false;
     if (!q) return true;
     return (r.name + ' ' + r.what + ' ' + r.summary + ' ' + r.roles.join(' ') + ' ' + r.location)
       .toLowerCase().includes(q);
   });
 
-  out.sort((a, b) =>
-    sort === 'amount' ? (b.amount || 0) - (a.amount || 0)
-    : sort === 'date' ? String(b.date).localeCompare(String(a.date))
-    : b.score - a.score);
-
   $('list').innerHTML = out.map(card).join('');
   $('count').textContent = out.length + ' of ' + ROWS.length;
   $('empty').hidden = out.length > 0;
 
-  // innerHTML replaced every node, so the old observations are gone with them.
+  // innerHTML replaced every node, so the old observations went with them.
   observer.disconnect();
   timers.clear();
   document.querySelectorAll('.card').forEach((c) => observer.observe(c));
 }
 
+const jsonl = async (path) => {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(path + ' -> HTTP ' + res.status);
+  return (await res.text()).split('\\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
+};
+
+async function loadRun(entry) {
+  RUN_ID = entry.date;
+  ROWS = (await jsonl('data/runs/' + entry.date + '.jsonl')).map(toRow).sort((a, b) => b.score - a.score);
+  const assessed = ROWS.filter((r) => r.assessed);
+  // Counted over assessed rows only: an unresearched company has not been
+  // judged either way, so calling it "real" would overstate what is known.
+  const notReal = assessed.filter((r) => !r.operating).length;
+  $('sub').textContent =
+    entry.date + ' · ' + entry.windowDays + ' day of filings · ' +
+    ROWS.length + ' companies found · ' + assessed.length + ' researched' +
+    (notReal > 0 ? ' · ' + notReal + ' not real companies' : '') +
+    (assessed.length < ROWS.length ? ' · ' + (ROWS.length - assessed.length) + ' not yet researched' : '') +
+    (entry.costUsd > 0 ? ' · plan usage ~$' + entry.costUsd.toFixed(2) + '-equiv' : '');
+  render();
+}
+
 async function main() {
-  let scored, dossierRows, meta;
+  let index;
   try {
-    // scored.jsonl is what the page cannot render without. dossiers and meta
-    // only enrich it, so a failure there should not blank the page.
-    [scored, dossierRows, meta] = await Promise.all([
-      jsonl('data/scored.jsonl'),
-      jsonl('data/dossiers.jsonl').catch(() => []),
-      fetch('reports/meta.json').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-    ]);
+    const res = await fetch('data/index.json');
+    if (!res.ok) throw new Error('data/index.json -> HTTP ' + res.status);
+    index = await res.json();
   } catch (err) {
-    $('sub').innerHTML = '<div class="fatal"><b>Could not load the data.</b><br>' +
-      esc(String(err)) + '<br><br>This page reads <code>data/*.jsonl</code> over HTTP, so it ' +
-      'cannot run from <code>file://</code>. Serve the repo root and open it from there:<br>' +
+    $('sub').innerHTML = '<div class="fatal"><b>Could not load the run index.</b><br>' +
+      esc(String(err)) + '<br><br>This page reads <code>data/</code> over HTTP, so it cannot ' +
+      'run from <code>file://</code>. Serve the repo root and open it from there:<br>' +
       '<code>python3 -m http.server 8000</code></div>';
     return;
   }
 
-  RUN_ID = (meta && meta.runId) || 'unknown';
-  const dossiers = new Map(dossierRows.map((d) => [d.id, d.dossier]));
-  ROWS = scored
-    .map((c) => toRow(c, dossiers.get(c.id)))
-    .sort((a, b) => b.score - a.score);
+  if (!index.length) {
+    $('sub').textContent = 'No runs yet. Run: pnpm sf run';
+    return;
+  }
 
-  const withScore = scored.filter((c) => c.llm).length;
-  $('sub').textContent =
-    (meta ? 'Last ' + meta.windowDays + ' days · ' : '') +
-    scored.length + ' candidates · ' + withScore + ' scored by the model · ' +
-    dossiers.size + ' researched' +
-    (meta && meta.costUsd > 0 ? ' · plan usage ~$' + meta.costUsd.toFixed(2) + '-equiv' : '') +
-    (meta ? ' · generated ' + meta.generatedAt.slice(0, 16).replace('T', ' ') + ' UTC' : '');
-  $('controls').hidden = false;
+  const wanted = new URLSearchParams(location.search).get('run');
+  const entry = index.find((e) => e.date === wanted) ?? index[0];
 
-  ['q', 'minScore', 'hiringOnly', 'sort'].forEach((id) =>
+  $('run').innerHTML = index
+    .map((e) => '<option value="' + esc(e.date) + '"' + (e.date === entry.date ? ' selected' : '') +
+      '>' + esc(e.date) + ' (' + e.companies + ')</option>')
+    .join('');
+  $('run').addEventListener('change', () => {
+    const next = index.find((e) => e.date === $('run').value);
+    if (next) loadRun(next);
+  });
+
+  ['q', 'minScore', 'hiringOnly', 'operatingOnly'].forEach((id) =>
     $(id).addEventListener(id === 'q' ? 'input' : 'change', render));
 
   $('list').addEventListener('click', (e) => {
@@ -439,13 +411,13 @@ async function main() {
   // The toggle event does not bubble, so it has to be captured.
   $('list').addEventListener('toggle', (e) => {
     if (e.target.tagName !== 'DETAILS' || !e.target.open) return;
-    const id = e.target.closest('.card').dataset.id;
-    mark(id, { opened: true, seen: true });
+    mark(e.target.closest('.card').dataset.id, { opened: true, seen: true });
   }, true);
 
   $('save').addEventListener('click', saveLabels);
 
-  render();
+  await loadRun(entry);
+  $('controls').hidden = false;
   updateGradedCount();
 }
 

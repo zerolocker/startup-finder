@@ -173,8 +173,28 @@ describe('isLikelyOperatingStartup', () => {
     expect(isLikelyOperatingStartup(filing({ industryGroup: 'Residential' })).keep).toBe(false);
   });
 
-  it('drops limited partnerships', () => {
-    expect(isLikelyOperatingStartup(filing({ entityType: 'Limited Partnership' })).keep).toBe(false);
+  it('drops a limited partnership filing under a fund-like industry', () => {
+    expect(
+      isLikelyOperatingStartup(filing({ entityType: 'Limited Partnership', industryGroup: 'Pooled Investment Fund' }))
+        .keep,
+    ).toBe(false);
+  });
+
+  // Measured: an audit re-judged all 175 filings this filter dropped on a real
+  // day and found exactly one real company among them — Vehlo Holdings, LP,
+  // auto-repair payments software — dropped purely for being an LP. The
+  // industry rules had a false-negative rate of 0/160, so the entity type only
+  // counts when the industry agrees.
+  it('keeps a limited partnership that operates in a real industry', () => {
+    expect(
+      isLikelyOperatingStartup(filing({ entityType: 'Limited Partnership', industryGroup: 'Other Technology' })).keep,
+    ).toBe(true);
+  });
+
+  it('still drops a limited partnership that states no industry at all', () => {
+    expect(
+      isLikelyOperatingStartup(filing({ entityType: 'Limited Partnership', industryGroup: null })).keep,
+    ).toBe(false);
   });
 
   it.each([

@@ -15,30 +15,22 @@ export const CONFIG_DIR = join(ROOT, 'config');
 export const PROFILE_PATH = join(CONFIG_DIR, 'profile.yaml');
 
 export const DATA_DIR = join(ROOT, 'data');
-/** Raw upstream payloads. Gitignored, safe to delete at any time. */
+/** Raw upstream payloads and LLM responses. Gitignored, safe to delete. */
 export const CACHE_DIR = join(DATA_DIR, 'cache');
-/** Parsed Form D filings, append-only. Committed. */
-export const FILINGS_PATH = join(DATA_DIR, 'filings.jsonl');
-/** Parsed news items, append-only. Committed. */
-export const NEWS_PATH = join(DATA_DIR, 'news.jsonl');
-/** Merged company records. Rewritten each merge. Committed. */
-export const COMPANIES_PATH = join(DATA_DIR, 'companies.jsonl');
-/** Companies with prefilter + LLM scores. Rewritten each score. Committed. */
-export const SCORED_PATH = join(DATA_DIR, 'scored.jsonl');
-/** Deep-research dossiers, keyed by company id. Append-only. Committed. */
-export const DOSSIERS_PATH = join(DATA_DIR, 'dossiers.jsonl');
-/** One record per pipeline run, for reproducibility and cost tracking. */
-export const RUNS_PATH = join(DATA_DIR, 'runs.jsonl');
-
-export const REPORTS_DIR = join(ROOT, 'reports');
 /**
- * Run metadata for the dashboard — window, cost, runId. A few hundred bytes.
- * Everything else the dashboard shows it reads straight out of `data/`.
+ * One shard per run: `data/runs/<date>.jsonl`, one RunCompany per line.
+ *
+ * A run is a self-contained issue. Nothing is cumulative, so the dashboard
+ * renders an issue from exactly one fetch and a run's cost in git is its own
+ * size rather than a rewrite of everything ever seen.
  */
-export const REPORT_META_PATH = join(REPORTS_DIR, 'meta.json');
+export const RUNS_DIR = join(DATA_DIR, 'runs');
+export const runShardPath = (date: string): string => join(RUNS_DIR, `${date}.jsonl`);
+/** The list of runs, newest first. Drives the dashboard's issue picker. */
+export const INDEX_PATH = join(DATA_DIR, 'index.json');
+
 /**
- * The dashboard shell. At the repo root so relative fetches of `data/*.jsonl`
- * resolve both under a local static server and on GitHub Pages served from the
- * repo root.
+ * The dashboard. At the repo root so its relative fetches of `data/` resolve
+ * under a local static server and on GitHub Pages served from the root.
  */
 export const DASHBOARD_PATH = join(ROOT, 'index.html');

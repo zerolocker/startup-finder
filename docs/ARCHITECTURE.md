@@ -1,182 +1,138 @@
 # Architecture
 
-_How the app is put together, and why it is shaped this way._
+_How the app is put together, and the constraints that shape it._
 
-Read [VISION.md](VISION.md) first for the intent. This document is the map.
-
----
-
-## The shape in one picture
+## The pipeline
 
 ```
-  SEC EDGAR Form D ──┐
-  (comprehensive,    │
-   80% noise, free)  │
-                     ├──> merge ──> prefilter ──> LLM score ──> research ──> report
-  Funding news RSS ──┘     join      free,          batched,     web search   md + html
-  (selective, rich,      by name    ~1500→120      ~120→ranked   top ~15
-   already public)                   deterministic  ~$1          ~$3-7
+SEC Form D ─┐
+            ├─> merge ─> research (web search + score) ─> data/runs/<date>.jsonl
+news RSS ───┘                                                      │
+                                                                   v
+                                                    index.html reads one issue
 ```
 
-The whole design is a **funnel with widening cost per item**. Each stage is
-allowed to be more expensive than the last because it sees far fewer items.
+A run is **one day**, and everything it produces lives in one shard. There is no
+cumulative store.
 
-All `$` figures are dollar-*equivalents* of token usage. LLM work runs on the
-user's Claude subscription via OAuth — nothing is billed to a card, and the real
-scarce resource is the plan's rate limit. See [ADR-003](DECISIONS.md#adr-003-use-the-claude-code-cli-as-the-llm-backend)
-and [ADR-008](DECISIONS.md#adr-008-keep-the-subprocess-pipeline-do-not-move-scoring-into-in-runtime-subagents).
-
-| Stage | Items in | Items out | Usage/item | Total |
-|---|---:|---:|---:|---:|
-| ingest | — | ~1,600 | none | none |
-| merge | ~1,600 | ~330 | none | none |
-| prefilter | ~330 | 120 | none | none |
-| LLM score | 120 | 120 ranked | ~$0.008-equiv | ~$1-equiv |
-| research | 15 | 15 dossiers | ~$0.30-equiv | ~$4-equiv |
-
-If you are adding a stage, place it according to what it costs per item and how
-much it narrows the field. A cheap stage that narrows a lot belongs early.
-
-## Directory map
-
-```
-src/
-  types.ts            Domain types — the contract between all stages. Read this first.
-  paths.ts            Every file path the app touches, in one place.
-  config.ts           Loads + validates config/profile.yaml; renders it for prompts.
-  cli.ts              Command dispatch and stage orchestration.
-
-  sources/
-    edgar.ts          SEC Form D: daily index → XML → FormDFiling, plus fund filtering.
-    news.ts           RSS/Atom → NewsItem, plus headline fact extraction.
-
-  pipeline/
-    merge.ts          FormDFiling[] + NewsItem[] → Company[]
-    prefilter.ts      Deterministic triage ranking. No LLM.
-    score.ts          Batched LLM fit scoring against the profile.
-    research.ts       Per-company deep research with web search.
-
-  llm/claude.ts       `claude -p` wrapper: caching, cost accounting, retries, JSON extraction.
-  store/jsonl.ts      The entire persistence layer.
-  report/
-    markdown.ts       The digest.
-    html.ts           The dashboard shell — no data, fetches data/*.jsonl.
-  util/               http (rate limit + cache), text (normalization), log.
-```
-
-## Data flow and file contracts
-
-Each stage reads and writes specific files under `data/`. All are JSONL, all are
-committed to git (see [ADR-002](DECISIONS.md#adr-002-jsonl-files-on-disk-instead-of-a-database)).
-
-| File | Written by | Shape | Semantics |
+| stage | cost | in | out |
 |---|---|---|---|
-| `filings.jsonl` | ingest | `FormDFiling` | Append/upsert by `accessionNumber` |
-| `news.jsonl` | ingest | `NewsItem` | Append/upsert by `id` (hash of URL) |
-| `companies.jsonl` | merge | `Company` | Rewritten each run; `firstSeenAt` preserved |
-| `scored.jsonl` | score | `ScoredCompany` | Rewritten each run |
-| `dossiers.jsonl` | research | `{id, dossier, researchedAt}` | Append-only; never regenerated |
-| `runs.jsonl` | run | `RunRecord` | Append-only audit + cost log |
-| `cache/` | http, llm | — | **Gitignored.** Safe to delete anytime. |
+| ingest | free | ~220 filings, 7 RSS feeds | ~60 companies |
+| merge | free | filings + news items | one record per company |
+| research | ~$0.23/company | every company | fit score + dossier |
+| report | free | the shard | `index.html`, `data/index.json` |
 
-`dossiers.jsonl` being append-only and separate from `scored.jsonl` is deliberate:
-research is the expensive artifact, and it must survive re-scoring. You can rescore
-a hundred times while tuning your profile and never re-pay for research.
+`src/types.ts` is the contract between stages and the best single file to read
+first.
 
-## Stage contracts
+## The one idea that matters
 
-**ingest** — `sources/*.ts`. Network-facing. Must never fail the run because one
-source is down; a dead RSS feed logs a warning and is skipped. All HTTP goes
-through `util/http.ts`, which enforces per-host rate limits (the SEC will IP-ban
-you at >10 req/s) and caches to disk.
+**Nothing is ranked before it is understood.** Every company a run finds is
+searched on the web and then scored on what was actually found.
 
-**merge** — `pipeline/merge.ts`. Pure function of its inputs. Joins on exact
-normalized name only. See [ADR-004](DECISIONS.md#adr-004-exact-name-matching-only)
-for why fuzzy matching is banned here.
+This is worth stating because the app used to work the other way, and it failed
+measurably. A deterministic prefilter ranked companies on a name, an amount and an
+industry code, and only its top slice was ever scored. On a real corpus that
+ordering scored **NDCG@12 = 0.500** against the model's own judgement — barely
+better than arbitrary — and the best company in the run sat at rank #131 and was
+never seen, because its name contained no recognizable keyword. The screen behind
+it had no web access either, so it answered `"Unknown — …"` for **61%** of what it
+scored. It was ranking legal entity names.
 
-**prefilter** — `pipeline/prefilter.ts`. Pure, deterministic, no network, fully
-unit-tested. It is a *triage* score, not a quality judgement: its only job is
-deciding who is worth an LLM call. Optimize it for recall, not precision.
+The same stage now answers "Unknown" for almost none of them, because it has read
+the company's site before it judges. Scoring costs more per company and the app
+looks at far fewer companies per run — one day instead of ten — which is what
+makes it affordable.
 
-Its recall has since been measured and is poor — NDCG@12 = 0.500 against the
-screen's own ordering, and recall@120 of 75% at fit ≥ 70.
-[RANKING.md](RANKING.md) diagnoses why (it ranks on a legal entity name, before
-anything knows what the company does) and specifies the replacement. Read it
-before tuning any weight here.
+## Files and contracts
 
-**score** — `pipeline/score.ts`. Batched LLM calls, no web access. Judges only
-what EDGAR and headlines provide. "I don't know what this company does" is a
-correct output here.
+| path | written by | shape |
+|---|---|---|
+| `data/runs/<date>.jsonl` | ingest, then research | one `RunCompany` per line |
+| `data/index.json` | report | `RunIndexEntry[]`, newest first |
+| `index.html` | report | the dashboard shell — no data in it |
+| `data/cache/` | http + llm layers | gitignored, safe to delete |
 
-**research** — `pipeline/research.ts`. Per-company, with `WebSearch` and
-`WebFetch`. The only stage that learns anything genuinely new.
+Shards and the index are **committed on purpose**. Git is the archive: back issues
+are files, and a run costs history its own size rather than a rewrite of
+everything ever seen.
 
-**report** — `report/*.ts`. Pure functions from `ResearchedCompany[]` to strings.
-No I/O, so they are trivially testable.
+## Invariants
 
-## Key invariants
-
-Break these and things get subtly wrong:
-
-1. **Nothing is silently dropped after merge.** Companies that fall below the LLM
-   cutoff still land in `scored.jsonl` with `llm: null` and appear in the report's
-   long-tail table. If a user goes looking for a company they know raised, it
-   should be findable.
-2. **`effectiveScore()` is the single ranking function.** LLM fit when present,
-   otherwise a capped prefilter score. An un-screened company must never outrank a
-   screened one — `score.ts` enforces this with a hard cap of 45.
-3. **`null` means unknown, never zero.** A missing funding amount is `null`, not
-   `0`. Form D's `totalOfferingAmount` can literally be the string `"Indefinite"`.
-   Coercing that to 0 would rank a company as having raised nothing.
-4. **The LLM never runs in the repo's working directory.** `claude` reads
-   `CLAUDE.md` from its cwd; running from the repo root would inject this
-   project's dev instructions into every scoring prompt. `llm/claude.ts` runs it
-   from an empty temp dir.
-5. **Plan usage is reported, not capped.** A run costs what the work costs; the
-   figure lands in the run summary, `runs.jsonl`, and the report header
-   ([ADR-011](DECISIONS.md#adr-011-report-plan-usage-instead-of-capping-it)).
-   What bounds a run is `--limit` and `--research`, not a dollar figure. If you
-   ever reintroduce a cap, reserve before dispatch or concurrent calls will
-   collectively overshoot — that already happened once, see
-   [ADR-006](DECISIONS.md#adr-006-reserve-llm-budget-before-dispatch).
-6. **The dashboard carries no data.** `report/html.ts` emits a ~17 KB shell that
-   fetches `data/*.jsonl` at load time
-   ([ADR-016](DECISIONS.md#adr-016-serve-the-dashboard-from-the-committed-data-rather-than-inlining-it)).
-   Inlining the dataset made every run commit a second copy of records already in
-   `data/`, and it put attacker-influencable text — anyone can file a Form D with
-   a crafted entity name — inside a `<script>` block. Both are gone; escaping now
-   applies only at render time in the browser. Pinned by `test/report.test.ts`,
-   including a size ceiling so a regression fails loudly.
-7. **`scored.jsonl` is written in id order, and no consumer may assume file
-   order.** Sorting it by score meant each run reordered the whole file, so git
-   stored a fresh ~800 KB blob for a couple of hundred changed lines. Rank
+1. **Nothing is dropped after ingest.** Every company a run finds is researched,
+   scored, and rendered. The dashboard has no top-N cut. The ingest filter is the
+   only thing that removes a company, and it runs before anything else.
+2. **A null `assessment` means research failed** — never that the company was
+   filtered out. It sorts to the bottom of the dashboard but stays visible,
+   because a failure is a defect worth seeing.
+3. **`null` means unknown, never `0`.** Form D's `totalOfferingAmount` can
+   literally be `"Indefinite"`; a `0` would rank a company as having raised
+   nothing.
+4. **Shards are written in id order**, so git stores what changed rather than a
+   reordering of the whole file. No consumer may assume file order — rank
    explicitly at the point of use.
+5. **The dashboard carries no data.** `src/report/html.ts` emits a ~18 KB shell
+   that fetches one shard at load time. Inlining data made every run commit a
+   second copy of records already on disk, and put text from SEC filings — which
+   anyone can craft — inside a `<script>` block.
+6. **Never run `claude` from the repo root.** It reads `CLAUDE.md` from its working
+   directory, which would inject this project's instructions into every research
+   prompt. `src/llm/claude.ts` runs it from an empty temp dir.
+
+## The ingest filter
+
+`isLikelyOperatingStartup()` in `src/sources/edgar.ts` is the only gate. It drops
+roughly four in five filings using the filer's **self-reported** industry code,
+entity type, and name patterns.
+
+Its recall has been measured, not assumed. On a real day it dropped 175 of 222
+filings; a model re-judging all 175 from the same fields called exactly one a real
+company — **97.9% recall**. By rule:
+
+| rule | dropped | missed |
+|---|---:|---:|
+| industry is an investment/real-asset bucket | 160 | 0 |
+| entity type is a fund structure | 12 | 1 |
+| name matches an investment-vehicle pattern | 3 | 0 |
+
+The industry rules are exact because a filer's industry code is structured data
+they supplied, not a guess about them. The one miss was an operating company
+structured as an LP, so that rule now only fires when the industry also looks
+fund-like.
+
+Two things this does *not* establish: both judges saw the same fields, so a
+company with a generic name and a misleading industry code would fool both; and
+the model was told to be strict, which biases toward agreeing with the filter.
+Bounding that would need web search over the dropped set.
+
+The research stage is the backstop — it sets `isOperatingCompany: false` for funds
+and holding companies that get through, and the dashboard hides those by default.
+
+## Deliberate constraints
+
+- **Free public sources only.** No Crunchbase or PitchBook. The interesting claim
+  is that a model can turn a bare Form D into a useful briefing, and that is only
+  tested starting from bare Form Ds.
+- **Exact name matching only.** Startup names are short and collide. A duplicate
+  record is visible and harmless; a wrong merge silently fabricates one company
+  out of two and looks completely normal. If duplicates become annoying, the fix
+  is a curated alias map in `config/`, not a fuzzy threshold.
+- **JSONL on disk, no database.** The data is small, and git gives history, diffs
+  and durability for free.
+- **The Claude Code CLI, not the API.** There is no `ANTHROPIC_API_KEY` here;
+  `claude -p` runs on the user's subscription over OAuth, so nothing is billed to
+  a card, and web search works headlessly.
+- **No spend cap.** A cap fired mid-run once and threw away work already paid for.
+  What bounds a run is the size of a day, plus `--limit` as a safety valve.
+- **Never remove the disk cache** in `src/llm/claude.ts`. With no cap above it, it
+  is the main thing between a careless re-run and a real dent in the rate limit.
 
 ## Extending it
 
-**Adding a data source** is the most common change. Write a module in `src/sources/`
-that returns records, add a merge path, and document it in
-[DATA_SOURCES.md](DATA_SOURCES.md). The `Company.evidence` array is the general
-mechanism for feeding unstructured signal to the LLM without changing types.
+**Adding a data source** is the most common change. Write a module in
+`src/sources/` returning records `mergeSources` understands, and add it to
+`stageIngest`. See [DATA_SOURCES.md](DATA_SOURCES.md) for what is worth adding.
 
-**Changing what "good" means** — start in `config/profile.yaml`. If that is not
-enough, the rubric in `score.ts` is next. Code changes are the last resort.
-
-**Adding a pipeline stage** — add a `stageX()` in `cli.ts`, give it its own
-command, and make it independently runnable against on-disk data. The ability to
-re-run one stage without the others is what makes iteration affordable.
-
-## Testing
-
-135 tests, no network, sub-second. Everything pure is tested; the network and
-subprocess boundaries are not mocked, they are simply not unit-tested — the real
-verification for those is running the pipeline.
-
-```bash
-pnpm test
-pnpm typecheck
-```
-
-When you fix a bug found by running the real pipeline, add the offending input as
-a test case. Several tests in `test/news.test.ts` are exactly that: real headlines
-that produced garbage company records on the first live run.
+**Changing what "good" means** is a config change, not a code change. Edit
+`config/profile.yaml`, then `pnpm sf research --limit 5` against an existing shard
+to see the effect for about a dollar.

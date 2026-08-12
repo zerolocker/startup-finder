@@ -57,6 +57,18 @@ const EXCLUDED_INDUSTRIES = new Set([
   'Restaurants',
 ]);
 
+/** Industries that make a Limited Partnership look like a fund, not a business. */
+const FUND_LIKE_INDUSTRIES = new Set([
+  'Pooled Investment Fund',
+  'Investing',
+  'Investment Banking',
+  'Other Real Estate',
+  'Residential',
+  'Commercial',
+  'REITS & Finance',
+  'Other Banking and Financial Services',
+]);
+
 /**
  * Name patterns for investment vehicles. These are matched against the raw
  * entity name. Tuned to be specific: "Capital" alone would wrongly drop real
@@ -82,7 +94,19 @@ const FUND_NAME_PATTERNS: RegExp[] = [
   /\bmultifamily\b/i,
 ];
 
-/** Entity types that are essentially never a venture-backed operating company. */
+/**
+ * Entity types that are never operating companies on their own.
+ *
+ * Measured: on a real day this rule was the *only* one that cost recall. An
+ * audit re-judged all 175 filings the filter dropped and found exactly one real
+ * company among them — `Vehlo Holdings, LP`, auto-repair payments software —
+ * dropped for being an LP. The industry-code rules had a false-negative rate of
+ * 0/160, because a filer's self-reported industry is structured data rather than
+ * a guess about them.
+ *
+ * So an LP is only excluded when its industry *also* looks fund-like. A plain LP
+ * in an operating industry now survives.
+ */
 const EXCLUDED_ENTITY_TYPES = new Set(['Limited Partnership']);
 
 export interface FilterVerdict {
@@ -104,8 +128,14 @@ export function isLikelyOperatingStartup(filing: FormDFiling): FilterVerdict {
   if (filing.industryGroup && EXCLUDED_INDUSTRIES.has(filing.industryGroup)) {
     return { keep: false, reason: `industry "${filing.industryGroup}" is an investment/real-asset bucket` };
   }
-  if (filing.entityType && EXCLUDED_ENTITY_TYPES.has(filing.entityType)) {
-    return { keep: false, reason: `entity type "${filing.entityType}" is a fund structure` };
+  if (
+    filing.entityType &&
+    EXCLUDED_ENTITY_TYPES.has(filing.entityType) &&
+    // An LP alone is not evidence of a fund; an LP filing under a fund-ish or
+    // unstated industry is. See the note on EXCLUDED_ENTITY_TYPES.
+    (filing.industryGroup == null || FUND_LIKE_INDUSTRIES.has(filing.industryGroup))
+  ) {
+    return { keep: false, reason: `entity type "${filing.entityType}" with a fund-like industry` };
   }
   for (const pattern of FUND_NAME_PATTERNS) {
     if (pattern.test(filing.entityName)) {
