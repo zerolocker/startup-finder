@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   autoLookbackDays,
+  indexDatesFor,
   isLikelyOperatingStartup,
   parseFormD,
   parseFormIndex,
@@ -194,6 +195,61 @@ describe('isLikelyOperatingStartup', () => {
       expect(isLikelyOperatingStartup(filing({ entityName })).keep).toBe(true);
     },
   );
+});
+
+describe('indexDatesFor', () => {
+  const ymd = (d: Date) => d.toISOString().slice(0, 10);
+  // Early morning UTC, the exact condition under which the bug showed up.
+  const NOW = new Date('2026-08-11T06:45:00Z');
+
+  // EDGAR publishes a day's index only after that day closes, so asking for
+  // today returns nothing. Counting it against the window made `--days 1`
+  // fetch a single unpublished day and report zero filings.
+  it('ends yesterday, never today', () => {
+    expect(indexDatesFor(1, NOW).map(ymd)).toEqual(['2026-08-10']);
+  });
+
+  it('gives N complete days, newest first', () => {
+    expect(indexDatesFor(4, NOW).map(ymd)).toEqual([
+      '2026-08-10',
+      '2026-08-09',
+      '2026-08-08',
+      '2026-08-07',
+    ]);
+  });
+
+  it('crosses a month boundary', () => {
+    expect(indexDatesFor(2, new Date('2026-09-01T00:30:00Z')).map(ymd)).toEqual([
+      '2026-08-31',
+      '2026-08-30',
+    ]);
+  });
+
+  it('returns nothing for a zero-day window', () => {
+    expect(indexDatesFor(0, NOW)).toEqual([]);
+  });
+
+  // The two halves of the lookback have to agree: autoLookbackDays picks the
+  // width, indexDatesFor places it. If the window ends yesterday but the width
+  // is still computed from today, a day silently falls through the gap.
+  it('covers every day since the last filing on disk, for any gap', () => {
+    for (const gap of [1, 2, 3, 7, 30, 60]) {
+      const now = new Date('2026-08-12T04:51:00Z');
+      const latest = new Date(now);
+      latest.setUTCDate(latest.getUTCDate() - gap);
+      const latestYmd = ymd(latest);
+
+      const { days } = autoLookbackDays(latestYmd, now);
+      const covered = new Set(indexDatesFor(days, now).map(ymd));
+
+      // Every day after the newest filing, up to and including yesterday.
+      for (let i = 1; i < gap; i++) {
+        const d = new Date(latest);
+        d.setUTCDate(d.getUTCDate() + i);
+        expect(covered, `gap ${gap} should cover ${ymd(d)}`).toContain(ymd(d));
+      }
+    }
+  });
 });
 
 describe('autoLookbackDays', () => {

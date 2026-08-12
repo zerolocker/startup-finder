@@ -45,7 +45,7 @@ Everything in the architecture follows from that sentence.
 
 ## What success looks like
 
-The user opens `reports/latest.md` on a Monday morning, spends five minutes, and
+The user opens the newest digest in `reports/` on a Monday morning, spends five minutes, and
 comes away with two or three companies they had not heard of and genuinely want
 to talk to. Not fifty. Two or three.
 

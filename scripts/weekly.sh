@@ -80,8 +80,9 @@ pnpm sf run \
   --research "$RESEARCH" \
   || fail "pipeline returned non-zero"
 
+# Dated files only; fall back to the newest one if today's is missing.
 DIGEST="reports/$STAMP-digest.md"
-[ -f "$DIGEST" ] || DIGEST="reports/latest.md"
+[ -f "$DIGEST" ] || DIGEST="$(ls -1 reports/*-digest.md 2>/dev/null | sort | tail -1)"
 [ -f "$DIGEST" ] || fail "no digest was written"
 
 # --- archive ---------------------------------------------------------------

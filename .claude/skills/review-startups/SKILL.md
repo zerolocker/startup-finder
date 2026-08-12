@@ -15,7 +15,7 @@ ground-truth signal this app has — the screen's own `fit` can measure the stag
 Regenerate the dashboard so it reflects the current data, then open it:
 
 ```bash
-pnpm sf report && open reports/latest.html
+pnpm sf report && open "$(ls -1 reports/*-dashboard.html | sort | tail -1)"
 ```
 
 Tell them three things and then **stop and wait**:

@@ -234,7 +234,7 @@ async function stageResearch(
 async function stageReport(
   companies: readonly ResearchedCompany[],
   opts: { runId: string; windowDays: number; costUsd: number; totalCandidates: number },
-): Promise<{ markdown: string; html: string }> {
+): Promise<{ markdown: string; html: string; mdPath: string; htmlPath: string }> {
   await mkdir(REPORTS_DIR, { recursive: true });
   const date = new Date().toISOString().slice(0, 10);
 
@@ -243,15 +243,16 @@ async function stageReport(
 
   const mdPath = join(REPORTS_DIR, `${date}-digest.md`);
   const htmlPath = join(REPORTS_DIR, `${date}-dashboard.html`);
+  // Dated files only. `latest.*` used to be written alongside these with
+  // byte-identical content, which doubled the ~300 KB a dashboard adds to the
+  // repo every run to buy a stable filename. The newest date in reports/ says
+  // the same thing.
   await writeFile(mdPath, markdown, 'utf8');
   await writeFile(htmlPath, html, 'utf8');
-  // Stable filenames so a bookmark or a symlink keeps working run to run.
-  await writeFile(join(REPORTS_DIR, 'latest.md'), markdown, 'utf8');
-  await writeFile(join(REPORTS_DIR, 'latest.html'), html, 'utf8');
 
   log.info(`Wrote ${mdPath}`);
   log.info(`Wrote ${htmlPath}`);
-  return { markdown, html };
+  return { markdown, html, mdPath, htmlPath };
 }
 
 /** Reconstruct researched companies from disk, without spending anything. */
@@ -384,7 +385,7 @@ async function cmdRun(opts: {
   record.costUsd = spentUsd();
   const scoredCount = companies.length;
 
-  await time(
+  const written = await time(
     'report',
     () =>
       stageReport(companies, {
@@ -417,8 +418,8 @@ async function cmdRun(opts: {
       return `  ${score}  ${amount}  ${c.name.slice(0, 34).padEnd(34)}  ${what}`;
     }),
     '',
-    `  reports/latest.md    full digest`,
-    `  reports/latest.html  filterable dashboard`,
+    `  ${written.mdPath}  full digest`,
+    `  ${written.htmlPath}  filterable dashboard`,
     '',
   ];
   process.stdout.write(lines.join('\n'));

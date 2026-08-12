@@ -8,21 +8,19 @@ pnpm install
 pnpm sf run
 ```
 
-Output: [`reports/latest.md`](reports/latest.md) and
-[`reports/latest.html`](reports/latest.html), both committed to the repo.
+Output: a dated digest and dashboard in [`reports/`](reports/), both committed to
+the repo. The newest date is the current one.
 
 ---
 
 ## What it produces
 
-A real incremental run — one extra business day on top of an existing corpus:
-206 SEC filings → 52 operating companies → 378 candidates → 120 LLM-screened →
-researched in depth. About nine minutes, $3.20-equivalent of plan usage.
+One day's filings: 222 SEC Form Ds → 41 real operating companies → screened →
+the best few researched in depth. Ten minutes, a few dollars of plan usage.
 
-That day's best new find was an AI evaluation and observability platform, scored
-79, with its product, customers, and two open roles — none of which appears in
-the SEC filing that surfaced it. The top of the digest overall is a $110M
-decisioning-infrastructure company at 88.
+The best new find that day was an AI evaluation and observability platform, with
+its product, customers, and two open engineering roles — none of which appears in
+the SEC filing that surfaced it.
 
 ## Why it exists
 
@@ -39,38 +37,30 @@ So: **Form D for recall, news for context, an LLM for the judgement in between.*
 
 ```mermaid
 flowchart TD
-    A["<b>SEC Form D</b> — 206 filings"] -->|"−154 funds, SPVs, real estate"| C
-    B["<b>funding news RSS</b> — 7 feeds, 39 items"] --> C
-    C["<b>merge</b> — exact-name join<br/>378 companies, cumulative"] --> D
-    D["<b>prefilter</b> — deterministic, free<br/>ranks all 378 · <b>gate: top 120 only</b>"]
+    A["SEC Form D<br/>222 filings in a day"] -->|"drop funds, SPVs, real estate"| C
+    B["funding news RSS<br/>7 feeds"] --> C
+    C["merge<br/>join by exact name"] --> D
+    D["prefilter — free, no LLM<br/>ranks everything, forwards only the top 120"]
     D -->|"top 120"| E
-    D -->|"258 skipped, still kept"| S
-    E["<b>llm screen</b> — batched ×8, no web<br/>120 scored · $1.72 · 3.5 min"] --> S
-    S[("<b>data/scored.jsonl</b> — 331 scored<br/>120 fresh + 211 carried forward<br/>from runs that already paid for them")]
+    D -->|"everyone else, unscreened"| S
+    E["llm screen — batched, no web<br/>one fit score per company"] --> S
+    S[("data/scored.jsonl<br/>scores persist across runs")]
     S --> F & R
-    F["<b>research</b> — web search<br/>top 8 → dossiers · ~$0.40 each"] --> R
-    R["<b>report</b>"] --> G["reports/latest.md"]
-    R --> H["reports/latest.html<br/>grading UI → data/labels.jsonl"]
+    F["research — web search<br/>dossier for the best few"] --> R
+    R["report"] --> G["dated digest .md"]
+    R --> H["dated dashboard .html"]
 
     classDef gate fill:#fde68a,stroke:#b45309,color:#1a1a19
-    classDef store fill:#d1fae5,stroke:#047857,color:#1a1a19
     class D gate
-    class S store
 ```
 
-Numbers are one real incremental run: one extra business day of filings on top of
-an existing corpus, **$3.20-equivalent in about nine minutes**. Each stage runs
-independently against on-disk data, so you can re-screen and re-report without
-re-running the expensive research.
+Each stage runs on its own against data already on disk, so you can re-screen and
+re-report without repeating the slow, expensive research step.
 
-The dashed edges are the two things worth understanding. The **prefilter is a
-gate** — only its top `--limit` are ever screened, and it ranks on a company's
-legal name before anything knows what the company does, which is why its ordering
-scores NDCG@12 = 0.500 against the screen's own judgement. And **scores carry
-forward** between runs, so a company that drifts below the cutoff keeps the
-judgement an earlier run paid for instead of silently reverting to unscored.
-Both are measured in [`docs/RANKING.md`](docs/RANKING.md), which specifies the
-replacement.
+The highlighted step is the one that loses things: only its top `--limit`
+companies are ever shown to the model, and it has to rank them knowing little
+more than a legal name. [`docs/RANKING.md`](docs/RANKING.md) measures what that
+costs and specifies the replacement.
 
 ```bash
 pnpm sf run                        # everything (the normal entry point)

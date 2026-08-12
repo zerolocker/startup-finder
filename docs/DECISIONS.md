@@ -263,8 +263,16 @@ or waiting fifteen minutes.
 because it inlines the full dataset. Merge conflicts if two agents run the
 pipeline on branches simultaneously.
 
-**Revisit when.** Repo size becomes a problem. First mitigation is to keep only
-`latest.*` plus a monthly archive rather than every dated run.
+**Revisit when.** Repo size becomes a problem.
+
+**Amended.** `reports/latest.md` and `latest.html` are no longer written. They
+were byte-identical copies of the newest dated files, so every run committed the
+~300 KB dashboard twice to buy a stable filename; the newest date in `reports/`
+says the same thing. This settles the opposite way from the mitigation this ADR
+originally suggested — keeping only `latest.*` and leaning on git history for
+back issues would also have halved the growth, but it hides the archive inside
+`git log` instead of leaving it visible in the tree, and the user preferred the
+dated files. Either choice halves it; do not swap between them without a reason.
 
 ---
 

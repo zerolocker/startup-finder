@@ -27,7 +27,7 @@ under `data/` and `reports/` is committed ([ADR-007](DECISIONS.md)):
 ```
 reports/2026-08-09-digest.md      this week's issue
 reports/2026-08-02-digest.md      last week's
-reports/latest.md                 always the newest — bookmark this one
+reports/2026-08-12-digest.md      one dated issue per run; newest date wins
 ```
 
 Git is the archive. `git log --oneline -- reports/` lists every issue, and
@@ -108,5 +108,5 @@ week in the feeds, not an error.
 
 Email delivery. It would mean sending mail on your behalf unattended, which
 needs credentials and a deliberate decision about what leaves the machine. The
-notification plus `reports/latest.md` covers the "tell me it's ready" part
+notification plus the newest digest in `reports/` covers the "tell me it's ready" part
 without that. If you want real email, say so and it is a small addition.

@@ -363,6 +363,35 @@ export interface EdgarIngestResult {
 }
 
 /**
+ * The UTC dates a `--days N` window should scan, newest first.
+ *
+ * The window **ends yesterday, not today**. EDGAR publishes the daily index for
+ * a filing day only after that day closes, so today's index does not exist for
+ * essentially the whole of today — measured 2026-08-12 04:51 UTC, the indexes
+ * for Aug 10 and Aug 11 were both up and Aug 12 was still absent.
+ *
+ * Counting today against the window made `--days N` quietly deliver N−1 usable
+ * days, and `--days 1` deliver nothing at all. That is not a rounding error: a
+ * run at 06:45 UTC with `--days 4` missed a full business day of 156 filings,
+ * because the newest day it asked for had not been published yet.
+ *
+ * Yesterday is the right anchor but is not a guarantee either — before roughly
+ * 03:00 UTC yesterday's index may also still be pending — so callers must keep
+ * tolerating a missing day rather than treating it as an error.
+ */
+export function indexDatesFor(days: number, now: Date = new Date()): Date[] {
+  const dates: Date[] = [];
+  for (let i = 1; i <= days; i++) {
+    const date = new Date(now);
+    date.setUTCDate(date.getUTCDate() - i);
+    dates.push(date);
+  }
+  return dates;
+}
+
+const ymd = (d: Date): string => d.toISOString().slice(0, 10);
+
+/**
  * Fetch and parse recent Form D filings.
  *
  * Weekends and holidays have no index file; a 404 there is expected and skipped
@@ -372,10 +401,10 @@ export async function ingestEdgar(opts: EdgarIngestOptions): Promise<EdgarIngest
   const { days, concurrency = 4, includeAmendments = true } = opts;
   const formTypes = includeAmendments ? ['D', 'D/A'] : ['D'];
 
+  const dates = indexDatesFor(days);
   const refs: FilingRef[] = [];
-  for (let i = 0; i < days; i++) {
-    const date = new Date();
-    date.setUTCDate(date.getUTCDate() - i);
+  const missing: string[] = [];
+  for (const date of dates) {
     const url = dailyIndexUrl(date);
     try {
       // Index files are immutable once published, so cache them for a week.
@@ -384,11 +413,31 @@ export async function ingestEdgar(opts: EdgarIngestOptions): Promise<EdgarIngest
       refs.push(...dayRefs);
       log.debug(`${url.split('/').pop()}: ${dayRefs.length} Form D`);
     } catch (err) {
-      log.debug(`no index for ${date.toISOString().slice(0, 10)} (weekend/holiday?)`, String(err));
+      missing.push(ymd(date));
+      log.debug(`no index for ${ymd(date)} (weekend/holiday?)`, String(err));
     }
   }
 
-  log.info(`EDGAR: ${refs.length} Form D filings in the last ${days} days`);
+  // Name the actual dates. "in the last N days" hid which days were really
+  // read, which is how a missing business day went unnoticed.
+  const oldest = dates[dates.length - 1];
+  const newest = dates[0];
+  const span = newest && oldest ? `${ymd(oldest)}..${ymd(newest)}` : 'no days';
+  log.info(`EDGAR: ${refs.length} Form D filings across ${span} (${days} day window ending yesterday)`);
+  if (missing.length > 0) {
+    // Weekends dominate this list and are unremarkable; a weekday is not.
+    const weekdays = missing.filter((d) => {
+      const dow = new Date(`${d}T12:00:00Z`).getUTCDay();
+      return dow !== 0 && dow !== 6;
+    });
+    log.debug(`no index for ${missing.length} day(s): ${missing.join(', ')}`);
+    if (weekdays.length > 0) {
+      log.warn(
+        `No SEC index for ${weekdays.length} weekday(s): ${weekdays.join(', ')}. ` +
+          `Holiday, or not published yet — re-run later to pick them up.`,
+      );
+    }
+  }
 
   const dropped: Record<string, number> = {};
   const kept: FormDFiling[] = [];
