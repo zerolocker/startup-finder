@@ -187,10 +187,12 @@ Small, real, and worth fixing when nearby:
   for bucketing, wrong for precise comparison.
 - **`data/companies.jsonl` is rewritten in full** on every merge. Fine at this
   size, quadratic eventually.
-- **The dashboard inlines the whole dataset** (~300 KB/run). Committing one per
-  run will bloat the repo over time. The duplicate `latest.*` copies are gone
-  ([ADR-007](DECISIONS.md#adr-007-commit-generated-data-and-reports-to-git)),
-  which halved it; a monthly archive is the next step.
+- ~~**The dashboard inlines the whole dataset**~~ — fixed. It was 97% a verbatim
+  copy of records already committed under `data/`, so a run added them twice.
+  The dashboard is now a ~17 KB data-free shell that fetches `data/*.jsonl`
+  ([ADR-016](DECISIONS.md#adr-016-serve-the-dashboard-from-the-committed-data-rather-than-inlining-it)),
+  and `scored.jsonl` is written in id order rather than score order so git can
+  delta-compress it instead of storing a freshly-reordered ~800 KB blob per run.
 - **Long lookbacks are slow** on a cold cache — one HTTP request per filing,
   throttled to ~8/s for the SEC, so roughly 160 filings per day of window.
   ~1,600 filings ≈ 3.5 minutes; the 90-day auto-catch-up cap is ~30 minutes.

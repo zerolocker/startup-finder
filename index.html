@@ -1,44 +1,4 @@
-/**
- * The dashboard shell.
- *
- * Complements the Markdown digest: the digest is for reading once, the
- * dashboard is for coming back and filtering ("show me only >70 fit, in CA,
- * that are hiring").
- *
- * **It contains no data.** It fetches `data/scored.jsonl` and
- * `data/dossiers.jsonl` at load time and joins them in the browser.
- *
- * The previous version inlined the whole dataset, which made every run commit
- * a ~520 KB file that was 97% a verbatim copy of records already committed
- * under `data/`. This shell is ~14 KB and changes only when this file does, so
- * a run that ingests new companies now adds new bytes exactly once. The cost is
- * that `fetch` is blocked on `file://`, so the page has to be served — see
- * the `review-startups` skill for the one-line local server.
- *
- * Because it reads whatever is on disk *now*, there is one dashboard rather
- * than one per run. Dated Markdown digests remain the back issues.
- */
-
-export interface HtmlOptions {
-  runId: string;
-  windowDays: number;
-  costUsd: number;
-  totalCandidates: number;
-}
-
-/**
- * Run metadata the page cannot derive from the data files.
- *
- * Written beside the shell as a few hundred bytes. `runId` matters beyond the
- * header line: exported grades are stamped with it so a label can be traced to
- * the ranking that produced it.
- */
-export function renderDashboardMeta(opts: HtmlOptions): string {
-  return JSON.stringify({ ...opts, generatedAt: new Date().toISOString() }, null, 2);
-}
-
-export function renderDashboard(): string {
-  return `<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -175,7 +135,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;',
 const jsonl = async (path) => {
   const res = await fetch(path);
   if (!res.ok) throw new Error(path + ' -> HTTP ' + res.status);
-  return (await res.text()).split('\\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
+  return (await res.text()).split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
 };
 
 const formatUsd = (a) =>
@@ -453,5 +413,3 @@ main();
 </script>
 </body>
 </html>
-`;
-}

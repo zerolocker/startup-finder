@@ -60,7 +60,7 @@ src/
   store/jsonl.ts      The entire persistence layer.
   report/
     markdown.ts       The digest.
-    html.ts           The filterable dashboard.
+    html.ts           The dashboard shell — no data, fetches data/*.jsonl.
   util/               http (rate limit + cache), text (normalization), log.
 ```
 
@@ -139,11 +139,18 @@ Break these and things get subtly wrong:
    ever reintroduce a cap, reserve before dispatch or concurrent calls will
    collectively overshoot — that already happened once, see
    [ADR-006](DECISIONS.md#adr-006-reserve-llm-budget-before-dispatch).
-6. **Data embedded in the dashboard's `<script>` block goes through
-   `toScriptJson()`, never bare `JSON.stringify`.** Company names come from SEC
-   filings and RSS feeds, so a crafted entity name containing `</script>` would
-   close the element and turn the rest of the page into live HTML. Pinned by
-   `test/report.test.ts`.
+6. **The dashboard carries no data.** `report/html.ts` emits a ~17 KB shell that
+   fetches `data/*.jsonl` at load time
+   ([ADR-016](DECISIONS.md#adr-016-serve-the-dashboard-from-the-committed-data-rather-than-inlining-it)).
+   Inlining the dataset made every run commit a second copy of records already in
+   `data/`, and it put attacker-influencable text — anyone can file a Form D with
+   a crafted entity name — inside a `<script>` block. Both are gone; escaping now
+   applies only at render time in the browser. Pinned by `test/report.test.ts`,
+   including a size ceiling so a regression fails loudly.
+7. **`scored.jsonl` is written in id order, and no consumer may assume file
+   order.** Sorting it by score meant each run reordered the whole file, so git
+   stored a fresh ~800 KB blob for a couple of hundred changed lines. Rank
+   explicitly at the point of use.
 
 ## Extending it
 

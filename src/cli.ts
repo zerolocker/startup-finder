@@ -35,9 +35,11 @@ import type {
 } from './types.ts';
 import {
   COMPANIES_PATH,
+  DASHBOARD_PATH,
   DOSSIERS_PATH,
   FILINGS_PATH,
   NEWS_PATH,
+  REPORT_META_PATH,
   REPORTS_DIR,
   RUNS_PATH,
   SCORED_PATH,
@@ -55,7 +57,7 @@ import {
 } from './pipeline/score.ts';
 import { buildResearchPrompt, researchCompanies } from './pipeline/research.ts';
 import { renderDigest } from './report/markdown.ts';
-import { renderDashboard } from './report/html.ts';
+import { renderDashboard, renderDashboardMeta } from './report/html.ts';
 import { loadProfile, profileToPrompt } from './config.ts';
 import { isClaudeAvailable, resetSpend, spentUsd } from './llm/claude.ts';
 import { log } from './util/log.ts';
@@ -181,15 +183,20 @@ async function stageScore(limit: number, model: 'haiku' | 'sonnet' | 'opus'): Pr
     .filter(({ company }) => !scoredIds.has(company.id))
     .map(({ company, prefilter }) => ({ ...company, prefilter, llm: null }));
 
-  const all = carryForwardScores([...scored, ...remainder], previous, scoredAt).sort(
-    (a, b) => effectiveScore(b) - effectiveScore(a),
-  );
+  const all = carryForwardScores([...scored, ...remainder], previous, scoredAt);
 
   const carried = all.filter((c) => c.llm && c.llmScoredAt !== scoredAt).length;
   if (carried > 0) log.info(`Kept ${carried} LLM scores from earlier runs`);
 
-  await writeAll(SCORED_PATH, all);
-  return all;
+  // Written by id, not by score. Sorting the file by score meant every run
+  // reordered all of it, so git stored a fresh ~800 KB blob even when only a
+  // couple of hundred lines had really changed — a reordered file barely
+  // delta-compresses. By id the on-disk order is stable and a run's diff is
+  // about the size of what it actually changed.
+  //
+  // Consumers must therefore sort explicitly; none may assume file order.
+  await writeAll(SCORED_PATH, [...all].sort((a, b) => a.id.localeCompare(b.id)));
+  return all.sort((a, b) => effectiveScore(b) - effectiveScore(a));
 }
 
 interface DossierRecord {
@@ -203,7 +210,11 @@ async function stageResearch(
   model: 'haiku' | 'sonnet' | 'opus',
   refresh: boolean,
 ): Promise<ResearchedCompany[]> {
-  const scored = await readAll<ScoredCompany>(SCORED_PATH);
+  // Sorted here rather than trusting the file: scored.jsonl is written in id
+  // order so git can diff it, so "the top N" only exists once ranked.
+  const scored = (await readAll<ScoredCompany>(SCORED_PATH)).sort(
+    (a, b) => effectiveScore(b) - effectiveScore(a),
+  );
   if (scored.length === 0) {
     log.warn('Nothing scored yet — run `pnpm sf score` first.');
     return [];
@@ -239,20 +250,20 @@ async function stageReport(
   const date = new Date().toISOString().slice(0, 10);
 
   const markdown = renderDigest(companies, { ...opts, featureCount: 12 });
-  const html = renderDashboard(companies, opts);
 
   const mdPath = join(REPORTS_DIR, `${date}-digest.md`);
-  const htmlPath = join(REPORTS_DIR, `${date}-dashboard.html`);
-  // Dated files only. `latest.*` used to be written alongside these with
-  // byte-identical content, which doubled the ~300 KB a dashboard adds to the
-  // repo every run to buy a stable filename. The newest date in reports/ says
-  // the same thing.
   await writeFile(mdPath, markdown, 'utf8');
-  await writeFile(htmlPath, html, 'utf8');
+
+  // The dashboard is a data-free shell that fetches data/*.jsonl at load time,
+  // so there is one of it rather than one per run, and it only changes when
+  // report/html.ts does. Dated Markdown digests are the back issues.
+  const html = renderDashboard();
+  await writeFile(DASHBOARD_PATH, html, 'utf8');
+  await writeFile(REPORT_META_PATH, renderDashboardMeta(opts), 'utf8');
 
   log.info(`Wrote ${mdPath}`);
-  log.info(`Wrote ${htmlPath}`);
-  return { markdown, html, mdPath, htmlPath };
+  log.info(`Wrote ${DASHBOARD_PATH} (serve the repo root to view it)`);
+  return { markdown, html, mdPath, htmlPath: DASHBOARD_PATH };
 }
 
 /** Reconstruct researched companies from disk, without spending anything. */

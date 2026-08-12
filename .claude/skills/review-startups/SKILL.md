@@ -12,15 +12,21 @@ ground-truth signal this app has — the screen's own `fit` can measure the stag
 
 ## Mode A — review (user wants to grade)
 
-Regenerate the dashboard so it reflects the current data, then open it:
+Regenerate the metadata, then serve the repo root and open the dashboard. It
+**must be served** — the page fetches `data/*.jsonl`, and `fetch` is blocked on
+`file://`, so opening `index.html` directly shows a "could not load the data"
+panel instead of the digest:
 
 ```bash
-pnpm sf report && open "$(ls -1 reports/*-dashboard.html | sort | tail -1)"
+pnpm sf report && python3 -m http.server 8000 >/dev/null 2>&1 & sleep 1 && open http://localhost:8000/
 ```
+
+Run the server in the background and stop it when they are done. If port 8000 is
+taken, any port works. There is nothing to build and no dependency to install.
 
 Tell them three things and then **stop and wait**:
 
-1. **Set "Min fit" to `any`.** It defaults to `70+`, which renders 8 of 324 rows.
+1. **Set "Min fit" to `any`.** It defaults to `70+`, which renders ~10 of 421 rows.
    Labels only exist for companies actually displayed, so leaving the filter up
    means grading only what the ranker already liked — the exact bias these labels
    are meant to detect.
@@ -80,8 +86,9 @@ built on these labels:
 ## If the export gets fiddly
 
 The File System Access API only exists in Chromium, so other browsers fall back
-to a plain download. If that becomes annoying, the alternative is the approach
-`screensaver-art`'s `curate-gallery` skill uses — a small local server the page
-POSTs to, writing straight into the repo. That trades the current
-self-contained-single-file property of the dashboard for convenience; it is
-deliberately not built yet.
+to a plain download. If that becomes annoying, the fix is the approach
+`screensaver-art`'s `curate-gallery` skill uses: have the page POST grades to a
+small local server that writes `data/labels.jsonl` directly, removing the export
+step entirely. Mode A already runs a server, so this is a smaller change than it
+once was — `python3 -m http.server` just needs replacing with something that
+accepts a POST. Deliberately not built yet.

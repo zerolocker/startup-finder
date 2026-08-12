@@ -663,3 +663,68 @@ been measured against an outcome.
 
 **Revisit when.** The batch-composition experiment shows the effect is large even
 with anchors, which would argue for listwise over a wider slice than the head.
+
+---
+
+## ADR-016: Serve the dashboard from the committed data rather than inlining it
+
+**Status:** accepted · at the user's request
+
+**Context.** Every run wrote a dated `*-dashboard.html` that inlined the whole
+dataset as a `const ROWS = [...]` literal. Measured on a real run: **521 KB, of
+which 507 KB (97%) was data** — and that data was a verbatim copy of records
+already committed under `data/scored.jsonl` and `data/dossiers.jsonl`. A run
+committed the same company records twice.
+
+**Decision.** `renderDashboard()` emits a ~17 KB shell containing no data. It
+fetches `data/scored.jsonl`, `data/dossiers.jsonl`, and a ~130-byte
+`reports/meta.json` at load time and joins them in the browser. The shell lives
+at the repo root as `index.html` so those relative paths resolve both under a
+local static server and on GitHub Pages served from the repo root.
+
+**Why not the alternatives.**
+
+- **Emit a purpose-built `dashboard.json` per run.** Smaller page load, but the
+  JSON is still a per-run duplicate of `data/`, so it only halves the growth
+  instead of removing it.
+- **Shard the JSONL by run, so each page loads one shard.** Considered and
+  rejected. A dated dashboard shows the *cumulative* corpus, so a per-run shard
+  only works if the page becomes a "what's new" view — a different product. It
+  would also fragment the storage layer ([ADR-002](#adr-002-jsonl-files-on-disk-instead-of-a-database))
+  across many files for a dataset in the low hundreds of rows. The measurement
+  that settled it is below: the growth was not really about file size.
+
+**The related fix, which mattered more than the split.** `scored.jsonl` was
+written sorted by score, so every run reordered the entire file and git stored a
+fresh ~800 KB blob even when only ~200 of 421 lines had changed — a reordered
+file barely delta-compresses. It is now written in **id order**, which is stable
+across runs, so a run's stored diff is about the size of what actually changed.
+Consumers sort explicitly; `stageResearch` previously depended on the file's
+score order and now ranks what it reads.
+
+**Consequences.**
+
+- **The page must be served.** `fetch` is blocked on `file://`, so opening
+  `index.html` directly shows an error panel naming the fix
+  (`python3 -m http.server`). This gives up the old "works from file://, survives
+  being emailed" property, which was a real one. The `review-startups` skill
+  starts the server.
+- **One dashboard, not one per run**, since it renders whatever is on disk now.
+  Dated Markdown digests remain the back issues. The two existing dated
+  dashboards were deleted.
+- **The build-time injection surface is gone.** A crafted SEC entity name could
+  previously have closed the inlined `<script>`; nothing about a company is
+  written into the shell at all now. Escaping still applies at render time in the
+  browser.
+- Page load is ~910 KB uncompressed, ~200 KB over a gzipping server. Fine for one
+  page view; revisit if the corpus grows an order of magnitude, at which point
+  loading the scored head first and the tail lazily is the natural next step.
+- GitHub Pages is not enabled by this change — that is a repo setting. The shell
+  carries `<meta name="robots" content="noindex, nofollow">` and the repo has a
+  `.nojekyll` marker, so enabling it is a one-click step whenever wanted. The
+  noindex is deliberate: the repo is public, but a digest of which companies
+  someone is tracking does not need to be search-indexed.
+
+**Revisit when.** The corpus outgrows a single fetch, or the grading loop needs a
+POST endpoint anyway — at which point the local server could write
+`data/labels.jsonl` directly and the export step disappears.

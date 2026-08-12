@@ -31,3 +31,14 @@ export const DOSSIERS_PATH = join(DATA_DIR, 'dossiers.jsonl');
 export const RUNS_PATH = join(DATA_DIR, 'runs.jsonl');
 
 export const REPORTS_DIR = join(ROOT, 'reports');
+/**
+ * Run metadata for the dashboard — window, cost, runId. A few hundred bytes.
+ * Everything else the dashboard shows it reads straight out of `data/`.
+ */
+export const REPORT_META_PATH = join(REPORTS_DIR, 'meta.json');
+/**
+ * The dashboard shell. At the repo root so relative fetches of `data/*.jsonl`
+ * resolve both under a local static server and on GitHub Pages served from the
+ * repo root.
+ */
+export const DASHBOARD_PATH = join(ROOT, 'index.html');

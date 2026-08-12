@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { describeCompany, renderDigest } from '../src/report/markdown.ts';
-import { renderDashboard } from '../src/report/html.ts';
+import { renderDashboard, renderDashboardMeta } from '../src/report/html.ts';
 import type { Dossier, LlmScore, ResearchedCompany } from '../src/types.ts';
 
 const LLM: LlmScore = {
@@ -112,43 +112,60 @@ describe('renderDigest', () => {
 });
 
 describe('renderDashboard', () => {
-  const html = renderDashboard([company()], OPTS);
+  const html = renderDashboard();
 
-  it('is a self-contained document with no external requests', () => {
+  it('has no external requests, so it works offline once served', () => {
     expect(html).toContain('<!doctype html>');
     expect(html).not.toMatch(/<script[^>]+src=/);
-    expect(html).not.toMatch(/<link[^>]+stylesheet[^>]*href="http/);
+    expect(html).not.toMatch(/<link[^>]+stylesheet/);
   });
 
-  it('embeds the row data for client-side filtering', () => {
-    expect(html).toContain('const ROWS =');
-    expect(html).toContain('Inferra Inc.');
+  // The whole point of the shell. Inlining the dataset made every run commit a
+  // ~520 KB file that was 97% a copy of records already in data/. If this ever
+  // regresses, repo growth quietly doubles again.
+  it('contains no data, only the shell', () => {
+    expect(html).not.toContain('const ROWS = [');
+    expect(html.length).toBeLessThan(30_000);
   });
 
-  it('cannot be broken out of the script block by a crafted company name', () => {
-    // Names come from SEC filings and RSS — anyone can file a Form D with a
-    // crafted entity name. A raw JSON.stringify would let "</script>" close the
-    // element and turn the rest into live HTML.
-    const payload = '</script><img src=x onerror=alert(1)>';
-    const evil = renderDashboard([company({ name: payload })], OPTS);
-
-    expect(evil).not.toContain('</script><img');
-    expect(evil).toContain('\\u003c/script\\u003e');
-    // Exactly one real script element remains.
-    expect(evil.match(/<\/script>/g)).toHaveLength(1);
+  it('fetches the committed data files by relative path', () => {
+    expect(html).toContain("jsonl('data/scored.jsonl')");
+    expect(html).toContain("jsonl('data/dossiers.jsonl')");
+    expect(html).toContain("fetch('reports/meta.json')");
   });
 
-  it('round-trips the escaped name back to the original string', () => {
-    const payload = '</script>&<>"';
-    const evil = renderDashboard([company({ name: payload })], OPTS);
-    // Anchored to the line: a greedy dot-all match would run past the data
-    // into the page's own script body.
-    const json = /^const ROWS = (\[.*\]);$/m.exec(evil)?.[1];
-    expect(json).toBeDefined();
-    expect((JSON.parse(json!) as Array<{ name: string }>)[0]?.name).toBe(payload);
+  // Carrying no data also removes the injection surface entirely: a crafted
+  // SEC entity name can no longer reach the document at build time, because
+  // nothing about a company is written into it.
+  it('cannot carry a crafted company name into the document', () => {
+    expect(html).not.toContain('Inferra');
+    expect(html.match(/<\/script>/g)).toHaveLength(1);
   });
 
-  it('renders an empty run without throwing', () => {
-    expect(() => renderDashboard([], OPTS)).not.toThrow();
+  it('asks search engines not to index it', () => {
+    expect(html).toMatch(/<meta name="robots" content="noindex/);
+  });
+
+  it('explains how to fix the file:// case rather than rendering blank', () => {
+    expect(html).toContain('python3 -m http.server');
+  });
+
+  // The controls bar sets display:flex, which outranks the UA stylesheet's
+  // [hidden] rule — without this it sat on top of its own error message.
+  it('can actually hide the controls it marks hidden', () => {
+    expect(html).toMatch(/\[hidden\]\s*{\s*display:\s*none\s*!important/);
+  });
+});
+
+describe('renderDashboardMeta', () => {
+  it('carries the run id, which stamps exported grades', () => {
+    const meta = JSON.parse(renderDashboardMeta(OPTS));
+    expect(meta.runId).toBe(OPTS.runId);
+    expect(meta.windowDays).toBe(OPTS.windowDays);
+    expect(typeof meta.generatedAt).toBe('string');
+  });
+
+  it('stays small enough to commit every run', () => {
+    expect(renderDashboardMeta(OPTS).length).toBeLessThan(500);
   });
 });

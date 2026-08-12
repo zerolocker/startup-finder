@@ -87,8 +87,8 @@ DIGEST="reports/$STAMP-digest.md"
 
 # --- archive ---------------------------------------------------------------
 # Dated files in reports/ are the back issues; git is the durable archive.
-if [ -n "$(git status --porcelain data reports)" ]; then
-  git add data reports
+if [ -n "$(git status --porcelain data reports index.html)" ]; then
+  git add data reports index.html
   git commit -q -m "Digest $STAMP
 
 Automated weekly run: --days ${DAYS:-auto} --limit $LIMIT --research $RESEARCH."

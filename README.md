@@ -8,8 +8,13 @@ pnpm install
 pnpm sf run
 ```
 
-Output: a dated digest and dashboard in [`reports/`](reports/), both committed to
-the repo. The newest date is the current one.
+Output: a dated digest in [`reports/`](reports/) — the newest date is the current
+one — plus a filterable dashboard at `index.html`. The dashboard reads the
+committed data, so it has to be served rather than opened from disk:
+
+```bash
+python3 -m http.server 8000   # then open http://localhost:8000/
+```
 
 ---
 
@@ -48,7 +53,7 @@ flowchart TD
     S --> F & R
     F["research — web search, 21 dossiers"] --> R
     R["report — 12 written up, the rest in a long tail"] --> G["dated digest .md"]
-    R --> H["dated dashboard .html"]
+    R --> H["index.html — a shell that re-reads the store"]
 
     classDef gate fill:#fde68a,stroke:#b45309,color:#1a1a19
     class D gate
@@ -126,7 +131,8 @@ src/pipeline/         merge, prefilter, LLM scoring, research
 src/report/           markdown digest + HTML dashboard
 src/llm/claude.ts     the claude -p wrapper (caching, cost accounting, retries)
 data/*.jsonl          all persisted data, committed to git on purpose
-reports/              generated digests, committed
+reports/              generated digests + dashboard metadata, committed
+index.html            the dashboard shell; reads data/, so it must be served
 docs/                 why things are the way they are — read before changing
 ```
 
@@ -139,7 +145,7 @@ Start with [`CLAUDE.md`](CLAUDE.md), then
 are filtered and ordered — read it before touching either.
 
 ```bash
-pnpm test        # 135 tests, no network required
+pnpm test        # 172 tests, no network required
 pnpm typecheck
 ```
 
