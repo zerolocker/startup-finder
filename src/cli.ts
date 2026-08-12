@@ -165,19 +165,28 @@ async function stageResearch(
   return merged;
 }
 
-/** Rewrite the dashboard shell and the run index. No LLM, no network. */
+/**
+ * Rewrite the dashboard shell and the run index. No LLM, no network.
+ *
+ * `costUsd` is what *this* invocation spent, and it accumulates onto whatever
+ * the run had already cost. Re-rendering used to overwrite the figure with 0,
+ * which quietly erased what a run had spent — the one number worth keeping,
+ * since plan usage is the scarce resource.
+ */
 async function stageReport(date: string, costUsd: number, windowDays: number): Promise<RunIndexEntry> {
   const shard = await readShard(date);
+  const index = await readIndex();
+  const prior = index.find((e) => e.date === date);
   const entry: RunIndexEntry = {
     date,
     windowDays,
     companies: shard.length,
     assessed: shard.filter((c) => c.assessment).length,
-    costUsd,
+    costUsd: (prior?.costUsd ?? 0) + costUsd,
     generatedAt: new Date().toISOString(),
   };
 
-  await writeIndex([...(await readIndex()).filter((e) => e.date !== date), entry]);
+  await writeIndex([...index.filter((e) => e.date !== date), entry]);
   await writeFile(DASHBOARD_PATH, renderDashboard(), 'utf8');
 
   log.info(`Run ${date}: ${entry.assessed}/${entry.companies} assessed`);
