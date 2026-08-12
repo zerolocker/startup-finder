@@ -50,32 +50,44 @@ flowchart TD
     D -->|"the other 301 do not"| S
     E["llm screen — batched, no web"] -->|"120 fresh scores"| S
     S[("data/scored.jsonl — 120 fresh + 225 kept from earlier runs = 345 of 421 scored")]
-    S --> F & R
-    F["research — web search, 21 dossiers"] --> R
-    R["report — 12 written up, the rest in a long tail"] --> G["dated digest .md"]
+    S -->|"top 15 by score"| F
+    S --> R
+    F["research — web search, one dossier each"] -->|"21 dossiers on disk"| R
+    R["report — 12 written up in full, all 421 listed"] --> G["dated digest .md"]
     R --> H["index.html — a shell that re-reads the store"]
 
     classDef gate fill:#fde68a,stroke:#b45309,color:#1a1a19
     class D gate
 ```
 
-Every count is the state on disk after one real run, so the arithmetic closes:
-388 + 33 = 421 companies, of which 120 were screened this run and 301 were not,
-leaving 345 with a score and 76 never looked at. Scores outlive the run that
-produced them, which is why more companies carry one than were screened today.
+- **merge** — one record per company, joining filings and headlines on an exact
+  name match. Runs forever against the same store, so the corpus accumulates.
+- **prefilter** — a free scoring pass over *everything*, using only what a Form D
+  gives you: how recent, how big, industry code, state, officer count, keywords in
+  the name. It ranks; the top `--limit` go on. No LLM, no network.
+- **llm screen** — scores each company 0–100 against your profile, eight at a time,
+  **with no web access**. It sees a name, an amount, an industry code, a city and
+  some officer names — nothing about the product. So it is often *not* accurate,
+  and is built to admit it: it answers `"Unknown — …"` for ~60% of companies and
+  returns a confidence with every score. Run `pnpm sf prompt` to see exactly what
+  it gets.
+- **research** — takes the top ~15 by score and actually searches the web for each:
+  what they build, who founded it, open roles, links. Dossiers are cached, so a
+  re-run only researches companies it has not seen (21 have accumulated on disk).
+- **report** — writes up the 12 best researched companies in full, and lists every
+  other candidate in a table below, so nothing disappears quietly.
 
-Two figures deliberately sit outside that: the 409 filings are what survived the
-fund filter — roughly four in five Form D filers are SPVs, funds, or real-estate
-vehicles and never enter the corpus at all — and a single day contributes about
-220 filings, so the corpus grows by ~45 companies a day.
-
-Each stage runs on its own against data already on disk, so you can re-screen and
-re-report without repeating the slow, expensive research step.
+Counts are the state on disk after one real run, so they close: 388 + 33 = 421
+companies, 120 screened this run and 301 not, leaving 345 with a score and 76
+never looked at. Scores outlive the run that made them, which is why more
+companies carry one than were screened today. Separately, the 409 filings are what
+survived the fund filter — about four in five Form D filers are SPVs or funds —
+and one day adds roughly 220 filings.
 
 The highlighted step is the one that loses things: only its top `--limit`
-companies are ever shown to the model, and it has to rank them knowing little
-more than a legal name. [`docs/RANKING.md`](docs/RANKING.md) measures what that
-costs and specifies the replacement.
+companies are ever shown to the model, and it ranks them knowing little more than
+a legal name. [`docs/RANKING.md`](docs/RANKING.md) measures what that costs and
+specifies the replacement.
 
 ```bash
 pnpm sf run                        # everything (the normal entry point)
