@@ -15,8 +15,8 @@ the repo. The newest date is the current one.
 
 ## What it produces
 
-One day's filings: 222 SEC Form Ds → 47 real operating companies → screened →
-the best few researched in depth. Ten minutes, a few dollars of plan usage.
+A day's filings: 222 SEC Form Ds → 47 real operating companies → screened → the
+best few researched in depth. Ten minutes, a few dollars of plan usage.
 
 The best new find that day was an AI evaluation and observability platform, with
 its product, customers, and two open engineering roles — none of which appears in
@@ -37,27 +37,35 @@ So: **Form D for recall, news for context, an LLM for the judgement in between.*
 
 ```mermaid
 flowchart TD
-    A["SEC Form D — 222 filings in one day"] -->|"drop 175 funds, SPVs, real estate"| C
-    B["funding news RSS — 7 feeds, 69 items"] --> C
-    C["merge — 421 companies, joined by exact name"] --> D
+    A["SEC Form D — 409 filings kept"] -->|"388 companies, amendments folded in"| C
+    B["funding news RSS — 69 items, 7 feeds"] -->|"33 companies with no filing"| C
+    C["merge — 388 + 33 = 421 companies"] --> D
     D["prefilter — free, no LLM, ranks all 421"]
-    D -->|"top 120"| E
-    D -->|"the other 301, unscreened"| S
-    E["llm screen — 120 scored, batched, no web"] --> S
-    S[("data/scored.jsonl — 345 companies carry a score")]
+    D -->|"top 120 go to the model"| E
+    D -->|"the other 301 do not"| S
+    E["llm screen — batched, no web"] -->|"120 fresh scores"| S
+    S[("data/scored.jsonl — 120 fresh + 225 kept from earlier runs = 345 of 421 scored")]
     S --> F & R
     F["research — web search, 21 dossiers"] --> R
-    R["report — top 12 written up"] --> G["dated digest .md"]
+    R["report — 12 written up, the rest in a long tail"] --> G["dated digest .md"]
     R --> H["dated dashboard .html"]
 
     classDef gate fill:#fde68a,stroke:#b45309,color:#1a1a19
     class D gate
 ```
 
-Counts are from one real run. The per-day figures are that day's filings; the
-rest are cumulative, because companies and their scores accumulate on disk across
-runs. Each stage runs on its own against data already there, so you can re-screen
-and re-report without repeating the slow, expensive research step.
+Every count is the state on disk after one real run, so the arithmetic closes:
+388 + 33 = 421 companies, of which 120 were screened this run and 301 were not,
+leaving 345 with a score and 76 never looked at. Scores outlive the run that
+produced them, which is why more companies carry one than were screened today.
+
+Two figures deliberately sit outside that: the 409 filings are what survived the
+fund filter — roughly four in five Form D filers are SPVs, funds, or real-estate
+vehicles and never enter the corpus at all — and a single day contributes about
+220 filings, so the corpus grows by ~45 companies a day.
+
+Each stage runs on its own against data already on disk, so you can re-screen and
+re-report without repeating the slow, expensive research step.
 
 The highlighted step is the one that loses things: only its top `--limit`
 companies are ever shown to the model, and it has to rank them knowing little
