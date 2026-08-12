@@ -15,7 +15,7 @@ the repo. The newest date is the current one.
 
 ## What it produces
 
-One day's filings: 222 SEC Form Ds → 41 real operating companies → screened →
+One day's filings: 222 SEC Form Ds → 47 real operating companies → screened →
 the best few researched in depth. Ten minutes, a few dollars of plan usage.
 
 The best new find that day was an AI evaluation and observability platform, with
@@ -37,25 +37,27 @@ So: **Form D for recall, news for context, an LLM for the judgement in between.*
 
 ```mermaid
 flowchart TD
-    A["SEC Form D<br/>222 filings in a day"] -->|"drop funds, SPVs, real estate"| C
-    B["funding news RSS<br/>7 feeds"] --> C
-    C["merge<br/>join by exact name"] --> D
-    D["prefilter — free, no LLM<br/>ranks everything, forwards only the top 120"]
+    A["SEC Form D — 222 filings in one day"] -->|"drop 175 funds, SPVs, real estate"| C
+    B["funding news RSS — 7 feeds, 69 items"] --> C
+    C["merge — 421 companies, joined by exact name"] --> D
+    D["prefilter — free, no LLM, ranks all 421"]
     D -->|"top 120"| E
-    D -->|"everyone else, unscreened"| S
-    E["llm screen — batched, no web<br/>one fit score per company"] --> S
-    S[("data/scored.jsonl<br/>scores persist across runs")]
+    D -->|"the other 301, unscreened"| S
+    E["llm screen — 120 scored, batched, no web"] --> S
+    S[("data/scored.jsonl — 345 companies carry a score")]
     S --> F & R
-    F["research — web search<br/>dossier for the best few"] --> R
-    R["report"] --> G["dated digest .md"]
+    F["research — web search, 21 dossiers"] --> R
+    R["report — top 12 written up"] --> G["dated digest .md"]
     R --> H["dated dashboard .html"]
 
     classDef gate fill:#fde68a,stroke:#b45309,color:#1a1a19
     class D gate
 ```
 
-Each stage runs on its own against data already on disk, so you can re-screen and
-re-report without repeating the slow, expensive research step.
+Counts are from one real run. The per-day figures are that day's filings; the
+rest are cumulative, because companies and their scores accumulate on disk across
+runs. Each stage runs on its own against data already there, so you can re-screen
+and re-report without repeating the slow, expensive research step.
 
 The highlighted step is the one that loses things: only its top `--limit`
 companies are ever shown to the model, and it has to rank them knowing little
