@@ -189,6 +189,15 @@ describe('prefilterScore', () => {
     expect(score(base()).breakdown['geography']).toBeGreaterThan(score(elsewhere).breakdown['geography']!);
   });
 
+  // Stored scores are diffed by git every run. Full float precision on a
+  // clock-derived signal rewrote 72 of 421 lines per run for no reason.
+  it('rounds every component, not just the total, so re-runs are stable', () => {
+    const s = score(base());
+    for (const [k, v] of Object.entries(s.breakdown)) {
+      expect(Math.round(v * 10) / 10, `${k} should be rounded`).toBe(v);
+    }
+  });
+
   it('flags single-officer shells', () => {
     const shell = base();
     shell.people = [{ name: 'Solo Founder', relationships: ['Executive Officer'] }];

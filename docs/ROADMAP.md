@@ -193,6 +193,11 @@ Small, real, and worth fixing when nearby:
   ([ADR-016](DECISIONS.md#adr-016-serve-the-dashboard-from-the-committed-data-rather-than-inlining-it)),
   and `scored.jsonl` is written in id order rather than score order so git can
   delta-compress it instead of storing a freshly-reordered ~800 KB blob per run.
+  Measured end to end: a re-run used to rewrite ~400 of 421 lines and now
+  rewrites exactly the ones that changed — 40 when 40 companies were re-scored.
+  Two causes, both fixed: the score-order sort, and `prefilter` components stored
+  at full float precision, which made a clock-derived `recency` differ on every
+  run (`29.95509506712963` vs `29.954531581018518`) for 72 lines of pure noise.
 - **Long lookbacks are slow** on a cold cache — one HTTP request per filing,
   throttled to ~8/s for the SEC, so roughly 160 filings per day of window.
   ~1,600 filings ≈ 3.5 minutes; the 90-day auto-catch-up cap is ~30 minutes.

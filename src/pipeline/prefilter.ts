@@ -176,6 +176,14 @@ export function prefilterScore(company: Company, profile: Profile, now: number =
   breakdown['team'] = company.people.length >= 3 ? 5 : company.people.length >= 2 ? 3 : 0;
   if (company.people.length === 1) notes.push('only one officer listed');
 
+  // Round the components, not just the total. `recency` is derived from the
+  // current clock, so at full float precision it changes on every run —
+  // 29.95509506712963 becoming 29.954531581018518 rewrote 72 of 421 lines in
+  // scored.jsonl per run, all of it noise git had to store. This is a triage
+  // score; a tenth of a point is already more resolution than it deserves.
+  for (const k of Object.keys(breakdown)) {
+    breakdown[k] = Math.round(breakdown[k]! * 10) / 10;
+  }
   const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
   return { total: Math.round(total * 10) / 10, breakdown, notes };
 }
