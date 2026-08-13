@@ -22,7 +22,7 @@ pnpm test           # 147 tests, no network, <1s
 pnpm typecheck      # tsc --noEmit, strict
 pnpm sf --help      # all CLI options
 
-pnpm sf run                          # one day, end to end (~15 min, ~$14-equiv)
+pnpm sf run                          # one day, end to end (~15 min, ~$15-18-equiv)
 pnpm sf ingest                       # fetch a day, free
 pnpm sf research --limit 5           # research 5 of them, ~$1
 pnpm sf runs                         # what is on disk, and what it cost
@@ -54,8 +54,13 @@ for how much of the subscription's rate limit a run eats.
 That limit is the real scarce resource: a fan-out bug can lock the user out of
 Claude for hours. **There is no spend cap** — one existed and was removed, because
 it fired mid-run and discarded work already paid for. What bounds a run is the
-size of one day (~60 companies at ~$0.23 each) plus `--limit`. Keep `--limit`
-small while iterating.
+size of one day (~60 companies at ~$0.25-0.30 each) plus `--limit`. Keep
+`--limit` small while iterating.
+
+A full day is enough to exhaust a Claude Pro window. When it happens the CLI
+refuses calls with zero tokens, `PlanLimitError` detects that and stops the run
+rather than recording the remaining queue as research failures. Do not "fix"
+that by retrying — no backoff outlasts a window; re-run after it resets.
 
 Never remove the disk cache in `src/llm/claude.ts` — with no cap above it, the
 cache is the main thing between a careless re-run and a real dent in the rate
