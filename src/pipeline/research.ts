@@ -8,10 +8,15 @@
  * began "Unknown". Now every company a run finds is looked up first and judged
  * on what was actually found.
  *
- * It is the expensive stage — roughly $0.40 and ~20s per company — and there is
- * no cheaper stage in front of it. What bounds a run is the size of a day:
- * ~50 operating companies after the ingest filter. `--limit` exists as a safety
- * valve for an unusually heavy day, not as a routine gate.
+ * It is the expensive stage — measured at ~$0.25-0.30 and ~20s per company — and
+ * there is no cheaper stage in front of it. What bounds a run is the size of a
+ * day: ~60 companies after the ingest filter. `--limit` exists as a safety valve,
+ * not as a routine gate.
+ *
+ * A full day is enough to exhaust a Claude Pro window. On a real run 20 companies
+ * were researched over seven minutes and the remaining 37 were then refused in
+ * ninety seconds. That is why PlanLimitError stops the run rather than marking
+ * the rest as failures — see the note on it in llm/claude.ts.
  *
  * The prompt leans hard on "say you couldn't find it" over guessing. A dossier
  * that invents a plausible product description is worse than useless: the user
@@ -21,7 +26,7 @@
 import type { Assessment, Company, Profile, RunCompany } from '../types.ts';
 import { AssessmentSchema } from '../types.ts';
 import { profileToPrompt } from '../config.ts';
-import { runClaudeJson, type ModelAlias } from '../llm/claude.ts';
+import { PlanLimitError, runClaudeJson, type ModelAlias } from '../llm/claude.ts';
 import { mapWithConcurrency } from '../util/http.ts';
 import { formatUsd } from '../util/text.ts';
 import { log } from '../util/log.ts';
@@ -149,6 +154,8 @@ export interface ResearchResult {
   companies: RunCompany[];
   costUsd: number;
   failures: number;
+  /** True when the run stopped early because the plan's rate limit was hit. */
+  planLimited: boolean;
 }
 
 /** Research and score every company given. */
@@ -158,13 +165,18 @@ export async function researchCompanies(
   opts: ResearchOptions = {},
 ): Promise<ResearchResult> {
   const { model = 'sonnet', concurrency = 3, timeoutMs = 240_000 } = opts;
-  if (companies.length === 0) return { companies: [], costUsd: 0, failures: 0 };
+  if (companies.length === 0) return { companies: [], costUsd: 0, failures: 0, planLimited: false };
 
   let costUsd = 0;
   let failures = 0;
   let done = 0;
+  // Once the plan's window is exhausted every remaining call fails instantly,
+  // so continuing would mark the rest of the queue as research failures in
+  // seconds. Stop dispatching and leave them unassessed for the next run.
+  let planLimited = false;
 
   const out = await mapWithConcurrency(companies, concurrency, async (company): Promise<RunCompany> => {
+    if (planLimited) return { ...company, assessment: null, researchedAt: null };
     try {
       const { value, costUsd: cost } = await runClaudeJson(buildResearchPrompt(company, profile), AssessmentSchema, {
         model,
@@ -174,6 +186,11 @@ export async function researchCompanies(
       costUsd += cost;
       return { ...company, assessment: value, researchedAt: new Date().toISOString() };
     } catch (err) {
+      if (err instanceof PlanLimitError) {
+        if (!planLimited) log.warn(err.message);
+        planLimited = true;
+        return { ...company, assessment: null, researchedAt: null };
+      }
       // One company failing must not cost the run. It lands in the shard with a
       // null assessment, which the dashboard shows rather than hides.
       failures++;
@@ -185,11 +202,18 @@ export async function researchCompanies(
   });
   log.progressDone();
 
+  const assessed = out.filter((c) => c.assessment).length;
   log.info(
-    `Researched ${out.length - failures}/${companies.length} companies ($${costUsd.toFixed(2)})` +
+    `Researched ${assessed}/${companies.length} companies ($${costUsd.toFixed(2)})` +
       (failures > 0 ? `, ${failures} failed` : ''),
   );
-  return { companies: out, costUsd, failures };
+  if (planLimited) {
+    log.warn(
+      `Stopped early: ${companies.length - assessed} companies were not researched because the ` +
+        'plan\'s rate limit was reached. Re-run once the window resets — they are picked up automatically.',
+    );
+  }
+  return { companies: out, costUsd, failures, planLimited };
 }
 
 /** The number the dashboard sorts on. Unassessed companies sink, never vanish. */

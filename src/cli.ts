@@ -251,10 +251,16 @@ async function cmdRun(opts: {
   const entry = await stageReport(opts.date, spentUsd(), opts.days);
 
   const top = [...companies].sort((a, b) => fitOf(b) - fitOf(a)).slice(0, 10);
+  const missing = entry.companies - entry.assessed;
   process.stdout.write(
     [
       '',
       `Done in ${((Date.now() - started) / 1000).toFixed(0)}s · plan usage ~$${entry.costUsd.toFixed(2)}-equiv`,
+      // A run that assessed a third of what it found is not a success, and the
+      // cost line alone reads like one.
+      ...(missing > 0
+        ? ['', `  ${missing} of ${entry.companies} companies were NOT researched — re-run to pick them up.`]
+        : []),
       '',
       'Best of this run:',
       ...top.map((c) => {

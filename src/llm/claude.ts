@@ -164,6 +164,9 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
       return await fn();
     } catch (err) {
       lastError = err;
+      // Retrying a rate limit just burns wall clock: the window has to reset,
+      // and no amount of backoff inside one run will outlast it.
+      if (err instanceof PlanLimitError) throw err;
       if (attempt < attempts) {
         const backoff = 1000 * 2 ** (attempt - 1);
         log.debug(`claude call failed (attempt ${attempt}/${attempts}), retrying in ${backoff}ms: ${String(err)}`);
@@ -172,6 +175,49 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
     }
   }
   throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
+/**
+ * Raised when the CLI refuses a call before it reaches the model — in practice,
+ * the subscription's rate limit for the current window.
+ *
+ * Worth a distinct type because it is not a per-item failure and must not be
+ * retried against the rest of the queue. A real run hit this: 20 companies
+ * researched fine over seven minutes, then all 37 remaining "failed" inside
+ * ninety seconds, and were written to the shard as research failures. Nothing
+ * had actually gone wrong with those companies.
+ */
+export class PlanLimitError extends Error {
+  constructor() {
+    super(
+      'Claude refused the call before reaching the model — almost certainly the ' +
+        "subscription's rate limit for this window. Nothing was spent. Wait for the " +
+        'window to reset and re-run; companies that were not assessed are retried ' +
+        'automatically.',
+    );
+    this.name = 'PlanLimitError';
+  }
+}
+
+/**
+ * Detect the refusal signature: an error envelope reporting zero API time and
+ * zero tokens in every bucket. A genuine model failure consumes tokens; this
+ * never left the machine.
+ */
+function planLimitError(stdout: string): PlanLimitError | null {
+  try {
+    const e = JSON.parse(stdout) as {
+      is_error?: boolean;
+      duration_api_ms?: number;
+      usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number };
+    };
+    const u = e.usage ?? {};
+    const noTokens = !u.input_tokens && !u.output_tokens && !u.cache_read_input_tokens;
+    if (e.is_error && e.duration_api_ms === 0 && noTokens) return new PlanLimitError();
+  } catch {
+    // Not JSON, so not this failure mode.
+  }
+  return null;
 }
 
 /** The actual subprocess call. Split out so the reservation can be released. */
@@ -214,7 +260,7 @@ async function invoke(
     child.on('close', (code) => {
       clearTimeout(timer);
       if (code !== 0) {
-        reject(new Error(`claude exited ${code}: ${stderr.slice(0, 500) || stdout.slice(0, 500)}`));
+        reject(planLimitError(stdout) ?? new Error(`claude exited ${code}: ${stderr.slice(0, 500) || stdout.slice(0, 500)}`));
         return;
       }
       try {

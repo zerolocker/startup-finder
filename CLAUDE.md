@@ -18,7 +18,7 @@ for a fast mental model.
 
 ```bash
 pnpm install
-pnpm test           # 146 tests, no network, <1s
+pnpm test           # 147 tests, no network, <1s
 pnpm typecheck      # tsc --noEmit, strict
 pnpm sf --help      # all CLI options
 

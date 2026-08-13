@@ -226,3 +226,30 @@ describe('fitOf', () => {
     expect(fitOf(withFit(null))).toBeLessThan(fitOf(withFit(0)));
   });
 });
+
+describe('PlanLimitError detection', () => {
+  // The signature of a call the CLI refused before it reached the model: an
+  // error envelope with zero API time and zero tokens in every bucket. A real
+  // run marked 37 companies as research failures this way in ninety seconds.
+  it('is documented by the shape research.ts branches on', () => {
+    const refusal = {
+      is_error: true,
+      duration_api_ms: 0,
+      usage: { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0 },
+    };
+    const genuine = {
+      is_error: true,
+      duration_api_ms: 4210,
+      usage: { input_tokens: 1200, output_tokens: 30, cache_read_input_tokens: 0 },
+    };
+    const looksLikeLimit = (e: typeof refusal) =>
+      e.is_error &&
+      e.duration_api_ms === 0 &&
+      !e.usage.input_tokens &&
+      !e.usage.output_tokens &&
+      !e.usage.cache_read_input_tokens;
+
+    expect(looksLikeLimit(refusal)).toBe(true);
+    expect(looksLikeLimit(genuine)).toBe(false);
+  });
+});

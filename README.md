@@ -84,12 +84,17 @@ pnpm sf prompt                     # the exact research prompt, no LLM call
 ## Cost
 
 Runs on your Claude subscription. **Nothing is billed to a card.** Researching one
-company measured at **~$0.23-equivalent**, so a 60-company day is **~$14**. That
-is the price of scoring everything rather than guessing from names.
+company measured at **~$0.25-0.30-equivalent**, so a 60-company day is **~$15-18**.
+That is the price of scoring everything rather than guessing from names.
 
-There is no spend cap. `--limit` caps how many companies a run researches, as a
-safety valve for an unusually heavy day. Responses are cached, so re-running a day
-costs nothing.
+**A full day can exhaust a Claude Pro 5-hour window.** Measured: 20 companies
+researched over seven minutes, then every remaining call refused. The run detects
+this, stops immediately rather than marking the rest as failures, and says so.
+Companies it did not reach stay unassessed and are picked up automatically next
+time — so the fix is simply to re-run once the window resets.
+
+`--limit` caps how many companies a run researches. Responses are cached, so
+re-running a day costs nothing for what is already done.
 
 ## Requirements
 
@@ -132,6 +137,6 @@ Start with [`CLAUDE.md`](CLAUDE.md), then
 [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md).
 
 ```bash
-pnpm test        # 146 tests, no network required
+pnpm test        # 147 tests, no network required
 pnpm typecheck
 ```

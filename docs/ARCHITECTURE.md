@@ -19,7 +19,7 @@ cumulative store.
 |---|---|---|---|
 | ingest | free | ~220 filings, 7 RSS feeds | ~60 companies |
 | merge | free | filings + news items | one record per company |
-| research | ~$0.23/company | every company | fit score + dossier |
+| research | ~$0.25-0.30/company | every company | fit score + dossier |
 | report | free | the shard | `index.html`, `data/index.json` |
 
 `src/types.ts` is the contract between stages and the best single file to read
@@ -62,9 +62,16 @@ everything ever seen.
 1. **Nothing is dropped after ingest.** Every company a run finds is researched,
    scored, and rendered. The dashboard has no top-N cut. The ingest filter is the
    only thing that removes a company, and it runs before anything else.
-2. **A null `assessment` means research failed** — never that the company was
-   filtered out. It sorts to the bottom of the dashboard but stays visible,
-   because a failure is a defect worth seeing.
+2. **A null `assessment` means research did not complete** — never that the
+   company was filtered out. It sorts to the bottom of the dashboard but stays
+   visible, and the next run retries it.
+
+   Two causes, and they must stay distinguishable. A genuine failure consumes
+   tokens. A **plan-limit refusal** consumes none: the CLI rejects the call
+   before it reaches the model, reporting zero API time and zero tokens.
+   `PlanLimitError` detects that signature and stops the run, because otherwise
+   an exhausted window marks the whole remaining queue as failed in seconds —
+   which is exactly what happened on a real run, to 37 of 57 companies.
 3. **`null` means unknown, never `0`.** Form D's `totalOfferingAmount` can
    literally be `"Indefinite"`; a `0` would rank a company as having raised
    nothing.
