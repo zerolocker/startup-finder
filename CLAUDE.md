@@ -83,14 +83,10 @@ it fired mid-run and discarded work already paid for. What bounds a run is the
 size of one day (~60 companies at ~$0.25-0.30 each) plus `--limit`. Keep
 `--limit` small while iterating.
 
-A full day is enough to exhaust a Claude plan's usage limit. When it happens the
-CLI refuses calls with zero tokens, `PlanLimitError` detects that and stops the
-run rather than recording the remaining queue as research failures. Do not "fix"
-that by retrying — no backoff outlasts a usage limit.
-
-**Do not assert which limit was hit.** Plans carry several (five-hour, weekly,
-monthly), and only some reopen soon. `PlanLimitError` quotes what Claude said
-and leaves the diagnosis to the reader.
+A full day can exhaust a plan's usage limit. The CLI then refuses calls with
+zero tokens; `PlanLimitError` detects that and stops the run rather than marking
+the queue as failures. Do not retry — no backoff outlasts a usage limit, and do
+not name which limit fired: plans carry several and only some reopen soon.
 
 Never remove the disk cache in `src/llm/claude.ts` — with no cap above it, the
 cache is the main thing between a careless re-run and a real dent in the rate

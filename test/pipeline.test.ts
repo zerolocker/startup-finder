@@ -310,16 +310,14 @@ describe('plan-limit backstop', () => {
 });
 
 describe('PlanLimitError message', () => {
-  // Plans carry several limits and only some reopen soon. Naming the wrong one
-  // sends the user to reschedule against a limit that will not reopen.
-  it('does not claim to know which limit was hit', async () => {
+  // Plans carry several limits and only some reopen soon, so naming one sends
+  // the user to reschedule against a limit that may not reopen.
+  it('names no limit of its own', async () => {
     const { PlanLimitError } = await import('../src/llm/claude.ts');
-    const msg = new PlanLimitError().message;
-    expect(msg).not.toMatch(/rate limit for this window/);
-    expect(msg).toMatch(/5-hour window reopens on its own; a weekly or monthly cap does not/);
+    expect(new PlanLimitError().message).not.toMatch(/5-hour|weekly|monthly|window/i);
   });
 
-  it('quotes what Claude said, which is the only thing that names the limit', async () => {
+  it('quotes what Claude said', async () => {
     const { PlanLimitError } = await import('../src/llm/claude.ts');
     expect(new PlanLimitError('monthly spend limit').message).toContain('Claude said: monthly spend limit');
   });

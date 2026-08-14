@@ -104,20 +104,16 @@ decides everything for itself:
 
 ### Getting through a backlog faster
 
-Five-hour usage windows reset on their own, so **schedule two or three routines
-more than five hours apart** — 07:00, 13:00, 19:00, say. Each picks up where the
-last one stopped and drains roughly another window's worth.
+Five-hour windows reset on their own, so **schedule two or three routines more
+than five hours apart** — 07:00, 13:00, 19:00. Each continues where the last
+stopped; on an ordinary day the first finishes everything and the rest exit free.
 
-**This only helps against the five-hour window.** Weekly and monthly caps do
-not reopen in hours, so extra routines would find the limit still in force. The
-log records what Claude said when a run stops — check it before rescheduling.
-
-On an ordinary day the first run finishes everything and the rest exit free.
+Weekly and monthly caps do not reopen in hours, so check the log for which limit
+stopped a run before adding more routines.
 
 To leave window in reserve: `pnpm sf run --limit 30`.
 
-Days older than a week are dropped rather than queued. Newest goes first — a
-two-week-old round is not worth a usage window.
+Days older than a week are dropped, newest first.
 
 If you would rather not use Routines, any scheduler works — it is one command
 with no arguments. `launchd`, `cron`, or running it by hand are all equivalent.

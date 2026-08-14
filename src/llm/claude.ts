@@ -178,18 +178,15 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
 }
 
 /**
- * The CLI refused a call before the model saw it — a usage limit.
+ * A usage limit: the CLI refused the call before the model saw it.
  *
- * A distinct type because it is not a per-item failure and must not be retried
- * against the rest of the queue. Once it cost 37 companies, all written to the
- * shard as research failures when nothing was wrong with them.
+ * Distinct type because it is not a per-item failure and must not be retried
+ * across the queue — that once marked 37 healthy companies as failed.
  */
 export class PlanLimitError extends Error {
   constructor(detail?: string) {
     super(
-      `Usage limit reached — Claude refused the call before the model saw it.${detail ? ` Claude said: ${detail}` : ''}` +
-        ' A 5-hour window reopens on its own; a weekly or monthly cap does not.' +
-        ' Unassessed companies are retried next run.',
+      `Usage limit reached.${detail ? ` Claude said: ${detail}` : ''} Unassessed companies are retried next run.`,
     );
     this.name = 'PlanLimitError';
   }
@@ -211,9 +208,6 @@ function planLimitError(stdout: string): PlanLimitError | null {
     const u = e.usage ?? {};
     const noTokens = !u.input_tokens && !u.output_tokens && !u.cache_read_input_tokens;
     if (e.is_error && e.duration_api_ms === 0 && noTokens) {
-      // The CLI usually names the limit it hit ("5-hour", "weekly", "monthly
-      // spend"). Which one decides whether re-running in an hour is pointless,
-      // so it must reach the log rather than be replaced by a guess.
       const detail = typeof e.result === 'string' ? e.result.trim().slice(0, 300) : undefined;
       return new PlanLimitError(detail);
     }
@@ -263,9 +257,7 @@ async function invoke(
     child.on('close', (code) => {
       clearTimeout(timer);
       if (code !== 0) {
-        // A call can burn tokens and then fail; cost was only recorded on the
-        // success path, so that spend went unreported. Plan usage is the scarce
-        // resource — undercounting is worse than a noisy total.
+        // A call can burn tokens and then fail, so we still need to record it.
         try {
           const spent = (JSON.parse(stdout) as { total_cost_usd?: number }).total_cost_usd;
           if (typeof spent === 'number' && spent > 0) totalSpentUsd += spent;

@@ -66,16 +66,10 @@ everything ever seen.
    company was filtered out. It sorts to the bottom of the dashboard but stays
    visible, and the next run retries it.
 
-   Two causes, and they must stay distinguishable. A genuine failure consumes
-   tokens. A **plan-limit refusal** consumes none: the CLI rejects the call
-   before it reaches the model, reporting zero API time and zero tokens.
-   `PlanLimitError` detects that signature and stops the run, because otherwise
-   an exhausted usage limit marks the whole remaining queue as failed in seconds
-   — which is exactly what happened on a real run, to 37 of 57 companies. A
-   later run confirmed the fix: it stopped at 14 of 70 with `failures: 0`.
+   Two causes, kept distinguishable: a genuine failure consumes tokens, a
+   usage-limit refusal consumes none. `PlanLimitError` matches the second and
+   stops the run — without it a limit marked 37 of 57 healthy companies failed.
 
-   Plans carry several limits and only some reopen soon, so nothing may assert
-   which one fired — quote what Claude said.
 3. **`null` means unknown, never `0`.** Form D's `totalOfferingAmount` can
    literally be `"Indefinite"`; a `0` would rank a company as having raised
    nothing.

@@ -466,10 +466,7 @@ export async function ingestEdgar(opts: EdgarIngestOptions): Promise<EdgarIngest
   const newest = dates[0];
   const span = newest && oldest ? `${ymd(oldest)}..${ymd(newest)}` : 'no days';
   log.info(`EDGAR: ${refs.length} Form D filings across ${span} (${days} day window ending yesterday)`);
-  // Fetching each filing's document is rate-limited to well under the SEC's
-  // ceiling, so this stage is a minute of total silence on a normal day. Saying
-  // so matters for unattended runs: a healthy gap here is indistinguishable
-  // from a hang in the log otherwise.
+  // Otherwise this stage is ~a minute of silence, indistinguishable from a hang.
   if (refs.length > 0) {
     log.info(`Fetching ${refs.length} filing documents from the SEC — roughly ${Math.ceil(refs.length / 8)}s`);
   }

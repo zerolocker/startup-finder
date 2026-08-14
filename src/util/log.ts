@@ -1,9 +1,7 @@
 /**
  * Tiny leveled logger. Writes to stderr so stdout stays pipeable, and tees to a
- * file when `startFileLog` is called.
- *
- * The file matters for unattended runs: index.json records what a run achieved,
- * not why it stopped.
+ * file via `startFileLog` — index.json records what a run achieved, not why it
+ * stopped.
  */
 
 import { appendFileSync, mkdirSync } from 'node:fs';
@@ -33,8 +31,8 @@ function emit(level: Level, msg: string, extra?: unknown): void {
   const tag = { debug: 'DBG', info: 'INF', warn: 'WRN', error: 'ERR' }[level];
   const suffix = extra === undefined ? '' : ` ${typeof extra === 'string' ? extra : JSON.stringify(extra)}`;
 
-  // Full timestamps and every level regardless of console threshold: debug
-  // lines are what you want when something failed unattended.
+  // Every level regardless of console threshold: debug lines are what you want
+  // after an unattended failure.
   if (logFile) {
     try {
       appendFileSync(logFile, `${new Date().toISOString()} ${tag} ${msg}${suffix}\n`);
