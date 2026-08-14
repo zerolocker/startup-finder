@@ -165,6 +165,9 @@ runs, and they earn their place because a future session can re-derive them.
 - Comments explain **why**, not what. The codebase leans on this heavily —
   particularly around the ingest filter and the prompts, where the reasoning is not
   recoverable from the code.
+- **Keep prose short.** Comments, docs, commit messages, log lines, PR bodies.
+  One or two lines for a comment; trim to the claim and cut the restatement.
+  A comment that narrates history rather than the code below it is noise.
 - No new dependencies without a good reason. Current runtime deps:
   `fast-xml-parser`, `yaml`, `zod`.
 - All HTTP goes through `src/util/http.ts` (rate limiting + caching). The SEC
