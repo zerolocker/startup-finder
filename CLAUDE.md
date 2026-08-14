@@ -33,11 +33,17 @@ pnpm sf prompt                       # the literal research prompt, no LLM call
 a third:
 
 - `pnpm sf run` — the daily issue. Called by a Claude Desktop Routine whose whole
-  prompt is "run `pnpm sf run`". It covers every day since the last complete
-  issue, resumes whatever a rate limit interrupted, and is idempotent, so the
-  routine needs no memory of what happened last time. Backfilling and
-  rate-limit recovery are deliberately the *same* operation — both are just
-  "days with unassessed companies".
+  prompt is "run `pnpm sf run`". It covers outstanding days, resumes whatever a
+  rate limit interrupted, and is idempotent, so the routine needs no memory of
+  what happened last time. Backfilling and rate-limit recovery are deliberately
+  the *same* operation — both are just "days with unassessed companies".
+
+  **It is bounded by companies, not by days** (`DEFAULT_RUN_BUDGET`, ~70). A day
+  is ~62 companies and most of a Pro window, so three missed days would be ~$50
+  and would consume the user's entire window before the plan limit stopped it.
+  Do not "simplify" this to a day-count cap: a day that a rate limit interrupted
+  stops being "yesterday" by the next run, so a day-based window would abandon
+  exactly the case the catch-up exists for.
 - The `review-startups` skill — reading and grading an issue.
 
 `ingest` / `research` / `report` are internal stages, useful while developing.

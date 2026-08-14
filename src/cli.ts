@@ -53,9 +53,10 @@ Commands:
 Options:
   --date <d>      Act on one specific issue, YYYY-MM-DD. The run command covers
                   everything outstanding without it, so you rarely need this.
-  --limit <n>     Cap companies researched. A safety valve for an unusually
-                  heavy day; unbounded by default, because every company found
-                  is meant to be scored.
+  --limit <n>     Companies researched per invocation, across all outstanding
+                  days (default 70 — about one day, plus a little to drain a
+                  backlog). Lower it if a run eats too much of your usage
+                  window; nothing is lost, the rest is picked up next time.
   --refresh       Re-score companies that already have an assessment. Use after
                   editing config/profile.yaml to see the effect.
   --model <name>  haiku | sonnet | opus (default sonnet)
@@ -181,6 +182,27 @@ async function stageResearch(
  */
 const MAX_CATCHUP_DAYS = 7;
 
+/**
+ * How many companies one invocation will research, across all outstanding days.
+ *
+ * A day is ~62 companies and ~$18-equivalent, which is already most of a Claude
+ * Pro five-hour window. Three missed days would be ~186 companies and ~$50 — the
+ * run would stop cleanly when the window ran out, but it would have consumed the
+ * whole window first, leaving nothing for the user's own work.
+ *
+ * So the bound is on work rather than on days. Outstanding days all stay
+ * visible; each run drains a little more than one day of them, newest first.
+ * Bounding by days instead would abandon a day that a rate limit interrupted,
+ * because by the next run it is no longer "yesterday".
+ *
+ * The surplus over one day is small, so a backlog drains slowly — and
+ * MAX_CATCHUP_DAYS means anything older than a week is dropped rather than
+ * queued forever. That is the right trade for a funding digest: a two-week-old
+ * round is not worth spending a usage window on, and the newest day always goes
+ * first.
+ */
+const DEFAULT_RUN_BUDGET = 70;
+
 export function datesToCover(index: readonly RunIndexEntry[], today: Date): string[] {
   const end = new Date(today);
   end.setUTCDate(end.getUTCDate() - 1); // SEC publishes a day's index after it closes
@@ -295,15 +317,25 @@ async function cmdRun(opts: {
     process.stdout.write('\nAlready up to date. Nothing to run.\n\n');
     return;
   }
-  if (dates.length > 1) log.info(`Catching up ${dates.length} days: ${dates.join(', ')}`);
+  if (dates.length > 1) log.info(`${dates.length} days outstanding: ${dates.join(', ')}`);
 
   const covered: RunIndexEntry[] = [];
   let stoppedEarly = false;
+  let budget = opts.limit ?? DEFAULT_RUN_BUDGET;
 
   for (const date of dates) {
+    if (budget <= 0) {
+      log.warn(`Budget of ${opts.limit ?? DEFAULT_RUN_BUDGET} companies reached — ${dates.length - covered.length} day(s) left for the next run.`);
+      break;
+    }
     if ((await readShard(date)).length === 0) await stageIngest(1, date);
-    const { planLimited } = await stageResearch(date, opts.limit, opts.model);
-    covered.push(await stageReport(date, spentUsd(), 1));
+
+    const before = (await readShard(date)).filter((c) => c.assessment).length;
+    const { planLimited } = await stageResearch(date, budget, opts.model);
+    const entry = await stageReport(date, spentUsd(), 1);
+    budget -= entry.assessed - before;
+
+    covered.push(entry);
     if (planLimited) {
       stoppedEarly = true;
       break;
@@ -317,6 +349,7 @@ async function cmdRun(opts: {
     .sort((a, b) => fitOf(b) - fitOf(a))
     .slice(0, 10);
   const missing = covered.reduce((n, e) => n + (e.companies - e.assessed), 0);
+  const daysLeft = dates.length - covered.length;
 
   process.stdout.write(
     [
@@ -325,11 +358,15 @@ async function cmdRun(opts: {
       `Issues: ${covered.map((e) => `${e.date} (${e.assessed}/${e.companies})`).join(', ')}`,
       // A run that assessed a third of what it found is not a success, and the
       // cost line alone reads like one.
-      ...(missing > 0
+      ...(missing > 0 || daysLeft > 0
         ? [
             '',
-            `  ${missing} companies were NOT researched${stoppedEarly ? ' — the plan limit stopped the run' : ''}.`,
-            '  Re-run the same command once your usage window resets; it picks them up.',
+            `  Outstanding: ${missing} companies in the issues above` +
+              (daysLeft > 0 ? `, and ${daysLeft} further day(s) not started` : '') + '.',
+            stoppedEarly
+              ? '  The plan limit stopped this run. Re-run once your usage window resets.'
+              : '  Bounded on purpose so one run cannot eat your whole usage window.',
+            '  The next run picks all of it up — nothing to do by hand.',
           ]
         : []),
       '',

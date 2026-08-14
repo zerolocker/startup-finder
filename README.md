@@ -89,16 +89,29 @@ In ~/git/startup-finder, run `pnpm sf run`.
 Then tell me the top 3 companies it found and what they do.
 ```
 
-That is the whole setup. The prompt stays that short because `pnpm sf run` is
-self-healing:
+That is the whole setup. The prompt stays that short because `pnpm sf run`
+decides everything for itself:
 
-- It covers **every day since your last complete issue**, so a missed day is
-  backfilled without you telling it to — capped at a week so a long absence
-  cannot fan out.
-- If your **usage window runs out** mid-run it stops cleanly, says how many
-  companies it did not reach, and picks them up next time. The routine firing
-  again tomorrow is the recovery mechanism.
+- **It never researches more than ~70 companies per run** — about one day, plus
+  a little to drain a backlog. If the routine misses a few days, the run does
+  not try to do all of them at once; it works through them over the following
+  days, newest first. One run therefore cannot eat your whole usage window.
+- **A missed day is backfilled** without you asking, and an issue that a rate
+  limit interrupted is resumed. Both are the same thing to it — a day with
+  companies still unresearched — so there is no separate recovery step.
+- If your **usage window runs out** mid-run it stops cleanly and says what is
+  left. Tomorrow's routine picks it up.
 - It is **idempotent**. Running it twice costs nothing the second time.
+
+If a run still takes more of your window than you want, put a smaller number in
+the routine's command — `pnpm sf run --limit 40`. Nothing is lost either way;
+the remainder just moves to the next run.
+
+One consequence worth knowing: because a day is already about a full run's
+budget, a long backlog drains slowly, and **anything older than a week is
+dropped rather than queued forever**. The newest day always goes first, which is
+the right trade for a funding digest — a two-week-old round is not worth a usage
+window.
 
 If you would rather not use Routines, any scheduler works — it is one command
 with no arguments. `launchd`, `cron`, or running it by hand are all equivalent.
