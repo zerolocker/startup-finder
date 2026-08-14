@@ -48,8 +48,12 @@
   .card {
     background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
     padding: 1rem 1.15rem; margin-bottom: .75rem; box-shadow: var(--shadow);
+    /* Every card reserves the 3px accent stripe up front and only recolours it.
+       Adding the border on click reflowed the whole list under the cursor. */
+    border-left: 3px solid transparent;
   }
-  .card.hot { border-left: 3px solid var(--hot); }
+  .card.hot { border-left-color: var(--hot); }
+  .card.saved { border-left-color: var(--good); }
   .card.dim { opacity: .55; }
   .head { display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; }
   .score {
@@ -86,10 +90,12 @@
     font: inherit; font-size: .78rem; cursor: pointer; margin-left: .5rem;
     padding: .12rem .5rem; border-radius: 20px; background: transparent;
     border: 1px solid var(--line); color: var(--muted);
+    /* "☆ save" and "★ saved" are different widths; without a floor the meta
+       block on the right shifts as you click down the list. */
+    min-width: 5.2rem; text-align: center;
   }
   .save:hover { color: var(--text); }
   .save[aria-pressed=true] { color: var(--good); border-color: currentColor; font-weight: 600; }
-  .card.saved { border-left: 3px solid var(--good); }
   #save { font: inherit; font-size: .85rem; padding: .4rem .7rem; border-radius: 7px;
     border: 1px solid var(--line); background: var(--bg); color: var(--text); cursor: pointer; }
   #save:hover { border-color: var(--accent); color: var(--accent); }
@@ -141,6 +147,10 @@ const formatUsd = (a) =>
 let ROWS = [];
 let RUN_ID = 'unknown';
 
+/** "SEATTLE, WA" -> "Seattle, WA". Leaves short tokens (state codes) alone. */
+const titleCase = (s) =>
+  s.replace(/[A-Za-z]+/g, (w) => (w.length <= 2 ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1).toLowerCase()));
+
 function toRow(c) {
   const a = c.assessment;
   return {
@@ -155,7 +165,10 @@ function toRow(c) {
     amount: c.latestFunding?.amountUsd ?? null,
     amountLabel: formatUsd(c.latestFunding?.amountUsd ?? null),
     date: c.latestFunding?.date || '',
-    location: c.location || '',
+    // The researched HQ beats the filing address, which is often the filing
+    // agent's or the state of incorporation rather than where anyone works.
+    // EDGAR shouts its cities ("SEATTLE, WA"), so the fallback gets cased down.
+    location: a?.headquarters?.trim() || titleCase(c.location || ''),
     confidence: a?.confidence || '',
     hiring: a ? a.openRoles.length : 0,
     roles: a?.openRoles ?? [],
@@ -272,7 +285,6 @@ function card(r) {
   if (!r.operating) tags.push('<span class="tag warn">not an operating company</span>');
   if (r.hiring > 0) tags.push('<span class="tag hiring">' + r.hiring + ' open role' + (r.hiring > 1 ? 's' : '') + '</span>');
   if (r.confidence) tags.push('<span class="tag">' + esc(r.confidence) + ' confidence</span>');
-  if (r.location) tags.push('<span class="tag">' + esc(r.location) + '</span>');
 
   const detail = list(r.roles, 'Open roles') + list(r.green, 'Reasons to look closer') +
     list(r.red, 'Reasons for caution') + list(r.people, 'On the SEC filing') +
@@ -288,7 +300,8 @@ function card(r) {
     '<span class="name">' + esc(r.name) + '</span>' +
     '<button class="save" type="button" aria-pressed="' + saved + '">' +
       (saved ? '★ saved' : '☆ save') + '</button>' +
-    '<span class="meta">' + esc(r.amountLabel) + (r.date ? ' · ' + esc(r.date) : '') + '</span></div>' +
+    '<span class="meta">' + esc(r.amountLabel) + (r.date ? ' · ' + esc(r.date) : '') +
+      (r.location ? '<br>' + esc(r.location) : '') + '</span></div>' +
     (r.what ? '<p class="what">' + esc(r.what) + '</p>' : '') +
     (tags.length ? '<div class="tags">' + tags.join('') + '</div>' : '') +
     (detail ? '<details><summary>Details</summary><div class="detail">' + detail + '</div></details>' : '') +

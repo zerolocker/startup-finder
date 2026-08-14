@@ -157,6 +157,14 @@ export const AssessmentSchema = z.object({
   /** One sentence on what they do, or an explicit "Unknown — …". */
   whatTheyDo: z.string(),
   /**
+   * Where the company is actually headquartered, "City, ST" or "City, Country".
+   *
+   * Researched rather than taken from the filing: an SEC address is the filing
+   * agent's or the incorporation state's as often as the company's, and
+   * news-derived companies have no filing at all. Empty when not found.
+   */
+  headquarters: z.string(),
+  /**
    * False for the SPVs, funds and holding companies that get past the ingest
    * filter. The web says what a legal name cannot.
    */
@@ -225,6 +233,11 @@ export const ProfileSchema = z.object({
     maxRaiseUsd: z.number().nullable(),
   }),
   geography: z.object({
+    /**
+     * The country the user lives in. Companies headquartered elsewhere are
+     * materially harder to join, so the rubric scores them lower.
+     */
+    basedIn: z.string().min(1),
     /** Two-letter state or country codes that earn points. */
     preferred: z.array(z.string()),
     /** If true, a remote-friendly company anywhere is acceptable. */

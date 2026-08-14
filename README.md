@@ -8,12 +8,15 @@ pnpm install
 pnpm sf run
 ```
 
-Then serve the repo root and open it — the dashboard reads data from disk, so it
-needs a server rather than a `file://` open:
+There are exactly **two** things to run, ever:
 
-```bash
-python3 -m http.server 8000   # then http://localhost:8000/
-```
+| I want to… | Do this |
+|---|---|
+| Get a new issue, every day | A **Claude Desktop Routine** running `pnpm sf run` — [set up below](#run-it-daily) |
+| Read and grade an issue | The **`review-startups` skill** — say "review startups" to Claude |
+
+Everything else (`ingest`, `research`, `report`) is an internal stage you can
+call by hand while developing, but never need to.
 
 ---
 
@@ -66,16 +69,57 @@ flowchart TD
 themes and weights, round-size window, geography, and a free-text description of
 you that is passed to the model verbatim.
 
-**If results feel wrong, edit that file first.** Then `pnpm sf research --limit 5`
-on an existing run to see the effect cheaply.
+It also records **where you live** — companies headquartered elsewhere score
+lower, since relocation or a permanent time-zone gap is a real cost.
 
-## Commands
+**If results feel wrong, edit that file first.** Then sample the effect on an
+existing issue for about a dollar, before re-scoring everything:
 
 ```bash
-pnpm sf run                        # one day, end to end
-pnpm sf run --limit 5              # a cheap trial
-pnpm sf ingest                     # fetch a day, no LLM
-pnpm sf research --date 2026-08-11 # research that issue
+pnpm sf research --refresh --limit 5
+```
+
+## Run it daily
+
+The daily workflow is a **Claude Desktop Routine**. Create one that runs on your
+schedule with a prompt like:
+
+```
+In ~/git/startup-finder, run `pnpm sf run`.
+Then tell me the top 3 companies it found and what they do.
+```
+
+That is the whole setup. The prompt stays that short because `pnpm sf run` is
+self-healing:
+
+- It covers **every day since your last complete issue**, so a missed day is
+  backfilled without you telling it to — capped at a week so a long absence
+  cannot fan out.
+- If your **usage window runs out** mid-run it stops cleanly, says how many
+  companies it did not reach, and picks them up next time. The routine firing
+  again tomorrow is the recovery mechanism.
+- It is **idempotent**. Running it twice costs nothing the second time.
+
+If you would rather not use Routines, any scheduler works — it is one command
+with no arguments. `launchd`, `cron`, or running it by hand are all equivalent.
+
+## Read and grade an issue
+
+Say **"review startups"** to Claude and the `review-startups` skill takes it from
+there: it serves the repo, opens the dashboard, and — when you are done — folds
+your grades into `data/labels.jsonl` and commits them.
+
+Grading is mostly passive. Scrolling past a company records it as *ignored*,
+expanding **Details** records it as *opened*, and only ★ save is a click.
+
+Those grades are the only ground truth the app has: the model can tell you what a
+company does, but not whether its taste matches yours.
+
+## Inspecting things by hand
+
+Not workflows — diagnostics, for when something looks wrong:
+
+```bash
 pnpm sf runs                       # what is on disk, and what it cost
 pnpm sf show <company-id>          # everything known about one company
 pnpm sf prompt                     # the exact research prompt, no LLM call
@@ -89,12 +133,11 @@ That is the price of scoring everything rather than guessing from names.
 
 **A full day can exhaust a Claude Pro 5-hour window.** Measured: 20 companies
 researched over seven minutes, then every remaining call refused. The run detects
-this, stops immediately rather than marking the rest as failures, and says so.
-Companies it did not reach stay unassessed and are picked up automatically next
-time — so the fix is simply to re-run once the window resets.
+that, stops cleanly rather than marking the rest as failures, and says how many it
+missed. Tomorrow's routine picks them up — there is nothing to do by hand.
 
-`--limit` caps how many companies a run researches. Responses are cached, so
-re-running a day costs nothing for what is already done.
+If that happens most days, `--limit 25` in the routine's command halves the run,
+at the cost of leaving the rest for the following day.
 
 ## Requirements
 

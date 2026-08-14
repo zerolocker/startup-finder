@@ -69,3 +69,39 @@ describe('renderDashboard filtering', () => {
     expect(html).toContain('assessed.filter((r) => !r.operating)');
   });
 });
+
+describe('renderDashboard — card layout', () => {
+  const html = renderDashboard();
+
+  // Adding the stripe on click reflowed the list under the cursor.
+  it('reserves the accent stripe on every card so saving does not reflow', () => {
+    expect(html).toMatch(/\.card \{[^}]*border-left: 3px solid transparent/s);
+    expect(html).toContain('.card.saved { border-left-color: var(--good); }');
+    expect(html).not.toMatch(/\.card\.saved \{ border-left: 3px/);
+  });
+
+  // "☆ save" and "★ saved" are different widths.
+  it('fixes the save button width so the meta block stays put', () => {
+    expect(html).toMatch(/\.save \{[^}]*min-width:/s);
+  });
+
+  it('shows the location in the card header, not as a tag', () => {
+    expect(html).toContain("(r.location ? '<br>' + esc(r.location) : '')");
+    expect(html).not.toContain('<span class="tag">\' + esc(r.location)');
+  });
+
+  // An SEC address is frequently the filing agent's, so the researched HQ wins.
+  it('prefers the researched headquarters over the filing address', () => {
+    expect(html).toContain("a?.headquarters?.trim() || titleCase(c.location || '')");
+  });
+});
+
+describe('renderDashboard — location formatting', () => {
+  // EDGAR shouts its cities. The researched headquarters is properly cased
+  // already, so only the fallback needs help.
+  it('cases down the SEC address fallback', () => {
+    const html = renderDashboard();
+    expect(html).toContain('titleCase(c.location');
+    expect(html).toMatch(/const titleCase = \(s\) =>/);
+  });
+});

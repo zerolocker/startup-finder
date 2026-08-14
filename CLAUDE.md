@@ -22,12 +22,26 @@ pnpm test           # 147 tests, no network, <1s
 pnpm typecheck      # tsc --noEmit, strict
 pnpm sf --help      # all CLI options
 
-pnpm sf run                          # one day, end to end (~15 min, ~$15-18-equiv)
-pnpm sf ingest                       # fetch a day, free
-pnpm sf research --limit 5           # research 5 of them, ~$1
+pnpm sf run                          # THE command (~15 min, ~$15-18-equiv)
+pnpm sf ingest                       # one internal stage, free
+pnpm sf research --refresh --limit 5  # re-score 5 after a profile edit, ~$1
 pnpm sf runs                         # what is on disk, and what it cost
 pnpm sf prompt                       # the literal research prompt, no LLM call
 ```
+
+**The app has exactly two user-facing entry points**, and new work should not add
+a third:
+
+- `pnpm sf run` — the daily issue. Called by a Claude Desktop Routine whose whole
+  prompt is "run `pnpm sf run`". It covers every day since the last complete
+  issue, resumes whatever a rate limit interrupted, and is idempotent, so the
+  routine needs no memory of what happened last time. Backfilling and
+  rate-limit recovery are deliberately the *same* operation — both are just
+  "days with unassessed companies".
+- The `review-startups` skill — reading and grading an issue.
+
+`ingest` / `research` / `report` are internal stages, useful while developing.
+Do not document them as workflows.
 
 To view the dashboard, serve the repo root — it reads `data/` over HTTP and cannot
 run from `file://`:

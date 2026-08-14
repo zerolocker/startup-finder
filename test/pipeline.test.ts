@@ -12,7 +12,7 @@ const PROFILE: Profile = {
     antiThemes: ['crypto'],
   },
   stage: { minRaiseUsd: 2_000_000, maxRaiseUsd: 150_000_000 },
-  geography: { preferred: ['CA'], remoteOk: true },
+  geography: { basedIn: 'United States', preferred: ['CA'], remoteOk: true },
   notes: [],
 };
 
@@ -251,5 +251,30 @@ describe('PlanLimitError detection', () => {
 
     expect(looksLikeLimit(refusal)).toBe(true);
     expect(looksLikeLimit(genuine)).toBe(false);
+  });
+});
+
+describe('buildResearchPrompt — geography', () => {
+  const company = mergeSources([filing()], []).companies[0]!;
+
+  it('says where the user lives and asks for the real headquarters', () => {
+    const prompt = buildResearchPrompt(company, PROFILE);
+    expect(prompt).toContain('They live in United States');
+    expect(prompt).toContain('"headquarters"');
+    // The SEC address is often the filing agent's, so it must not be trusted.
+    expect(prompt).toMatch(/Do not copy the address on the SEC\s+filing/);
+  });
+
+  // A penalty, not a veto — a remote-friendly foreign company is still worth
+  // seeing, so the instruction has to say "lower", not "exclude".
+  it('penalises non-domestic companies without zeroing them out', () => {
+    const prompt = buildResearchPrompt(company, PROFILE);
+    expect(prompt).toMatch(/headquartered outside United States is materially harder/);
+    expect(prompt).toMatch(/Do not zero it out/);
+  });
+
+  it('follows the profile rather than hardcoding a country', () => {
+    const abroad = { ...PROFILE, geography: { ...PROFILE.geography, basedIn: 'Germany' } };
+    expect(buildResearchPrompt(company, abroad)).toContain('They live in Germany');
   });
 });

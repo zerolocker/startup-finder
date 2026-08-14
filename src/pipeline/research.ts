@@ -120,11 +120,16 @@ BE HONEST ABOUT UNCERTAINTY. This is the most important instruction:
 - Set "isOperatingCompany" false for funds, SPVs, holding companies and local
   businesses. Some of these get past our filters, and you can see what a legal
   name cannot. Score those under 20 and say why in "concerns".
+- Report "headquarters" as where the company actually operates from, which you
+  should find on their site or in press. Do not copy the address on the SEC
+  filing: it is frequently the filing agent's or the state of incorporation,
+  not where anyone works.
 
 Respond with ONLY a JSON object, no prose and no markdown fences:
 {
   "fit": <0-100>,
   "whatTheyDo": "<one sentence, or an explicit 'Unknown — ...'>",
+  "headquarters": "<'City, ST' for US, 'City, Country' otherwise, or \"\" if not found>",
   "isOperatingCompany": true|false,
   "matchedInterests": ["<theme names from the profile>"],
   "concerns": ["<specific, evidence-based concerns>"],

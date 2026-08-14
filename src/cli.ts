@@ -40,7 +40,9 @@ const USAGE = `startup-finder — find recently-funded startups worth your time
 Usage: pnpm sf <command> [options]
 
 Commands:
-  run             Ingest, research, and report one day (the normal entry point)
+  run             THE command. Covers every day since the last complete issue,
+                  resumes anything a rate limit interrupted, and reports.
+                  Safe to run repeatedly; it is idempotent.
   ingest          Fetch a day into data/runs/<date>.jsonl, no LLM
   research        Research and score that shard's companies
   report          Rewrite index.html and data/index.json
@@ -49,20 +51,19 @@ Commands:
   prompt          Print the exact research prompt for one company, no LLM call
 
 Options:
-  --date <d>      Which run to act on, YYYY-MM-DD. Defaults to the newest shard,
-                  or yesterday for a fresh ingest.
-  --days <n>      Days of filings to ingest (default 1). SEC publishes a day's
-                  index only after it closes, so a window always ends yesterday.
+  --date <d>      Act on one specific issue, YYYY-MM-DD. The run command covers
+                  everything outstanding without it, so you rarely need this.
   --limit <n>     Cap companies researched. A safety valve for an unusually
                   heavy day; unbounded by default, because every company found
                   is meant to be scored.
+  --refresh       Re-score companies that already have an assessment. Use after
+                  editing config/profile.yaml to see the effect.
   --model <name>  haiku | sonnet | opus (default sonnet)
   --quiet         Only log warnings and errors
 
 Examples:
-  pnpm sf run                      # yesterday's filings, researched and scored
-  pnpm sf run --limit 5            # a cheap trial run
-  pnpm sf research --date 2026-08-11 --limit 3
+  pnpm sf run                      # the daily command — catches up if you missed days
+  pnpm sf run --limit 5            # a cheap trial
 `;
 
 // ---------------------------------------------------------------------------
@@ -139,30 +140,66 @@ async function stageResearch(
   date: string,
   limit: number | undefined,
   model: 'haiku' | 'sonnet' | 'opus',
-): Promise<RunCompany[]> {
+  refresh = false,
+): Promise<{ companies: RunCompany[]; planLimited: boolean }> {
   const shard = await readShard(date);
   if (shard.length === 0) {
     log.warn(`No shard for ${date} — run \`pnpm sf ingest\` first.`);
-    return [];
+    return { companies: [], planLimited: false };
   }
 
-  const pending = shard.filter((c) => !c.assessment);
+  // --refresh re-scores companies that already have an assessment, which is the
+  // only way to see the effect of an edited profile.yaml on a finished issue.
+  const pending = refresh ? shard : shard.filter((c) => !c.assessment);
   const targets = limit === undefined ? pending : pending.slice(0, limit);
   if (targets.length < pending.length) {
     log.warn(`--limit ${limit}: researching ${targets.length} of ${pending.length} unassessed companies`);
   }
   if (targets.length === 0) {
-    log.info(`All ${shard.length} companies in the ${date} run are already assessed.`);
-    return shard;
+    log.info(`All ${shard.length} companies in the ${date} run are already assessed. Use --refresh to re-score.`);
+    return { companies: shard, planLimited: false };
   }
 
   const profile = await loadProfile();
-  const { companies: assessed } = await researchCompanies(targets, profile, { model });
+  const { companies: assessed, planLimited } = await researchCompanies(targets, profile, { model });
 
   const byId = new Map(assessed.map((c) => [c.id, c]));
   const merged = shard.map((c) => byId.get(c.id) ?? c);
   await writeShard(date, merged);
-  return merged;
+  return { companies: merged, planLimited };
+}
+
+/**
+ * The days a run should cover: everything from the last completed issue up to
+ * yesterday, newest first.
+ *
+ * Newest first because a rate limit will often stop the run partway, and the
+ * most recent issue is the one worth having complete. An incomplete shard is
+ * simply a day with unassessed companies, so resuming after a limit and
+ * backfilling a day you missed are the same operation — which is what lets one
+ * command be the only thing anyone has to run.
+ */
+const MAX_CATCHUP_DAYS = 7;
+
+export function datesToCover(index: readonly RunIndexEntry[], today: Date): string[] {
+  const end = new Date(today);
+  end.setUTCDate(end.getUTCDate() - 1); // SEC publishes a day's index after it closes
+
+  // A first run covers yesterday only. Catching up is defined relative to a
+  // known last issue; with no history, walking back the full window would
+  // research a week of filings — roughly 430 companies — on first use.
+  if (index.length === 0) return [end.toISOString().slice(0, 10)];
+
+  const complete = new Set(index.filter((e) => e.companies > 0 && e.assessed >= e.companies).map((e) => e.date));
+  const out: string[] = [];
+  for (let i = 0; i < MAX_CATCHUP_DAYS; i++) {
+    const d = new Date(end);
+    d.setUTCDate(d.getUTCDate() - i);
+    const iso = d.toISOString().slice(0, 10);
+    if (complete.has(iso)) break; // reached settled history; everything older is done
+    out.push(iso);
+  }
+  return out;
 }
 
 /**
@@ -232,9 +269,16 @@ async function cmdPrompt(date: string): Promise<void> {
   process.stdout.write(`${buildResearchPrompt(shard[0]!, await loadProfile())}\n`);
 }
 
+/**
+ * The one command anyone runs.
+ *
+ * Covers every day since the last complete issue, resumes any day left half
+ * finished by a rate limit, and reports. It is idempotent and self-healing on
+ * purpose: a scheduled routine can call it with no arguments and no knowledge
+ * of what happened last time.
+ */
 async function cmdRun(opts: {
-  days: number;
-  date: string;
+  date: string | undefined;
   limit: number | undefined;
   model: 'haiku' | 'sonnet' | 'opus';
 }): Promise<void> {
@@ -246,28 +290,55 @@ async function cmdRun(opts: {
   resetSpend();
   const started = Date.now();
 
-  await stageIngest(opts.days, opts.date);
-  const companies = await stageResearch(opts.date, opts.limit, opts.model);
-  const entry = await stageReport(opts.date, spentUsd(), opts.days);
+  const dates = opts.date ? [opts.date] : datesToCover(await readIndex(), new Date());
+  if (dates.length === 0) {
+    process.stdout.write('\nAlready up to date. Nothing to run.\n\n');
+    return;
+  }
+  if (dates.length > 1) log.info(`Catching up ${dates.length} days: ${dates.join(', ')}`);
 
-  const top = [...companies].sort((a, b) => fitOf(b) - fitOf(a)).slice(0, 10);
-  const missing = entry.companies - entry.assessed;
+  const covered: RunIndexEntry[] = [];
+  let stoppedEarly = false;
+
+  for (const date of dates) {
+    if ((await readShard(date)).length === 0) await stageIngest(1, date);
+    const { planLimited } = await stageResearch(date, opts.limit, opts.model);
+    covered.push(await stageReport(date, spentUsd(), 1));
+    if (planLimited) {
+      stoppedEarly = true;
+      break;
+    }
+  }
+
+  const newest = covered[0];
+  const companies = newest ? await readShard(newest.date) : [];
+  const top = [...companies]
+    .filter((c) => c.assessment?.isOperatingCompany)
+    .sort((a, b) => fitOf(b) - fitOf(a))
+    .slice(0, 10);
+  const missing = covered.reduce((n, e) => n + (e.companies - e.assessed), 0);
+
   process.stdout.write(
     [
       '',
-      `Done in ${((Date.now() - started) / 1000).toFixed(0)}s · plan usage ~$${entry.costUsd.toFixed(2)}-equiv`,
+      `Done in ${((Date.now() - started) / 1000).toFixed(0)}s · plan usage ~$${spentUsd().toFixed(2)}-equiv`,
+      `Issues: ${covered.map((e) => `${e.date} (${e.assessed}/${e.companies})`).join(', ')}`,
       // A run that assessed a third of what it found is not a success, and the
       // cost line alone reads like one.
       ...(missing > 0
-        ? ['', `  ${missing} of ${entry.companies} companies were NOT researched — re-run to pick them up.`]
+        ? [
+            '',
+            `  ${missing} companies were NOT researched${stoppedEarly ? ' — the plan limit stopped the run' : ''}.`,
+            '  Re-run the same command once your usage window resets; it picks them up.',
+          ]
         : []),
       '',
-      'Best of this run:',
+      newest ? `Best of ${newest.date}:` : 'Nothing found.',
       ...top.map((c) => {
         const fit = String(Math.round(fitOf(c))).padStart(3);
         const amount = formatUsd(c.latestFunding?.amountUsd ?? null).padStart(7);
-        const what = (c.assessment?.whatTheyDo ?? 'not assessed').slice(0, 62);
-        return `  ${fit}  ${amount}  ${c.name.slice(0, 32).padEnd(32)}  ${what}`;
+        const where = (c.assessment?.headquarters || c.location || '').slice(0, 18).padEnd(19);
+        return `  ${fit}  ${amount}  ${where} ${c.name.slice(0, 28).padEnd(29)} ${(c.assessment?.whatTheyDo ?? '').slice(0, 48)}`;
       }),
       '',
       '  serve the repo root and open index.html to read the issue',
@@ -288,6 +359,7 @@ async function main(): Promise<void> {
       days: { type: 'string', default: '1' },
       limit: { type: 'string' },
       model: { type: 'string', default: 'sonnet' },
+      refresh: { type: 'boolean', default: false },
       quiet: { type: 'boolean', default: false },
       help: { type: 'boolean', default: false },
     },
@@ -318,7 +390,7 @@ async function main(): Promise<void> {
     case 'run':
       // A fresh run covers a new day, so it starts from yesterday rather than
       // from whatever shard happens to be newest.
-      await cmdRun({ days, date: values.date ?? yesterday(), limit, model: asModel });
+      await cmdRun({ date: values.date, limit, model: asModel });
       break;
     case 'ingest': {
       const date = values.date ?? yesterday();
@@ -330,7 +402,7 @@ async function main(): Promise<void> {
     case 'research': {
       const date = await resolveDate(values.date);
       resetSpend();
-      await stageResearch(date, limit, asModel);
+      await stageResearch(date, limit, asModel, values.refresh);
       await stageReport(date, spentUsd(), days);
       break;
     }

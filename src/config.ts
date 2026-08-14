@@ -77,7 +77,12 @@ export function profileToPrompt(profile: Profile): string {
     ? profile.geography.preferred.join(', ')
     : 'no strong preference';
   lines.push(
-    `\nGEOGRAPHY: prefers ${geo}.${profile.geography.remoteOk ? ' Remote-friendly companies anywhere are also fine.' : ' Remote is not a substitute for location.'}`,
+    `\nGEOGRAPHY: They live in ${profile.geography.basedIn}, and prefer ${geo}.` +
+      `${profile.geography.remoteOk ? ' Remote-friendly companies are also fine.' : ' Remote is not a substitute for location.'}` +
+      `\n  A company headquartered outside ${profile.geography.basedIn} is materially harder to join — ` +
+      `visa, relocation, or a permanent time-zone gap — so score it lower than an otherwise ` +
+      `identical domestic company, and say so in "concerns". Do not zero it out: a remote-friendly ` +
+      `company that hires in ${profile.geography.basedIn} is only mildly penalised.`,
   );
 
   if (profile.notes.length > 0) {
