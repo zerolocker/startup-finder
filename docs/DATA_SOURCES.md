@@ -170,7 +170,8 @@ Roughly in order of value per unit of work:
 engineering role is a stronger signal than round size for someone evaluating where
 to work. Currently discovered only during research — too late to influence
 ranking. A source that checks careers pages (or Greenhouse/Lever/Ashby public job
-APIs, which are free and structured) would let hiring feed the prefilter.
+APIs, which are free and structured) would let hiring signals be resolved
+before research, rather than discovered by it.
 
 **Y Combinator / accelerator directories.** Public, structured, and a strong
 quality prior. Good for enriching companies we already found.
@@ -191,7 +192,7 @@ backfilling history, which the daily-index approach makes expensive.
 **Paid databases** (Crunchbase, PitchBook, Dealroom, Specter). Would fill in
 valuations, investor names, and headcount trends — genuinely valuable and
 genuinely expensive. Deliberately avoided so far; see
-[ADR-001](DECISIONS.md#adr-001-free-public-sources-only).
+[ADR-001](ARCHITECTURE.md#adr-001-free-public-sources-only).
 
 ## A note on coverage honesty
 

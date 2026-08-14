@@ -35,6 +35,18 @@ const parser = new XMLParser({
 // ---------------------------------------------------------------------------
 
 /**
+ * Compare industries on a canonical form.
+ *
+ * EDGAR spells these with the word "and" — "Oil and Gas", "REITS and Finance" —
+ * while this list was written with ampersands, so those two exclusions never
+ * fired and their filings were researched at ~$0.28 each. Normalizing both
+ * sides fixes the pair that was caught and the ones that were not yet:
+ * "Airlines & Airports" and "Lodging & Conventions" have the same shape.
+ */
+const canonicalIndustry = (s: string): string =>
+  s.toLowerCase().replace(/\s*&\s*/g, ' and ').replace(/\s+/g, ' ').trim();
+
+/**
  * Industry buckets that are essentially never an operating tech startup.
  * Form D's taxonomy is coarse, so this is the single most effective filter.
  */
@@ -55,7 +67,19 @@ const EXCLUDED_INDUSTRIES = new Set([
   'Airlines & Airports',
   'Lodging & Conventions',
   'Restaurants',
-]);
+].map(canonicalIndustry));
+
+/** Industries that make a Limited Partnership look like a fund, not a business. */
+const FUND_LIKE_INDUSTRIES = new Set([
+  'Pooled Investment Fund',
+  'Investing',
+  'Investment Banking',
+  'Other Real Estate',
+  'Residential',
+  'Commercial',
+  'REITS & Finance',
+  'Other Banking and Financial Services',
+].map(canonicalIndustry));
 
 /**
  * Name patterns for investment vehicles. These are matched against the raw
@@ -82,7 +106,19 @@ const FUND_NAME_PATTERNS: RegExp[] = [
   /\bmultifamily\b/i,
 ];
 
-/** Entity types that are essentially never a venture-backed operating company. */
+/**
+ * Entity types that are never operating companies on their own.
+ *
+ * Measured: on a real day this rule was the *only* one that cost recall. An
+ * audit re-judged all 175 filings the filter dropped and found exactly one real
+ * company among them — `Vehlo Holdings, LP`, auto-repair payments software —
+ * dropped for being an LP. The industry-code rules had a false-negative rate of
+ * 0/160, because a filer's self-reported industry is structured data rather than
+ * a guess about them.
+ *
+ * So an LP is only excluded when its industry *also* looks fund-like. A plain LP
+ * in an operating industry now survives.
+ */
 const EXCLUDED_ENTITY_TYPES = new Set(['Limited Partnership']);
 
 export interface FilterVerdict {
@@ -101,11 +137,17 @@ export interface FilterVerdict {
  * test/edgar.test.ts when you do.
  */
 export function isLikelyOperatingStartup(filing: FormDFiling): FilterVerdict {
-  if (filing.industryGroup && EXCLUDED_INDUSTRIES.has(filing.industryGroup)) {
+  if (filing.industryGroup && EXCLUDED_INDUSTRIES.has(canonicalIndustry(filing.industryGroup))) {
     return { keep: false, reason: `industry "${filing.industryGroup}" is an investment/real-asset bucket` };
   }
-  if (filing.entityType && EXCLUDED_ENTITY_TYPES.has(filing.entityType)) {
-    return { keep: false, reason: `entity type "${filing.entityType}" is a fund structure` };
+  if (
+    filing.entityType &&
+    EXCLUDED_ENTITY_TYPES.has(filing.entityType) &&
+    // An LP alone is not evidence of a fund; an LP filing under a fund-ish or
+    // unstated industry is. See the note on EXCLUDED_ENTITY_TYPES.
+    (filing.industryGroup == null || FUND_LIKE_INDUSTRIES.has(canonicalIndustry(filing.industryGroup)))
+  ) {
+    return { keep: false, reason: `entity type "${filing.entityType}" with a fund-like industry` };
   }
   for (const pattern of FUND_NAME_PATTERNS) {
     if (pattern.test(filing.entityName)) {
@@ -363,6 +405,35 @@ export interface EdgarIngestResult {
 }
 
 /**
+ * The UTC dates a `--days N` window should scan, newest first.
+ *
+ * The window **ends yesterday, not today**. EDGAR publishes the daily index for
+ * a filing day only after that day closes, so today's index does not exist for
+ * essentially the whole of today — measured 2026-08-12 04:51 UTC, the indexes
+ * for Aug 10 and Aug 11 were both up and Aug 12 was still absent.
+ *
+ * Counting today against the window made `--days N` quietly deliver N−1 usable
+ * days, and `--days 1` deliver nothing at all. That is not a rounding error: a
+ * run at 06:45 UTC with `--days 4` missed a full business day of 156 filings,
+ * because the newest day it asked for had not been published yet.
+ *
+ * Yesterday is the right anchor but is not a guarantee either — before roughly
+ * 03:00 UTC yesterday's index may also still be pending — so callers must keep
+ * tolerating a missing day rather than treating it as an error.
+ */
+export function indexDatesFor(days: number, now: Date = new Date()): Date[] {
+  const dates: Date[] = [];
+  for (let i = 1; i <= days; i++) {
+    const date = new Date(now);
+    date.setUTCDate(date.getUTCDate() - i);
+    dates.push(date);
+  }
+  return dates;
+}
+
+const ymd = (d: Date): string => d.toISOString().slice(0, 10);
+
+/**
  * Fetch and parse recent Form D filings.
  *
  * Weekends and holidays have no index file; a 404 there is expected and skipped
@@ -372,10 +443,10 @@ export async function ingestEdgar(opts: EdgarIngestOptions): Promise<EdgarIngest
   const { days, concurrency = 4, includeAmendments = true } = opts;
   const formTypes = includeAmendments ? ['D', 'D/A'] : ['D'];
 
+  const dates = indexDatesFor(days);
   const refs: FilingRef[] = [];
-  for (let i = 0; i < days; i++) {
-    const date = new Date();
-    date.setUTCDate(date.getUTCDate() - i);
+  const missing: string[] = [];
+  for (const date of dates) {
     const url = dailyIndexUrl(date);
     try {
       // Index files are immutable once published, so cache them for a week.
@@ -384,11 +455,31 @@ export async function ingestEdgar(opts: EdgarIngestOptions): Promise<EdgarIngest
       refs.push(...dayRefs);
       log.debug(`${url.split('/').pop()}: ${dayRefs.length} Form D`);
     } catch (err) {
-      log.debug(`no index for ${date.toISOString().slice(0, 10)} (weekend/holiday?)`, String(err));
+      missing.push(ymd(date));
+      log.debug(`no index for ${ymd(date)} (weekend/holiday?)`, String(err));
     }
   }
 
-  log.info(`EDGAR: ${refs.length} Form D filings in the last ${days} days`);
+  // Name the actual dates. "in the last N days" hid which days were really
+  // read, which is how a missing business day went unnoticed.
+  const oldest = dates[dates.length - 1];
+  const newest = dates[0];
+  const span = newest && oldest ? `${ymd(oldest)}..${ymd(newest)}` : 'no days';
+  log.info(`EDGAR: ${refs.length} Form D filings across ${span} (${days} day window ending yesterday)`);
+  if (missing.length > 0) {
+    // Weekends dominate this list and are unremarkable; a weekday is not.
+    const weekdays = missing.filter((d) => {
+      const dow = new Date(`${d}T12:00:00Z`).getUTCDay();
+      return dow !== 0 && dow !== 6;
+    });
+    log.debug(`no index for ${missing.length} day(s): ${missing.join(', ')}`);
+    if (weekdays.length > 0) {
+      log.warn(
+        `No SEC index for ${weekdays.length} weekday(s): ${weekdays.join(', ')}. ` +
+          `Holiday, or not published yet — re-run later to pick them up.`,
+      );
+    }
+  }
 
   const dropped: Record<string, number> = {};
   const kept: FormDFiling[] = [];

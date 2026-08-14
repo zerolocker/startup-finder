@@ -5,7 +5,7 @@
 # policy: it defines what "a startup worth my time" means. If the results feel
 # wrong, tune this file first, before touching any code.
 #
-# After editing, re-run:  pnpm sf score --rescore && pnpm sf report
+# After editing, re-run:  pnpm sf research --limit 5   (to sample the effect)
 # ============================================================================
 
 about: |
@@ -64,6 +64,9 @@ stage:
   maxRaiseUsd: 150000000
 
 geography:
+  # Where you live. Companies headquartered outside this country are scored
+  # lower — relocating or working across many time zones is a real cost.
+  basedIn: United States
   # Two-letter US state codes and/or country names.
   preferred:
     - CA

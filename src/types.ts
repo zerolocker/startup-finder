@@ -144,42 +144,41 @@ export interface FundingEvent {
 // ---------------------------------------------------------------------------
 
 /**
- * Cheap, deterministic, no-LLM score. Its only job is to rank candidates so the
- * expensive LLM pass looks at the most promising ~50 instead of all ~3000.
- * Never shown to the user as a quality judgement.
+ * What the research stage concluded about one company.
+ *
+ * Evidence and judgement in one object because they come from one call: the
+ * model searches the web, then scores what it actually found. Scoring before
+ * knowing what a company does — which is what this app used to do — meant most
+ * scores were guesses about a legal entity name.
  */
-export interface PrefilterScore {
-  total: number;
-  /** Per-signal contributions, kept for debuggability. */
-  breakdown: Record<string, number>;
-  /** Human-readable reasons, useful when a company is unexpectedly missing. */
-  notes: string[];
-}
-
-/** The LLM's judgement of one company against the user's profile. */
-export const LlmScoreSchema = z.object({
-  /** 0-100. Calibrated by the rubric in src/pipeline/score.ts. */
+export const AssessmentSchema = z.object({
+  /** 0-100 fit against config/profile.yaml, per the rubric in research.ts. */
   fit: z.number().min(0).max(100),
-  /** What the company actually does, in one sentence. */
+  /** One sentence on what they do, or an explicit "Unknown — …". */
   whatTheyDo: z.string(),
+  /**
+   * Where the company is actually headquartered, "City, ST" or "City, Country".
+   *
+   * Researched rather than taken from the filing: an SEC address is the filing
+   * agent's or the incorporation state's as often as the company's, and
+   * news-derived companies have no filing at all. Empty when not found.
+   */
+  headquarters: z.string(),
+  /**
+   * False for the SPVs, funds and holding companies that get past the ingest
+   * filter. The web says what a legal name cannot.
+   */
+  isOperatingCompany: z.boolean(),
   /** Which profile interests this hits. */
   matchedInterests: z.array(z.string()),
   /** Honest reasons this might be a bad fit. */
   concerns: z.array(z.string()),
-  /** One-paragraph argument for why this is or is not worth the user's time. */
+  /** 2-3 sentences arguing the score. */
   rationale: z.string(),
-  /** How confident the model is given the evidence it had. */
+  /** Confidence in the identification, not in the taste judgement. */
   confidence: z.enum(['low', 'medium', 'high']),
-});
-export type LlmScore = z.infer<typeof LlmScoreSchema>;
 
-export interface ScoredCompany extends Company {
-  prefilter: PrefilterScore;
-  llm: LlmScore | null;
-}
-
-/** Deep-research dossier, produced only for the top-ranked companies. */
-export const DossierSchema = z.object({
+  /** 2-4 sentences: who they are, and why they may or may not matter. */
   summary: z.string(),
   /** The problem they solve and for whom. */
   product: z.string(),
@@ -189,21 +188,26 @@ export const DossierSchema = z.object({
   funding: z.string(),
   /** Roles they are hiring for — the key signal for "should I join". */
   openRoles: z.array(z.string()),
-  /** Publicly visible tech stack, when discoverable. */
   techStack: z.array(z.string()),
-  /** Named competitors. */
   competitors: z.array(z.string()),
   /** Things that should give the user pause. */
   redFlags: z.array(z.string()),
   /** Concrete reasons this is worth a conversation. */
   greenFlags: z.array(z.string()),
-  /** Careers page, homepage, LinkedIn — wherever the user should go next. */
+  /** Careers page, homepage — wherever the user should go next. */
   links: z.array(z.object({ label: z.string(), url: z.string() })),
 });
-export type Dossier = z.infer<typeof DossierSchema>;
+export type Assessment = z.infer<typeof AssessmentSchema>;
 
-export interface ResearchedCompany extends ScoredCompany {
-  dossier: Dossier | null;
+/**
+ * A company as one run saw it.
+ *
+ * `assessment` is null only when research failed. Never because the company was
+ * filtered out — every company a run finds is researched — so a null here is a
+ * defect worth looking at, not a routine state.
+ */
+export interface RunCompany extends Company {
+  assessment: Assessment | null;
   researchedAt: string | null;
 }
 
@@ -229,6 +233,11 @@ export const ProfileSchema = z.object({
     maxRaiseUsd: z.number().nullable(),
   }),
   geography: z.object({
+    /**
+     * The country the user lives in. Companies headquartered elsewhere are
+     * materially harder to join, so the rubric scores them lower.
+     */
+    basedIn: z.string().min(1),
     /** Two-letter state or country codes that earn points. */
     preferred: z.array(z.string()),
     /** If true, a remote-friendly company anywhere is acceptable. */
@@ -240,15 +249,17 @@ export const ProfileSchema = z.object({
 export type Profile = z.infer<typeof ProfileSchema>;
 
 // ---------------------------------------------------------------------------
-// Run metadata — every pipeline run records what it did, for reproducibility.
+// Run metadata — data/index.json, the dashboard's list of runs.
 // ---------------------------------------------------------------------------
 
-export interface RunRecord {
-  runId: string;
-  startedAt: string;
-  finishedAt: string | null;
-  /** Which stages ran, and what they produced. */
-  stages: Record<string, { ok: boolean; count: number; ms: number; error?: string }>;
-  /** Total USD spent on LLM calls in this run. */
+export interface RunIndexEntry {
+  /** UTC date the run covers, YYYY-MM-DD. Also the shard filename. */
+  date: string;
+  /** Days of SEC filings ingested. */
+  windowDays: number;
+  companies: number;
+  /** How many carry an assessment; below `companies` only if research failed. */
+  assessed: number;
   costUsd: number;
+  generatedAt: string;
 }

@@ -1,21 +1,4 @@
-/**
- * The dashboard — the app's only output.
- *
- * **It contains no data.** It reads `data/index.json` to find the runs, then
- * fetches exactly one shard, `data/runs/<date>.jsonl`, and renders every company
- * in it. One issue, one fetch.
- *
- * That is why runs are sharded. An earlier version inlined the whole cumulative
- * corpus into every dated HTML file, so each run committed a ~520 KB page that
- * was 97% a copy of records already on disk, and the page grew forever. This
- * shell is ~18 KB and changes only when this file does.
- *
- * The cost is that `fetch` is blocked on `file://`, so the page has to be
- * served. Opening it directly renders an error naming the fix.
- */
-
-export function renderDashboard(): string {
-  return `<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -363,7 +346,7 @@ function render() {
 const jsonl = async (path) => {
   const res = await fetch(path);
   if (!res.ok) throw new Error(path + ' -> HTTP ' + res.status);
-  return (await res.text()).split('\\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
+  return (await res.text()).split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
 };
 
 async function loadRun(entry) {
@@ -446,5 +429,3 @@ main();
 </script>
 </body>
 </html>
-`;
-}

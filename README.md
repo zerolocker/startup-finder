@@ -1,138 +1,207 @@
 # startup-finder
 
-Finds recently-funded startups worth your time, researches them, and writes you a
-digest.
+Finds recently-funded startups worth your time, researches every one of them, and
+scores them against what you care about.
 
 ```bash
 pnpm install
 pnpm sf run
 ```
 
-Output: [`reports/latest.md`](reports/latest.md) and
-[`reports/latest.html`](reports/latest.html), both committed to the repo.
+There are exactly **two** things to run, ever:
+
+| I want to… | Do this |
+|---|---|
+| Get a new issue, every day | A **Claude Desktop Routine** running `pnpm sf run` — [set up below](#run-it-daily) |
+| Read and grade an issue | The **`review-startups` skill** — say "review startups" to Claude |
+
+Everything else (`ingest`, `research`, `report`) is an internal stage you can
+call by hand while developing, but never need to.
 
 ---
 
 ## What it produces
 
-A real 10-day run: 1,575 SEC filings → 316 operating companies → 324 candidates
-with press → 120 LLM-screened → 15 researched in depth. About 15 minutes.
+One day: **222 SEC Form D filings → 62 companies → all 62 researched on the web
+and scored**. About 15 minutes and a few dollars of your Claude plan's usage.
 
-The top result was a $150M Series C company, identified as YC-backed agentic AI
-for logistics, with 13 open engineering roles, founder backgrounds, and its
-investor list — none of which appears in the SEC filing that surfaced it.
+Each run is a self-contained issue. The dashboard shows one issue at a time, with
+a picker to move between days.
 
 ## Why it exists
 
 SEC Form D is the only comprehensive record of US private funding: every round,
-public within 15 days, free. It is also nearly unusable — ~80% of filers are
-real-estate SPVs and investment funds, and a real company's filing gives you a
+public within 15 days, free. It is also nearly unusable — about four in five
+filers are funds and real-estate vehicles, and a real company's filing gives you a
 name, a dollar amount, and an industry code. Nothing about what they do.
 
 News is the opposite: rich, but only covers companies that already have PR.
 
-So: **Form D for recall, news for context, an LLM for the judgement in between.**
+So: **Form D for coverage, news for context, and a model that actually reads the
+web for the judgement in between.**
 
 ## How it works
 
 ```mermaid
 flowchart TD
-    A["SEC Form D (1,575 filings / 10 days)"] --> C
-    B["Funding news RSS (7 feeds)"] --> C
-    C["merge — join by exact name (324 companies)"] --> D
-    D["prefilter — deterministic (324 → 120, free)"] --> E
-    E["llm screen — batched, no web (120 scored, ≈$1)"] --> F
-    F["research — web search (15 dossiers, ≈$4)"] --> G & H
-    G["reports/latest.md"]
-    H["reports/latest.html"]
+    A["SEC Form D — 222 filings in one day"] -->|"drop 170 funds, SPVs, real estate"| C
+    B["funding news RSS — 7 feeds"] --> C
+    C["merge — 62 companies, joined by exact name"] --> D
+    D["research — web search on every one of the 62"]
+    D --> S[("data/runs/2026-08-11.jsonl — one self-contained issue")]
+    S --> H["index.html — reads one issue and ranks it"]
 ```
 
-Each stage runs independently against on-disk data, so you can re-screen and
-re-report without re-running the expensive research.
-
-```bash
-pnpm sf run                        # everything (the normal entry point)
-pnpm sf run --days 3 --research 5  # quick pass
-pnpm sf score && pnpm sf report    # re-screen after editing your profile
-pnpm sf stats                      # what's in data/
-pnpm sf show oxide-computer        # everything known about one company
-pnpm sf prompt --limit 3           # the exact screening prompt, no LLM call
-pnpm sf prompt --stage research    # the research prompt, no LLM call
-```
-
-## Run it weekly
-
-```bash
-./scripts/install-schedule.sh     # Monday 08:00, via launchd
-```
-
-Each run writes a dated issue to `reports/`, commits it, and notifies you. Back
-issues live in git. Pushing is off by default — this repo is public. Details in
-[`docs/SCHEDULING.md`](docs/SCHEDULING.md).
+- **ingest** — pulls one day of Form D filings and funding headlines. A filter
+  drops funds, SPVs and real-estate vehicles, which are most of what gets filed.
+- **merge** — one record per company, joining a filing and a headline when the
+  names match exactly.
+- **research** — the only LLM stage, and the whole point. It searches the web for
+  **every** company: what they build, who founded it, open roles, links — and
+  scores the fit while it is there. Nothing is filtered out before this, so a
+  company is never dismissed on the basis of its name.
+- **dashboard** — `index.html` loads one issue and ranks it. Every company in the
+  run is shown; there is no top-N cut.
 
 ## Configure it
 
-[`config/profile.yaml`](config/profile.yaml) defines what "a startup worth my
-time" means — themes and weights, round-size window, geography, and a free-text
-description of you passed verbatim to the model.
+[`config/profile.yaml`](config/profile.yaml) defines what "worth my time" means —
+themes and weights, round-size window, geography, and a free-text description of
+you that is passed to the model verbatim.
 
-**If results feel wrong, edit that file before touching any code.** Then
-`pnpm sf score && pnpm sf report`.
+It also records **where you live** — companies headquartered elsewhere score
+lower, since relocation or a permanent time-zone gap is a real cost.
+
+**If results feel wrong, edit that file first.** Then sample the effect on an
+existing issue for about a dollar, before re-scoring everything:
+
+```bash
+pnpm sf research --refresh --limit 5
+```
+
+## Run it daily
+
+The daily workflow is a **Claude Desktop Routine**. Create one that runs on your
+schedule with a prompt like:
+
+```
+In ~/git/startup-finder, run `pnpm sf run`.
+Then tell me the top 3 companies it found and what they do.
+```
+
+That is the whole setup. The prompt stays that short because `pnpm sf run`
+decides everything for itself:
+
+- **It researches until your usage window runs out, then stops cleanly** and
+  says what is left. That is the intended stopping point, not a failure: a day's
+  filings are worth roughly one Claude Pro window, so the limit is the natural
+  unit of work and needs no tuning.
+- **A missed day is backfilled** without you asking, and an issue that a rate
+  limit interrupted is resumed. Both are the same thing to it — a day with
+  companies still unresearched — so there is no separate recovery step.
+- **A run with nothing outstanding makes no LLM calls at all**, so it is free.
+- It is **idempotent**. Running it twice costs nothing the second time.
+
+### Getting through a backlog faster
+
+Usage windows reset every five hours, so **schedule two or three routines more
+than five hours apart** — 07:00, 13:00, 19:00, say. Each picks up where the last
+one stopped and drains roughly another window's worth.
+
+On an ordinary day the first run finishes everything and the later ones find
+nothing to do and exit for free. They only earn their keep after the app has
+gone unrun for a few days, which is exactly when you want them.
+
+If you would rather a run *not* consume your whole window, cap it in the
+routine's command: `pnpm sf run --limit 30`. Nothing is lost; the remainder
+moves to the next run.
+
+One consequence worth knowing: **anything older than a week is dropped rather
+than queued forever**. The newest day always goes first, which is the right
+trade for a funding digest — a two-week-old round is not worth a usage window.
+
+If you would rather not use Routines, any scheduler works — it is one command
+with no arguments. `launchd`, `cron`, or running it by hand are all equivalent.
+
+## Read and grade an issue
+
+Say **"review startups"** to Claude and the `review-startups` skill takes it from
+there: it serves the repo, opens the dashboard, and — when you are done — folds
+your grades into `data/labels.jsonl` and commits them.
+
+Grading is mostly passive. Scrolling past a company records it as *ignored*,
+expanding **Details** records it as *opened*, and only ★ save is a click.
+
+Those grades are the only ground truth the app has: the model can tell you what a
+company does, but not whether its taste matches yours.
+
+## Inspecting things by hand
+
+Not workflows — diagnostics, for when something looks wrong:
+
+```bash
+pnpm sf runs                       # what is on disk, and what it cost
+pnpm sf show <company-id>          # everything known about one company
+pnpm sf prompt                     # the exact research prompt, no LLM call
+```
+
+## Cost
+
+Runs on your Claude subscription. **Nothing is billed to a card.** Researching one
+company measured at **~$0.25-0.30-equivalent**, so a 60-company day is **~$15-18**.
+That is the price of scoring everything rather than guessing from names.
+
+**A full day can exhaust a Claude Pro 5-hour window.** Measured: 20 companies
+researched over seven minutes, then every remaining call refused. The run detects
+that, stops cleanly rather than marking the rest as failures, and says how many it
+missed. Tomorrow's routine picks them up — there is nothing to do by hand.
+
+That is now the intended stopping point rather than a problem: a run researches
+until the window is spent and leaves the rest for next time. Schedule a second
+routine more than five hours later if you want more done in a day, or pass
+`--limit` to keep some window in reserve.
 
 ## Requirements
 
 Node 22+, pnpm, and the [Claude Code CLI](https://claude.com/claude-code) on your
-PATH. Optionally set `SF_CONTACT` to your email — the SEC asks automated clients
-to identify themselves.
-
-## Cost
-
-Runs on your Claude subscription. **Nothing is billed to a card.** A full run
-uses roughly $4-equivalent of tokens, reported at the end of the run and kept in
-`data/runs.jsonl`. Responses are cached, so re-runs cost almost nothing.
-
-There is no spend cap — a run uses what the work needs. `--limit` (companies
-screened) and `--research` (dossiers written) are the knobs that make a run
-cheaper.
+PATH. Optionally set `SF_CONTACT` to your email — the SEC asks automated clients to
+identify themselves.
 
 ## Repo layout
 
 ```
-config/profile.yaml   what you care about — the only file most users edit
-src/sources/          EDGAR and RSS ingestion
-src/pipeline/         merge, prefilter, LLM scoring, research
-src/report/           markdown digest + HTML dashboard
-src/llm/claude.ts     the claude -p wrapper (caching, cost accounting, retries)
-data/*.jsonl          all persisted data, committed to git on purpose
-reports/              generated digests, committed
-docs/                 why things are the way they are — read before changing
-```
-
-## For agents and contributors
-
-Start with [`CLAUDE.md`](CLAUDE.md), then
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
-[`docs/DECISIONS.md`](docs/DECISIONS.md) records what was tried and rejected.
-
-```bash
-pnpm test        # 135 tests, no network required
-pnpm typecheck
+config/profile.yaml     what you care about — the only file most users edit
+src/sources/            EDGAR and RSS ingestion
+src/pipeline/           merge, then research-and-score
+src/report/html.ts      the dashboard shell
+src/llm/claude.ts       the claude -p wrapper (caching, cost accounting, retries)
+data/runs/<date>.jsonl  one self-contained issue per run, committed
+data/index.json         the list of issues
+index.html              the dashboard; reads data/, so it must be served
+docs/                   how it works, and where the data comes from
 ```
 
 ## Limitations
 
-- **Lookback auto-catches-up, up to 90 days.** Omit `--days` and the window
-  widens to cover everything since your last run. Gaps longer than 90 days are
-  capped, and the run tells you exactly how many days it skipped and what to run
-  to backfill them. News feeds cannot be backfilled at all — RSS only carries
-  recent items.
+- **The ingest filter is the only thing that drops a company.** It is a heuristic
+  over the filer's own industry code and entity type. Measured against a model
+  re-judging everything it dropped on a real day, its recall was **97.9%** — the
+  one miss was an operating company structured as an LP, which is now handled.
 - **US-centric.** Form D is a US filing; non-US startups appear only via press.
 - **Name matching is exact-only** by design, so one company can appear twice under
-  different spellings ([ADR-004](docs/DECISIONS.md)).
+  different spellings. A wrong merge is far worse than a duplicate.
 - **Research can be wrong.** It is a model reading the web. Anything not backed by
-  a link in the report should be verified before you act on it.
+  a link in the dashboard should be verified before you act on it. The model is
+  asked to say "Unknown" rather than guess, and to flag entities that turn out not
+  to be real operating companies.
 
-**[`docs/READING_THE_REPORT.md`](docs/READING_THE_REPORT.md) is the one to read
-before acting on a digest** — what a score actually means, where every ranking
-signal comes from, and what never reaches you. More on coverage in
+## For agents and contributors
+
+Start with [`CLAUDE.md`](CLAUDE.md), then
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
 [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md).
+
+```bash
+pnpm test        # 147 tests, no network required
+pnpm typecheck
+```

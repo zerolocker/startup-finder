@@ -2,10 +2,15 @@ node_modules/
 *.log
 .DS_Store
 
-# Raw upstream payloads are large, re-fetchable, and pure noise in diffs.
-# Everything downstream of them (data/*.jsonl, reports/) IS committed on purpose
-# — see docs/DECISIONS.md ADR-002.
+# Raw upstream payloads and cached LLM responses: large, re-fetchable, and pure
+# noise in diffs. Everything downstream of them — data/runs/*.jsonl and
+# data/index.json — IS committed on purpose. See docs/ARCHITECTURE.md.
 data/cache/
 
-# Scheduled-run logs. Noisy, machine-specific, regenerated every run.
+# The grading export, on its way into data/labels.jsonl via the
+# review-startups skill. Transient by design.
+labels.json
+
+# Per-run logs. Machine-specific and regenerated; the durable record of what a
+# run produced is data/index.json and the shard.
 logs/

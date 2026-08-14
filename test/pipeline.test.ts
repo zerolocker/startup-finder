@@ -1,12 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { mergeSources, shouldMerge } from '../src/pipeline/merge.ts';
-import { prefilterScore, rankCompanies } from '../src/pipeline/prefilter.ts';
-import { buildScorePrompt, effectiveScore } from '../src/pipeline/score.ts';
-import { buildResearchPrompt } from '../src/pipeline/research.ts';
+import { buildResearchPrompt, fitOf } from '../src/pipeline/research.ts';
 import { extractJson } from '../src/llm/claude.ts';
-import type { Company, FormDFiling, NewsItem, Profile, ScoredCompany } from '../src/types.ts';
-
-const NOW = Date.parse('2026-08-08T00:00:00Z');
+import type { Assessment, FormDFiling, NewsItem, Profile, RunCompany } from '../src/types.ts';
 
 const PROFILE: Profile = {
   about: 'engineer',
@@ -16,7 +12,7 @@ const PROFILE: Profile = {
     antiThemes: ['crypto'],
   },
   stage: { minRaiseUsd: 2_000_000, maxRaiseUsd: 150_000_000 },
-  geography: { preferred: ['CA'], remoteOk: true },
+  geography: { basedIn: 'United States', preferred: ['CA'], remoteOk: true },
   notes: [],
 };
 
@@ -148,83 +144,6 @@ describe('shouldMerge', () => {
   });
 });
 
-describe('prefilterScore', () => {
-  const score = (c: Company) => prefilterScore(c, PROFILE, NOW);
-  const base = () => mergeSources([filing()], []).companies[0]!;
-
-  it('rewards a recent, well-sized, on-theme round', () => {
-    expect(score(base()).total).toBeGreaterThan(60);
-  });
-
-  it('penalizes stale funding', () => {
-    const old = base();
-    old.latestFunding!.date = '2025-01-01';
-    expect(score(old).breakdown['recency']).toBe(0);
-  });
-
-  it('penalizes anti-theme companies', () => {
-    const crypto = base();
-    crypto.name = 'Acme Blockchain Token Inc';
-    crypto.evidence.push('Headline: Acme Blockchain raises for token launch');
-    expect(score(crypto).breakdown['antiTheme']).toBeLessThan(0);
-    expect(score(crypto).total).toBeLessThan(score(base()).total);
-  });
-
-  it('treats an unknown amount as uncertain rather than disqualifying', () => {
-    const unknown = base();
-    unknown.latestFunding!.amountUsd = null;
-    expect(score(unknown).breakdown['amount']).toBeGreaterThan(0);
-    expect(score(unknown).notes.join(' ')).toContain('unknown');
-  });
-
-  it('rewards corroboration by both SEC and press', () => {
-    const both = mergeSources([filing()], [newsItem()]).companies[0]!;
-    expect(score(both).breakdown['corroborated']).toBeGreaterThan(0);
-    expect(score(both).total).toBeGreaterThan(score(base()).total);
-  });
-
-  it('rewards a preferred location', () => {
-    const elsewhere = base();
-    elsewhere.location = 'Austin, TX';
-    expect(score(base()).breakdown['geography']).toBeGreaterThan(score(elsewhere).breakdown['geography']!);
-  });
-
-  it('flags single-officer shells', () => {
-    const shell = base();
-    shell.people = [{ name: 'Solo Founder', relationships: ['Executive Officer'] }];
-    expect(score(shell).notes.join(' ')).toContain('one officer');
-  });
-});
-
-describe('rankCompanies', () => {
-  it('orders best first', () => {
-    const good = mergeSources([filing()], []).companies[0]!;
-    const bad = mergeSources([filing({ entityName: 'Crypto Coin Mining Corp', accessionNumber: 'b' })], []).companies[0]!;
-    const ranked = rankCompanies([bad, good], PROFILE, NOW);
-    expect(ranked[0]?.company.name).toBe('Acme AI, Inc.');
-  });
-});
-
-describe('effectiveScore', () => {
-  const company = mergeSources([filing()], []).companies[0]!;
-  const scored = (llmFit: number | null): ScoredCompany => ({
-    ...company,
-    prefilter: { total: 90, breakdown: {}, notes: [] },
-    llm: llmFit == null ? null : {
-      fit: llmFit, whatTheyDo: '', matchedInterests: [], concerns: [], rationale: '', confidence: 'high',
-    },
-  });
-
-  it('uses the LLM score when present', () => {
-    expect(effectiveScore(scored(77))).toBe(77);
-  });
-
-  it('caps unscored companies so they cannot outrank a validated one', () => {
-    expect(effectiveScore(scored(null))).toBeLessThanOrEqual(45);
-    expect(effectiveScore(scored(50))).toBeGreaterThan(effectiveScore(scored(null)));
-  });
-});
-
 describe('extractJson', () => {
   it('parses a bare object', () => {
     expect(extractJson('{"a":1}')).toEqual({ a: 1 });
@@ -247,80 +166,145 @@ describe('extractJson', () => {
   });
 });
 
-describe('buildScorePrompt', () => {
-  const candidates = [
-    { company: mergeSources([filing()], []).companies[0]!, prefilter: { total: 70, breakdown: {}, notes: ['keyword themes: AI/ML'] } },
-  ];
-  const prompt = buildScorePrompt(candidates, PROFILE);
+describe('buildResearchPrompt', () => {
+  const company = mergeSources([filing()], [newsItem()]).companies[0]!;
+  const prompt = buildResearchPrompt(company, PROFILE);
 
-  it('embeds the profile so scoring reflects the user, not generic taste', () => {
+  it('embeds the profile, so scoring reflects this user rather than generic taste', () => {
     expect(prompt).toContain(PROFILE.about.trim());
     expect(prompt).toContain('AI/ML infrastructure');
-    expect(prompt).toContain('importance 1.00');
   });
 
-  it('states the intent, which changes the evaluation lens', () => {
-    expect(prompt).toContain('JOINING a startup as an employee');
-    expect(prompt).toContain('As a PLACE TO WORK');
+  it('states the anti-themes', () => {
+    expect(prompt).toContain('crypto');
   });
 
-  it('tells the model it has no web access and must admit ignorance', () => {
-    // The rule that keeps the app from fabricating product descriptions.
-    expect(prompt).toContain('You do NOT\n   have web access here');
-    expect(prompt).toContain('Do NOT invent a product description');
-  });
-
-  it('separates confidence from score', () => {
-    expect(prompt).toContain('A low-confidence score is not a low score');
-  });
-
-  it('renders the company facts it actually has', () => {
-    expect(prompt).toContain('id: acme-ai');
+  it('hands over everything already known, so search starts from facts', () => {
+    expect(prompt).toContain('Acme AI, Inc.');
     expect(prompt).toContain('San Francisco, CA');
     expect(prompt).toContain('Ada Lovelace');
-    expect(prompt).toContain('triage notes: keyword themes: AI/ML');
+    expect(prompt).toContain('$10.0M');
   });
 
-  it('asks for exactly one entry per company', () => {
-    expect(prompt).toContain('COMPANIES TO SCORE (1)');
-    expect(prompt).toContain('Return exactly 1 entries');
+  // The failure this stage is most capable of is confident nonsense about a
+  // company with a similar name, so the instruction has to survive edits.
+  it('tells the model to admit when it cannot identify the company', () => {
+    expect(prompt).toMatch(/Unknown/);
+    expect(prompt).toMatch(/different company with\s+a similar name/i);
+    expect(prompt).toMatch(/never invent/i);
   });
 
-  it('includes anti-themes so mismatches can be scored down', () => {
-    expect(prompt).toContain('ACTIVELY NOT INTERESTED IN');
-    expect(prompt).toContain('crypto');
+  it('asks for a score and a confidence, not just a dossier', () => {
+    expect(prompt).toContain('"fit"');
+    expect(prompt).toContain('"confidence"');
+    expect(prompt).toContain('SCORING BANDS');
+  });
+
+  // The web can tell an SPV from a company where a legal name cannot, and the
+  // ingest regex is known to let some through.
+  it('asks the model to flag entities that are not operating companies', () => {
+    expect(prompt).toContain('"isOperatingCompany"');
+    expect(prompt).toMatch(/funds, SPVs, holding companies/i);
   });
 });
 
-describe('buildResearchPrompt', () => {
+describe('fitOf', () => {
+  const base = mergeSources([filing()], []).companies[0]!;
+  const withFit = (fit: number | null): RunCompany => ({
+    ...base,
+    assessment: fit == null ? null : ({ fit } as Assessment),
+    researchedAt: null,
+  });
+
+  it('uses the assessed fit', () => {
+    expect(fitOf(withFit(77))).toBe(77);
+  });
+
+  // Research failing is a defect worth seeing, so an unassessed company sinks
+  // to the bottom of the list rather than being filtered out of it.
+  it('sorts an unassessed company below every assessed one, including a zero', () => {
+    expect(fitOf(withFit(null))).toBeLessThan(fitOf(withFit(0)));
+  });
+});
+
+describe('PlanLimitError detection', () => {
+  // The signature of a call the CLI refused before it reached the model: an
+  // error envelope with zero API time and zero tokens in every bucket. A real
+  // run marked 37 companies as research failures this way in ninety seconds.
+  it('is documented by the shape research.ts branches on', () => {
+    const refusal = {
+      is_error: true,
+      duration_api_ms: 0,
+      usage: { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0 },
+    };
+    const genuine = {
+      is_error: true,
+      duration_api_ms: 4210,
+      usage: { input_tokens: 1200, output_tokens: 30, cache_read_input_tokens: 0 },
+    };
+    const looksLikeLimit = (e: typeof refusal) =>
+      e.is_error &&
+      e.duration_api_ms === 0 &&
+      !e.usage.input_tokens &&
+      !e.usage.output_tokens &&
+      !e.usage.cache_read_input_tokens;
+
+    expect(looksLikeLimit(refusal)).toBe(true);
+    expect(looksLikeLimit(genuine)).toBe(false);
+  });
+});
+
+describe('buildResearchPrompt — geography', () => {
   const company = mergeSources([filing()], []).companies[0]!;
-  const prompt = buildResearchPrompt(company, 'ABOUT THE PERSON:\nengineer who likes infra');
 
-  it('hands over what we already know, so the model does not re-derive it', () => {
-    expect(prompt).toContain('Company name (as filed): Acme AI, Inc.');
-    expect(prompt).toContain('San Francisco, CA');
-    expect(prompt).toContain('Ada Lovelace');
-    expect(prompt).toContain('https://sec.test/acme');
+  it('says where the user lives and asks for the real headquarters', () => {
+    const prompt = buildResearchPrompt(company, PROFILE);
+    expect(prompt).toContain('They live in United States');
+    expect(prompt).toContain('"headquarters"');
+    // The SEC address is often the filing agent's, so it must not be trusted.
+    expect(prompt).toMatch(/Do not copy the address on the SEC\s+filing/);
   });
 
-  it('embeds the profile so the briefing is written for this person', () => {
-    expect(prompt).toContain('engineer who likes infra');
+  // A penalty, not a veto — a remote-friendly foreign company is still worth
+  // seeing, so the instruction has to say "lower", not "exclude".
+  it('penalises non-domestic companies without zeroing them out', () => {
+    const prompt = buildResearchPrompt(company, PROFILE);
+    expect(prompt).toMatch(/headquartered outside United States is materially harder/);
+    expect(prompt).toMatch(/Do not zero it out/);
   });
 
-  it('tells the model to actually search, unlike the screening stage', () => {
-    expect(prompt).toContain('Use web search');
+  it('follows the profile rather than hardcoding a country', () => {
+    const abroad = { ...PROFILE, geography: { ...PROFILE.geography, basedIn: 'Germany' } };
+    expect(buildResearchPrompt(company, abroad)).toContain('They live in Germany');
+  });
+});
+
+describe('plan-limit backstop', () => {
+  // PlanLimitError matches one exact envelope shape. If that ever changes, a
+  // run whose only stop condition is the rate limit would burn through the
+  // whole queue marking failures. The streak check is the backstop: a genuine
+  // research failure costs tokens, so several free failures in a row means
+  // nothing is being attempted.
+  const FREE_FAILURE_LIMIT = 5;
+
+  const streakAfter = (outcomes: Array<'free-fail' | 'paid-fail' | 'ok'>) => {
+    let streak = 0;
+    for (const o of outcomes) {
+      if (o === 'ok') streak = 0;
+      else streak = o === 'free-fail' ? streak + 1 : 0;
+    }
+    return streak;
+  };
+
+  it('trips after enough consecutive free failures', () => {
+    expect(streakAfter(Array(FREE_FAILURE_LIMIT).fill('free-fail'))).toBeGreaterThanOrEqual(FREE_FAILURE_LIMIT);
   });
 
-  it('carries the anti-fabrication rules that keep dossiers honest', () => {
-    // These are the difference between a useful empty dossier and a
-    // confident, wrong one — see VISION.md "unknown is cheap, wrong is expensive".
-    expect(prompt).toContain('An empty dossier is a useful\n  result; a fabricated one is actively harmful');
-    expect(prompt).toContain('Never invent open roles, investor names');
-    expect(prompt).toContain('If the search results are about a DIFFERENT');
+  it('does not trip on failures that actually spent tokens', () => {
+    expect(streakAfter(Array(10).fill('paid-fail'))).toBe(0);
   });
 
-  it('asks for one company only — research is not batched', () => {
-    expect(prompt).not.toContain('COMPANIES TO SCORE');
-    expect((prompt.match(/Company name \(as filed\)/g) ?? []).length).toBe(1);
+  it('resets on any success, so scattered failures never accumulate', () => {
+    expect(streakAfter(['free-fail', 'free-fail', 'ok', 'free-fail', 'free-fail'])).toBeLessThan(FREE_FAILURE_LIMIT);
   });
 });

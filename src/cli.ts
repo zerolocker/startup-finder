@@ -2,58 +2,37 @@
 /**
  * Command-line entry point.
  *
- * The pipeline is deliberately split into separately-runnable stages rather
- * than one monolithic command. That matters because the expensive stages
- * (score, research) can then be re-run against already-ingested data while
- * you iterate on prompts or on config/profile.yaml — which is the single most
- * common thing anyone working on this app will want to do.
+ * A run is one day. It fetches that day's filings and funding news, builds one
+ * company record each, researches and scores every one of them on the web, and
+ * writes a self-contained issue to `data/runs/<date>.jsonl`.
  *
- *   sf ingest    fetch SEC Form D + funding news        (no LLM, slow)
- *   sf merge     build company records from sources     (no LLM, fast)
- *   sf score     prefilter + LLM fit scoring            (light plan usage)
- *   sf research  deep dives with web search             (heavy plan usage)
- *   sf report    write reports/                         (no LLM, fast)
- *   sf run       all of the above                       — the normal entry point
+ *   sf run       everything — the normal entry point
+ *   sf ingest    fetch and merge a day into a shard, no LLM
+ *   sf research  research and score the shard's companies  (all the plan usage)
+ *   sf report    rewrite index.html and data/index.json    (no LLM, instant)
  *
- * "Plan usage" means your Claude subscription's rate limit, not money —
- * see the note at the top of src/llm/claude.ts.
+ * The stages are separately runnable so you can re-research or re-render against
+ * a shard already on disk rather than re-fetching.
  *
- * See docs/ARCHITECTURE.md for how the stages fit together.
+ * "Plan usage" means your Claude subscription's rate limit, not money — see the
+ * note at the top of src/llm/claude.ts.
+ *
+ * See docs/ARCHITECTURE.md for how the pieces fit together.
  */
 
 import { parseArgs } from 'node:util';
-import { writeFile, mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
-import type {
-  Company,
-  Dossier,
-  FormDFiling,
-  NewsItem,
-  ResearchedCompany,
-  RunRecord,
-  ScoredCompany,
-} from './types.ts';
-import {
-  COMPANIES_PATH,
-  DOSSIERS_PATH,
-  FILINGS_PATH,
-  NEWS_PATH,
-  REPORTS_DIR,
-  RUNS_PATH,
-  SCORED_PATH,
-} from './paths.ts';
-import { appendAll, readAll, upsertAll, writeAll } from './store/jsonl.ts';
-import { autoLookbackDays, ingestEdgar } from './sources/edgar.ts';
+import { writeFile, mkdir, readFile } from 'node:fs/promises';
+import type { RunCompany, RunIndexEntry } from './types.ts';
+import { DASHBOARD_PATH, INDEX_PATH, RUNS_DIR, runLogPath, runShardPath } from './paths.ts';
+import { readAll, writeAll } from './store/jsonl.ts';
+import { ingestEdgar } from './sources/edgar.ts';
 import { ingestNews } from './sources/news.ts';
 import { mergeSources } from './pipeline/merge.ts';
-import { rankCompanies } from './pipeline/prefilter.ts';
-import { buildScorePrompt, effectiveScore, scoreCompanies } from './pipeline/score.ts';
-import { buildResearchPrompt, researchCompanies } from './pipeline/research.ts';
-import { renderDigest } from './report/markdown.ts';
+import { buildResearchPrompt, fitOf, researchCompanies } from './pipeline/research.ts';
 import { renderDashboard } from './report/html.ts';
-import { loadProfile, profileToPrompt } from './config.ts';
+import { loadProfile } from './config.ts';
 import { isClaudeAvailable, resetSpend, spentUsd } from './llm/claude.ts';
-import { log } from './util/log.ts';
+import { log, logFilePath, startFileLog } from './util/log.ts';
 import { formatUsd } from './util/text.ts';
 
 const USAGE = `startup-finder — find recently-funded startups worth your time
@@ -61,351 +40,390 @@ const USAGE = `startup-finder — find recently-funded startups worth your time
 Usage: pnpm sf <command> [options]
 
 Commands:
-  run        Run the whole pipeline and write reports (the normal entry point)
-  ingest     Fetch SEC Form D filings and funding news into data/
-  merge      Build company records from ingested sources
-  score      Rank candidates and score the shortlist with an LLM
-  research   Deep-dive the top companies with web search
-  report     Regenerate reports/ from existing scored data
-  stats      Summarize what is currently in data/
-  show <id>  Print everything known about one company
-  prompt     Print the exact LLM prompt for the top candidates
-             (--stage screen | research, default screen)
+  run             THE command. Covers every day since the last complete issue,
+                  resumes anything a rate limit interrupted, and reports.
+                  Safe to run repeatedly; it is idempotent.
+  ingest          Fetch a day into data/runs/<date>.jsonl, no LLM
+  research        Research and score that shard's companies
+  report          Rewrite index.html and data/index.json
+  runs            List the runs on disk
+  show <id>       Print everything known about one company
+  prompt          Print the exact research prompt for one company, no LLM call
 
 Options:
-  --days <n>        Lookback window for ingestion. Omit to auto-catch-up from
-                    the newest filing on disk, so gaps between runs close
-                    themselves. First run defaults to 7 days.
-  --limit <n>       Companies sent to the LLM scorer (default 120)
-                    This, and --research, are what bound a run's plan usage.
-  --research <n>    Companies given a deep-dive dossier (default 15)
-  --budget <n>      Accepted and ignored. Runs are no longer capped; plan usage
-                    is reported at the end instead. See ADR-011.
-  --model <name>    haiku | sonnet | opus (default sonnet)
-  --refresh         Re-research companies that already have a dossier
-  --no-research     Skip the expensive research stage
-  --quiet           Only log warnings and errors
+  --date <d>      Act on one specific issue, YYYY-MM-DD. The run command covers
+                  everything outstanding without it, so you rarely need this.
+  --limit <n>     Cap companies researched per invocation, across all
+                  outstanding days. Unbounded by default: a run researches until
+                  your plan's rate limit stops it, then leaves the rest for the
+                  next run. Set this to keep some window in reserve.
+  --refresh       Re-score companies that already have an assessment. Use after
+                  editing config/profile.yaml to see the effect.
+  --model <name>  haiku | sonnet | opus (default sonnet)
+  --quiet         Only log warnings and errors
 
 Examples:
-  pnpm sf run                          # weekly digest, ~15 min
-  pnpm sf run --days 3 --research 5    # quick pass, lighter on your rate limit
-  pnpm sf score --limit 200 && pnpm sf report   # rescore after editing profile
+  pnpm sf run                      # the daily command — catches up if you missed days
+  pnpm sf run --limit 5            # a cheap trial
 `;
 
 // ---------------------------------------------------------------------------
-// Stage implementations. Each is independently runnable and idempotent.
+// Run index — data/index.json, newest first.
 // ---------------------------------------------------------------------------
 
-/**
- * Resolve the ingestion window.
- *
- * An explicit `--days` always wins. Otherwise we widen the window to cover
- * everything since the newest filing on disk, so a run after a long gap does
- * not silently skip the months in between.
- */
-async function resolveDays(explicit: string | undefined): Promise<number> {
-  if (explicit !== undefined) {
-    const n = Number(explicit);
-    if (!Number.isFinite(n) || n < 1) throw new Error(`--days must be a positive number (got "${explicit}")`);
-    return n;
+async function readIndex(): Promise<RunIndexEntry[]> {
+  try {
+    return JSON.parse(await readFile(INDEX_PATH, 'utf8')) as RunIndexEntry[];
+  } catch {
+    return [];
   }
-
-  const filings = await readAll<FormDFiling>(FILINGS_PATH);
-  const latest = filings.reduce<string | null>(
-    (max, f) => (f.filedDate && (max === null || f.filedDate > max) ? f.filedDate : max),
-    null,
-  );
-
-  const decision = autoLookbackDays(latest, new Date());
-  log.info(`Lookback: ${decision.days} days (${decision.reason})`);
-
-  if (decision.clamped) {
-    // Never let a coverage gap pass silently — it is invisible in the output.
-    log.warn(
-      `Gap too large to close in one run: ${decision.uncoveredDays} day(s) before this window will NOT be fetched. ` +
-        `To backfill them, run: pnpm sf ingest --days ${decision.days + decision.uncoveredDays} (slow: ~160 filings/day of window)`,
-    );
-  }
-  return decision.days;
 }
 
-async function stageIngest(days: number): Promise<{ filings: number; news: number }> {
+async function writeIndex(entries: RunIndexEntry[]): Promise<void> {
+  const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date));
+  await mkdir(RUNS_DIR, { recursive: true });
+  await writeFile(INDEX_PATH, `${JSON.stringify(sorted, null, 2)}\n`, 'utf8');
+}
+
+function yesterday(): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/** The run a bare command should act on: the newest shard, else yesterday. */
+async function resolveDate(explicit: string | undefined): Promise<string> {
+  if (explicit) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(explicit)) throw new Error(`--date must be YYYY-MM-DD (got "${explicit}")`);
+    return explicit;
+  }
+  const index = await readIndex();
+  return index[0]?.date ?? yesterday();
+}
+
+// ---------------------------------------------------------------------------
+// Stages
+// ---------------------------------------------------------------------------
+
+async function readShard(date: string): Promise<RunCompany[]> {
+  return readAll<RunCompany>(runShardPath(date));
+}
+
+async function writeShard(date: string, companies: readonly RunCompany[]): Promise<void> {
+  await mkdir(RUNS_DIR, { recursive: true });
+  // By id, not by score: a stable order means git stores what actually changed
+  // rather than a reordering of the whole file.
+  await writeAll(runShardPath(date), [...companies].sort((a, b) => a.id.localeCompare(b.id)));
+}
+
+/** Fetch a day and write its shard, with every company still unassessed. */
+async function stageIngest(days: number, date: string): Promise<RunCompany[]> {
   const [edgar, news] = await Promise.all([ingestEdgar({ days }), ingestNews()]);
+  log.info(`Filings kept: ${edgar.filings.length}. Dropped: ${JSON.stringify(edgar.stats.dropped)}`);
 
-  const f = await upsertAll<FormDFiling>(FILINGS_PATH, edgar.filings, (r) => r.accessionNumber);
-  const n = await upsertAll<NewsItem>(NEWS_PATH, news.items, (r) => r.id);
+  const { companies, stats } = mergeSources(edgar.filings, news.items);
+  log.info(`Merged ${companies.length} companies (${stats.fromEdgar} from filings, ${stats.fromNews} from news)`);
 
-  log.info(`Filings: +${f.added} new (${f.total} total). Dropped: ${JSON.stringify(edgar.stats.dropped)}`);
-  log.info(`News: +${n.added} new (${n.total} total)`);
-  return { filings: f.added, news: n.added };
-}
-
-async function stageMerge(): Promise<Company[]> {
-  const [filings, news, existing] = await Promise.all([
-    readAll<FormDFiling>(FILINGS_PATH),
-    readAll<NewsItem>(NEWS_PATH),
-    readAll<Company>(COMPANIES_PATH),
-  ]);
-  const { companies } = mergeSources(filings, news, existing);
-  await writeAll(COMPANIES_PATH, companies);
-  return companies;
-}
-
-async function stageScore(limit: number, model: 'haiku' | 'sonnet' | 'opus'): Promise<ScoredCompany[]> {
-  const [companies, profile] = await Promise.all([readAll<Company>(COMPANIES_PATH), loadProfile()]);
-  if (companies.length === 0) {
-    log.warn('No companies to score — run `pnpm sf ingest && pnpm sf merge` first.');
-    return [];
-  }
-
-  const ranked = rankCompanies(companies, profile);
-  const shortlist = ranked.slice(0, limit);
-  log.info(`Prefilter: ${companies.length} companies -> top ${shortlist.length} go to the LLM`);
-
-  const { scored } = await scoreCompanies(shortlist, profile, { model });
-
-  // Companies below the cutoff still belong in the dataset, ranked by
-  // prefilter alone, so nothing silently disappears between runs.
-  const scoredIds = new Set(scored.map((c) => c.id));
-  const remainder: ScoredCompany[] = ranked
-    .filter(({ company }) => !scoredIds.has(company.id))
-    .map(({ company, prefilter }) => ({ ...company, prefilter, llm: null }));
-
-  const all = [...scored, ...remainder].sort((a, b) => effectiveScore(b) - effectiveScore(a));
-  await writeAll(SCORED_PATH, all);
-  return all;
-}
-
-interface DossierRecord {
-  id: string;
-  dossier: Dossier;
-  researchedAt: string;
-}
-
-async function stageResearch(
-  count: number,
-  model: 'haiku' | 'sonnet' | 'opus',
-  refresh: boolean,
-): Promise<ResearchedCompany[]> {
-  const scored = await readAll<ScoredCompany>(SCORED_PATH);
-  if (scored.length === 0) {
-    log.warn('Nothing scored yet — run `pnpm sf score` first.');
-    return [];
-  }
-
-  const stored = await readAll<DossierRecord>(DOSSIERS_PATH);
-  const existing = new Map<string, { dossier: Dossier; researchedAt: string }>(
-    refresh ? [] : stored.map((r) => [r.id, { dossier: r.dossier, researchedAt: r.researchedAt }]),
-  );
-
-  const targets = scored.slice(0, count);
-  const { researched } = await researchCompanies(targets, existing, { model });
-
-  const fresh: DossierRecord[] = researched
-    .filter((r): r is ResearchedCompany & { dossier: Dossier } => r.dossier != null && !existing.has(r.id))
-    .map((r) => ({ id: r.id, dossier: r.dossier, researchedAt: r.researchedAt ?? new Date().toISOString() }));
-  if (fresh.length > 0) await appendAll(DOSSIERS_PATH, fresh);
-
-  // Everything not researched still flows to the report, dossier-less.
-  const researchedIds = new Set(researched.map((r) => r.id));
-  const rest: ResearchedCompany[] = scored
-    .filter((c) => !researchedIds.has(c.id))
-    .map((c) => ({ ...c, dossier: null, researchedAt: null }));
-
-  return [...researched, ...rest];
-}
-
-async function stageReport(
-  companies: readonly ResearchedCompany[],
-  opts: { runId: string; windowDays: number; costUsd: number; totalCandidates: number },
-): Promise<{ markdown: string; html: string }> {
-  await mkdir(REPORTS_DIR, { recursive: true });
-  const date = new Date().toISOString().slice(0, 10);
-
-  const markdown = renderDigest(companies, { ...opts, featureCount: 12 });
-  const html = renderDashboard(companies, opts);
-
-  const mdPath = join(REPORTS_DIR, `${date}-digest.md`);
-  const htmlPath = join(REPORTS_DIR, `${date}-dashboard.html`);
-  await writeFile(mdPath, markdown, 'utf8');
-  await writeFile(htmlPath, html, 'utf8');
-  // Stable filenames so a bookmark or a symlink keeps working run to run.
-  await writeFile(join(REPORTS_DIR, 'latest.md'), markdown, 'utf8');
-  await writeFile(join(REPORTS_DIR, 'latest.html'), html, 'utf8');
-
-  log.info(`Wrote ${mdPath}`);
-  log.info(`Wrote ${htmlPath}`);
-  return { markdown, html };
-}
-
-/** Reconstruct researched companies from disk, without spending anything. */
-async function loadResearched(): Promise<ResearchedCompany[]> {
-  const [scored, dossiers] = await Promise.all([
-    readAll<ScoredCompany>(SCORED_PATH),
-    readAll<DossierRecord>(DOSSIERS_PATH),
-  ]);
-  const byId = new Map(dossiers.map((d) => [d.id, d]));
-  return scored.map((c) => {
-    const found = byId.get(c.id);
-    return { ...c, dossier: found?.dossier ?? null, researchedAt: found?.researchedAt ?? null };
+  // Anything already assessed keeps its assessment, so re-running ingest after
+  // research does not throw away what the research cost.
+  const existing = new Map((await readShard(date)).map((c) => [c.id, c]));
+  const shard: RunCompany[] = companies.map((c) => {
+    const prior = existing.get(c.id);
+    return { ...c, assessment: prior?.assessment ?? null, researchedAt: prior?.researchedAt ?? null };
   });
+
+  await writeShard(date, shard);
+  return shard;
+}
+
+/**
+ * Newest funding first, unknown dates last.
+ *
+ * A day's filings carry first-sale dates spread over weeks, so this is a real
+ * ordering rather than a tie-break — and it decides who gets researched when the
+ * rate limit cuts a run short.
+ */
+export function byFundingRecency(a: RunCompany, b: RunCompany): number {
+  const da = a.latestFunding?.date ?? '';
+  const db = b.latestFunding?.date ?? '';
+  if (da === db) return a.id.localeCompare(b.id); // stable, so reruns match
+  if (!da) return 1;
+  if (!db) return -1;
+  return db.localeCompare(da);
+}
+
+/** Research and score every unassessed company in the shard. */
+async function stageResearch(
+  date: string,
+  limit: number | undefined,
+  model: 'haiku' | 'sonnet' | 'opus',
+  refresh = false,
+): Promise<{ companies: RunCompany[]; planLimited: boolean }> {
+  const shard = await readShard(date);
+  if (shard.length === 0) {
+    log.warn(`No shard for ${date} — run \`pnpm sf ingest\` first.`);
+    return { companies: [], planLimited: false };
+  }
+
+  // --refresh re-scores companies that already have an assessment, which is the
+  // only way to see the effect of an edited profile.yaml on a finished issue.
+  //
+  // Sorted by how recently the money landed, because a rate limit will often cut
+  // this list short and the freshest rounds are the ones worth having. The shard
+  // itself stays in id order so git can diff it, so the order has to be imposed
+  // here rather than read off the file.
+  const pending = (refresh ? shard : shard.filter((c) => !c.assessment)).sort(byFundingRecency);
+  const targets = limit === undefined ? pending : pending.slice(0, limit);
+  if (targets.length < pending.length) {
+    log.warn(`--limit ${limit}: researching ${targets.length} of ${pending.length} unassessed companies`);
+  }
+  if (targets.length === 0) {
+    log.info(`All ${shard.length} companies in the ${date} run are already assessed. Use --refresh to re-score.`);
+    return { companies: shard, planLimited: false };
+  }
+
+  const profile = await loadProfile();
+  const { companies: assessed, planLimited } = await researchCompanies(targets, profile, { model });
+
+  const byId = new Map(assessed.map((c) => [c.id, c]));
+  const merged = shard.map((c) => byId.get(c.id) ?? c);
+  await writeShard(date, merged);
+  return { companies: merged, planLimited };
+}
+
+/**
+ * The days a run should cover: everything from the last completed issue up to
+ * yesterday, newest first.
+ *
+ * Newest first because a rate limit will often stop the run partway, and the
+ * most recent issue is the one worth having complete. An incomplete shard is
+ * simply a day with unassessed companies, so resuming after a limit and
+ * backfilling a day you missed are the same operation — which is what lets one
+ * command be the only thing anyone has to run.
+ */
+const MAX_CATCHUP_DAYS = 7;
+
+/**
+ * A run researches until the plan's rate limit stops it.
+ *
+ * That is deliberate. A day is ~62 companies and ~$18-equivalent, already about
+ * a whole Claude Pro five-hour window, so any fixed budget either wastes window
+ * or fails to finish a normal day. Letting the limit be the stop condition
+ * extracts the most from each window and needs no tuning.
+ *
+ * It also composes with scheduling: because the window resets every five hours,
+ * several routines spaced more than five hours apart drain a backlog at roughly
+ * a window each. A run with nothing outstanding makes no LLM calls at all, so
+ * the extra routines cost nothing on days when there is nothing to do.
+ *
+ * `--limit` still caps it for anyone who wants to leave window headroom.
+ * MAX_CATCHUP_DAYS remains the outer bound on how much can ever be outstanding.
+ */
+
+export function datesToCover(index: readonly RunIndexEntry[], today: Date): string[] {
+  const end = new Date(today);
+  end.setUTCDate(end.getUTCDate() - 1); // SEC publishes a day's index after it closes
+
+  // A first run covers yesterday only. Catching up is defined relative to a
+  // known last issue; with no history, walking back the full window would
+  // research a week of filings — roughly 430 companies — on first use.
+  if (index.length === 0) return [end.toISOString().slice(0, 10)];
+
+  const complete = new Set(index.filter((e) => e.companies > 0 && e.assessed >= e.companies).map((e) => e.date));
+  const out: string[] = [];
+  for (let i = 0; i < MAX_CATCHUP_DAYS; i++) {
+    const d = new Date(end);
+    d.setUTCDate(d.getUTCDate() - i);
+    const iso = d.toISOString().slice(0, 10);
+    if (complete.has(iso)) break; // reached settled history; everything older is done
+    out.push(iso);
+  }
+  return out;
+}
+
+/**
+ * Rewrite the dashboard shell and the run index. No LLM, no network.
+ *
+ * `costUsd` is what *this* invocation spent, and it accumulates onto whatever
+ * the run had already cost. Re-rendering used to overwrite the figure with 0,
+ * which quietly erased what a run had spent — the one number worth keeping,
+ * since plan usage is the scarce resource.
+ */
+async function stageReport(date: string, costUsd: number, windowDays: number): Promise<RunIndexEntry> {
+  const shard = await readShard(date);
+  const index = await readIndex();
+  const prior = index.find((e) => e.date === date);
+  const entry: RunIndexEntry = {
+    date,
+    windowDays,
+    companies: shard.length,
+    assessed: shard.filter((c) => c.assessment).length,
+    costUsd: (prior?.costUsd ?? 0) + costUsd,
+    generatedAt: new Date().toISOString(),
+  };
+
+  await writeIndex([...index.filter((e) => e.date !== date), entry]);
+  await writeFile(DASHBOARD_PATH, renderDashboard(), 'utf8');
+
+  log.info(`Run ${date}: ${entry.assessed}/${entry.companies} assessed`);
+  log.info(`Wrote ${DASHBOARD_PATH} — serve the repo root to view it`);
+  return entry;
 }
 
 // ---------------------------------------------------------------------------
 // Commands
 // ---------------------------------------------------------------------------
 
-async function cmdStats(): Promise<void> {
-  const [filings, news, companies, scored, dossiers, runs] = await Promise.all([
-    readAll<FormDFiling>(FILINGS_PATH),
-    readAll<NewsItem>(NEWS_PATH),
-    readAll<Company>(COMPANIES_PATH),
-    readAll<ScoredCompany>(SCORED_PATH),
-    readAll<DossierRecord>(DOSSIERS_PATH),
-    readAll<RunRecord>(RUNS_PATH),
-  ]);
-
-  const withLlm = scored.filter((c) => c.llm).length;
-  const strong = scored.filter((c) => c.llm && c.llm.fit >= 70).length;
-  const totalCost = runs.reduce((sum, r) => sum + r.costUsd, 0);
-
-  process.stdout.write(
-    [
-      `Form D filings   ${filings.length}`,
-      `News items       ${news.length}`,
-      `Companies        ${companies.length}`,
-      `Scored           ${scored.length} (${withLlm} by LLM, ${strong} at fit >= 70)`,
-      `Dossiers         ${dossiers.length}`,
-      `Runs             ${runs.length} (lifetime plan usage ~$${totalCost.toFixed(2)}-equiv)`,
-      '',
-    ].join('\n'),
-  );
-}
-
-/**
- * Print the literal prompt the screening stage would send. Costs nothing.
- *
- * The fastest way to debug "why did this company score like that" is to read
- * exactly what the model was told about it.
- */
-async function cmdPrompt(count: number, stage: string): Promise<void> {
-  const [companies, profile] = await Promise.all([readAll<Company>(COMPANIES_PATH), loadProfile()]);
-  if (companies.length === 0) {
-    throw new Error('No companies yet — run `pnpm sf ingest && pnpm sf merge` first.');
-  }
-  const ranked = rankCompanies(companies, profile).slice(0, count);
-
-  if (stage === 'research') {
-    // One prompt per company here — research is not batched.
-    const profileText = profileToPrompt(profile);
-    ranked.forEach(({ company }, i) => {
-      if (i > 0) process.stdout.write(`\n${'='.repeat(78)}\n\n`);
-      process.stdout.write(`${buildResearchPrompt(company, profileText)}\n`);
-    });
+async function cmdRuns(): Promise<void> {
+  const index = await readIndex();
+  if (index.length === 0) {
+    process.stdout.write('No runs yet. Try `pnpm sf run`.\n');
     return;
   }
-  process.stdout.write(`${buildScorePrompt(ranked, profile)}\n`);
+  const total = index.reduce((sum, e) => sum + e.costUsd, 0);
+  const lines = index.map(
+    (e) =>
+      `  ${e.date}  ${String(e.companies).padStart(4)} companies  ` +
+      `${String(e.assessed).padStart(4)} assessed  $${e.costUsd.toFixed(2)}`,
+  );
+  process.stdout.write(`${lines.join('\n')}\n\n  ${index.length} runs · $${total.toFixed(2)}-equiv total\n`);
 }
 
-async function cmdShow(id: string): Promise<void> {
-  const companies = await loadResearched();
-  const found = companies.find((c) => c.id === id || c.name.toLowerCase() === id.toLowerCase());
-  if (!found) {
-    // Match in both directions: the query may be a fragment of the id, or the
-    // id may be a fragment of an over-long query ("oxide-computer-co" when the
-    // legal suffix was stripped to give "oxide-computer").
-    const needle = id.toLowerCase();
-    const near = companies
-      .filter((c) => c.id.includes(needle) || needle.includes(c.id) || c.name.toLowerCase().includes(needle))
-      .slice(0, 8);
-    process.stderr.write(
-      `No company "${id}".${near.length ? `\nDid you mean:\n${near.map((c) => `  ${c.id}`).join('\n')}\n` : '\n'}`,
-    );
+async function cmdShow(id: string, date: string): Promise<void> {
+  const company = (await readShard(date)).find((c) => c.id === id);
+  if (!company) {
+    log.warn(`No company "${id}" in the ${date} run. Try \`pnpm sf runs\`.`);
     process.exitCode = 1;
     return;
   }
-  process.stdout.write(`${JSON.stringify(found, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify(company, null, 2)}\n`);
 }
 
+async function cmdPrompt(date: string): Promise<void> {
+  const shard = await readShard(date);
+  if (shard.length === 0) {
+    log.warn(`No shard for ${date} — run \`pnpm sf ingest\` first.`);
+    return;
+  }
+  process.stdout.write(`${buildResearchPrompt(shard[0]!, await loadProfile())}\n`);
+}
+
+/**
+ * The one command anyone runs.
+ *
+ * Covers every day since the last complete issue, resumes any day left half
+ * finished by a rate limit, and reports. It is idempotent and self-healing on
+ * purpose: a scheduled routine can call it with no arguments and no knowledge
+ * of what happened last time.
+ */
 async function cmdRun(opts: {
-  days: number;
-  limit: number;
-  research: number;
+  date: string | undefined;
+  limit: number | undefined;
   model: 'haiku' | 'sonnet' | 'opus';
-  refresh: boolean;
-  skipResearch: boolean;
 }): Promise<void> {
   if (!(await isClaudeAvailable())) {
-    throw new Error(
-      'The `claude` CLI was not found on PATH. It is how this app calls an LLM — see docs/DECISIONS.md ADR-003.',
+    log.error('The `claude` CLI is not on your PATH. Install Claude Code first.');
+    process.exitCode = 1;
+    return;
+  }
+  resetSpend();
+  const started = Date.now();
+
+  // Started before any work so a crash mid-run still leaves a trail.
+  startFileLog(runLogPath(new Date().toISOString().slice(0, 10)));
+
+  const dates = opts.date ? [opts.date] : datesToCover(await readIndex(), new Date());
+  if (dates.length === 0) {
+    process.stdout.write('\nAlready up to date. Nothing to run.\n\n');
+    return;
+  }
+  log.info(`Covering ${dates.length} day(s): ${dates.join(', ')}`);
+  log.info(`Limit: ${opts.limit ?? 'none — will run until the plan rate limit stops it'}`);
+
+  const covered: RunIndexEntry[] = [];
+  let stoppedEarly = false;
+  // Unbounded by default: the rate limit is the stop condition.
+  let budget = opts.limit ?? Infinity;
+
+  for (const date of dates) {
+    if (budget <= 0) {
+      log.warn(`--limit ${opts.limit} reached — ${dates.length - covered.length} day(s) left for the next run.`);
+      break;
+    }
+    if ((await readShard(date)).length === 0) await stageIngest(1, date);
+
+    const before = (await readShard(date)).filter((c) => c.assessment).length;
+    const { planLimited } = await stageResearch(date, Number.isFinite(budget) ? budget : undefined, opts.model);
+
+    const entry = await stageReport(date, spentUsd(), 1);
+    const didThisDay = entry.assessed - before;
+    budget -= didThisDay;
+    log.info(
+      `Day ${date}: researched ${didThisDay} this run, ${entry.assessed}/${entry.companies} assessed overall, ` +
+        `$${spentUsd().toFixed(2)} spent so far${planLimited ? ' — PLAN LIMIT REACHED' : ''}`,
     );
+
+    covered.push(entry);
+    if (planLimited) {
+      stoppedEarly = true;
+      break;
+    }
   }
 
-  const runId = `${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
-  const record: RunRecord = { runId, startedAt: new Date().toISOString(), finishedAt: null, stages: {}, costUsd: 0 };
-  resetSpend();
+  const newest = covered[0];
+  const companies = newest ? await readShard(newest.date) : [];
+  const top = [...companies]
+    .filter((c) => c.assessment?.isOperatingCompany)
+    .sort((a, b) => fitOf(b) - fitOf(a))
+    .slice(0, 10);
+  const missing = covered.reduce((n, e) => n + (e.companies - e.assessed), 0);
+  const daysLeft = dates.length - covered.length;
 
-  const time = async <T>(name: string, fn: () => Promise<T>, count: (r: T) => number): Promise<T> => {
-    const t0 = Date.now();
-    try {
-      const result = await fn();
-      record.stages[name] = { ok: true, count: count(result), ms: Date.now() - t0 };
-      return result;
-    } catch (err) {
-      record.stages[name] = { ok: false, count: 0, ms: Date.now() - t0, error: String(err) };
-      throw err;
-    }
-  };
-
-  await time('ingest', () => stageIngest(opts.days), (r) => r.filings + r.news);
-  await time('merge', () => stageMerge(), (r) => r.length);
-  await time('score', () => stageScore(opts.limit, opts.model), (r) => r.length);
-
-  const companies = opts.skipResearch
-    ? await loadResearched()
-    : await time('research', () => stageResearch(opts.research, opts.model, opts.refresh), (r) => r.length);
-
-  record.costUsd = spentUsd();
-  const scoredCount = companies.length;
-
-  await time(
-    'report',
-    () =>
-      stageReport(companies, {
-        runId,
-        windowDays: opts.days,
-        costUsd: record.costUsd,
-        totalCandidates: scoredCount,
-      }),
-    () => 1,
+  log.info(
+    `RUN SUMMARY ${JSON.stringify({
+      outcome: stoppedEarly ? 'stopped-at-plan-limit' : missing > 0 ? 'stopped-at-limit-flag' : 'complete',
+      seconds: Math.round((Date.now() - started) / 1000),
+      costUsd: Number(spentUsd().toFixed(2)),
+      daysCovered: covered.map((e) => e.date),
+      daysNotStarted: daysLeft,
+      companiesOutstanding: missing,
+      issues: covered.map((e) => ({ date: e.date, assessed: e.assessed, of: e.companies })),
+    })}`,
   );
+  if (logFilePath()) log.info(`Log written to ${logFilePath()}`);
 
-  record.finishedAt = new Date().toISOString();
-  await appendAll(RUNS_PATH, [record]);
-
-  // --- Terminal summary ----------------------------------------------------
-  const top = companies
-    .filter((c) => c.llm)
-    .sort((a, b) => effectiveScore(b) - effectiveScore(a))
-    .slice(0, 8);
-
-  const lines = [
-    '',
-    `Done in ${((Date.parse(record.finishedAt) - Date.parse(record.startedAt)) / 1000).toFixed(0)}s · plan usage ~$${record.costUsd.toFixed(2)}-equiv`,
-    '',
-    'Top matches:',
-    ...top.map((c) => {
-      const score = String(Math.round(effectiveScore(c))).padStart(3);
-      const amount = formatUsd(c.latestFunding?.amountUsd ?? null).padStart(7);
-      const what = (c.llm?.whatTheyDo ?? '').slice(0, 62);
-      return `  ${score}  ${amount}  ${c.name.slice(0, 34).padEnd(34)}  ${what}`;
-    }),
-    '',
-    `  reports/latest.md    full digest`,
-    `  reports/latest.html  filterable dashboard`,
-    '',
-  ];
-  process.stdout.write(lines.join('\n'));
+  process.stdout.write(
+    [
+      '',
+      `Done in ${((Date.now() - started) / 1000).toFixed(0)}s · plan usage ~$${spentUsd().toFixed(2)}-equiv`,
+      `Issues: ${covered.map((e) => `${e.date} (${e.assessed}/${e.companies})`).join(', ')}`,
+      // A run that assessed a third of what it found is not a success, and the
+      // cost line alone reads like one.
+      ...(missing > 0 || daysLeft > 0
+        ? [
+            '',
+            `  Outstanding: ${missing} companies in the issues above` +
+              (daysLeft > 0 ? `, and ${daysLeft} further day(s) not started` : '') + '.',
+            stoppedEarly
+              ? '  Your usage window is spent — that is the intended stopping point.'
+              : '  Stopped by --limit.',
+            '  The next run picks all of it up. Windows reset every 5 hours, so a',
+            '  second routine more than 5 hours later will continue from here.',
+          ]
+        : []),
+      '',
+      newest ? `Best of ${newest.date}:` : 'Nothing found.',
+      ...top.map((c) => {
+        const fit = String(Math.round(fitOf(c))).padStart(3);
+        const amount = formatUsd(c.latestFunding?.amountUsd ?? null).padStart(7);
+        const where = (c.assessment?.headquarters || c.location || '').slice(0, 18).padEnd(19);
+        return `  ${fit}  ${amount}  ${where} ${c.name.slice(0, 28).padEnd(29)} ${(c.assessment?.whatTheyDo ?? '').slice(0, 48)}`;
+      }),
+      '',
+      '  serve the repo root and open index.html to read the issue',
+      '',
+    ].join('\n'),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -414,116 +432,81 @@ async function cmdRun(opts: {
 
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
-    args: process.argv.slice(2),
     allowPositionals: true,
     options: {
-      days: { type: 'string' },
-      limit: { type: 'string', default: '120' },
-      research: { type: 'string', default: '15' },
-      // No default: its only remaining job is to be detected and warned about.
-      budget: { type: 'string' },
+      date: { type: 'string' },
+      days: { type: 'string', default: '1' },
+      limit: { type: 'string' },
       model: { type: 'string', default: 'sonnet' },
       refresh: { type: 'boolean', default: false },
-      'no-research': { type: 'boolean', default: false },
-      stage: { type: 'string', default: 'screen' },
       quiet: { type: 'boolean', default: false },
-      help: { type: 'boolean', short: 'h', default: false },
+      help: { type: 'boolean', default: false },
     },
   });
-
-  if (values.quiet) process.env['SF_LOG_LEVEL'] = 'warn';
 
   const command = positionals[0];
   if (values.help || !command) {
     process.stdout.write(USAGE);
     return;
   }
+  if (values.quiet) process.env['SF_LOG_LEVEL'] = 'warn';
 
-  const model = values.model as 'haiku' | 'sonnet' | 'opus';
+  const model = values.model as string;
   if (!['haiku', 'sonnet', 'opus'].includes(model)) {
     throw new Error(`--model must be haiku, sonnet, or opus (got "${model}")`);
   }
-
-  const num = (v: string | undefined, name: string, fallback: number): number => {
+  const num = (v: string | undefined, name: string): number | undefined => {
+    if (v === undefined) return undefined;
     const n = Number(v);
-    if (!Number.isFinite(n) || n < 0) throw new Error(`--${name} must be a non-negative number (got "${v}")`);
-    return v === undefined ? fallback : n;
+    if (!Number.isFinite(n) || n < 1) throw new Error(`${name} must be a positive number (got "${v}")`);
+    return n;
   };
-
-  const limit = num(values.limit, 'limit', 120);
-  const research = num(values.research, 'research', 15);
-
-  // Still parsed so that older scripts and cron jobs keep running, but it no
-  // longer does anything (ADR-011). Warn rather than fail: silently accepting
-  // it would leave someone believing their run is capped when it is not.
-  if (values.budget !== undefined) {
-    log.warn('--budget is ignored: runs are no longer capped. Use --limit/--research to bound a run.');
-  }
+  const days = num(values.days, '--days') ?? 1;
+  const limit = num(values.limit, '--limit');
+  const asModel = model as 'haiku' | 'sonnet' | 'opus';
 
   switch (command) {
     case 'run':
-      await cmdRun({
-        days: await resolveDays(values.days),
-        limit,
-        research,
-        model,
-        refresh: values.refresh,
-        skipResearch: values['no-research'],
-      });
+      // A fresh run covers a new day, so it starts from yesterday rather than
+      // from whatever shard happens to be newest.
+      await cmdRun({ date: values.date, limit, model: asModel });
       break;
-    case 'ingest':
-      await stageIngest(await resolveDays(values.days));
-      break;
-    case 'merge':
-      await stageMerge();
-      break;
-    case 'score':
-      resetSpend();
-      await stageScore(limit, model);
-      log.info(`Plan usage ~$${spentUsd().toFixed(2)}-equiv (subscription, not billed)`);
-      break;
-    case 'research':
-      resetSpend();
-      await stageResearch(research, model, values.refresh);
-      log.info(`Plan usage ~$${spentUsd().toFixed(2)}-equiv (subscription, not billed)`);
-      break;
-    case 'report': {
-      const companies = await loadResearched();
-      // Report the spend of the run that produced this data, not $0 — the
-      // report command itself costs nothing but the data behind it did not.
-      const runs = await readAll<RunRecord>(RUNS_PATH);
-      const lastRun = runs.at(-1);
-      await stageReport(companies, {
-        runId: lastRun?.runId ?? 'report-only',
-        windowDays: Number(values.days ?? 7),
-        costUsd: lastRun?.costUsd ?? 0,
-        totalCandidates: companies.length,
-      });
+    case 'ingest': {
+      const date = values.date ?? yesterday();
+      const shard = await stageIngest(days, date);
+      await stageReport(date, 0, days);
+      log.info(`${shard.length} companies ready: pnpm sf research --date ${date}`);
       break;
     }
-    case 'stats':
-      await cmdStats();
+    case 'research': {
+      const date = await resolveDate(values.date);
+      resetSpend();
+      await stageResearch(date, limit, asModel, values.refresh);
+      await stageReport(date, spentUsd(), days);
       break;
-    case 'prompt':
-      // --limit doubles as the batch size to render; 3 keeps it readable.
-      await cmdPrompt(values.limit === '120' ? 3 : limit, values.stage);
+    }
+    case 'report':
+      await stageReport(await resolveDate(values.date), 0, days);
+      break;
+    case 'runs':
+      await cmdRuns();
       break;
     case 'show': {
       const id = positionals[1];
-      if (!id) throw new Error('Usage: pnpm sf show <company-id>');
-      await cmdShow(id);
+      if (!id) throw new Error('usage: pnpm sf show <company-id>');
+      await cmdShow(id, await resolveDate(values.date));
       break;
     }
+    case 'prompt':
+      await cmdPrompt(await resolveDate(values.date));
+      break;
     default:
-      process.stderr.write(`Unknown command "${command}".\n\n${USAGE}`);
+      process.stdout.write(USAGE);
       process.exitCode = 1;
   }
 }
 
-main().catch((err: unknown) => {
-  log.error(err instanceof Error ? err.message : String(err));
-  if (process.env['SF_LOG_LEVEL'] === 'debug' && err instanceof Error) {
-    process.stderr.write(`${err.stack}\n`);
-  }
+main().catch((err) => {
+  log.error(String(err instanceof Error ? err.message : err));
   process.exitCode = 1;
 });
