@@ -188,12 +188,15 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
  * had actually gone wrong with those companies.
  */
 export class PlanLimitError extends Error {
-  constructor() {
+  constructor(detail?: string) {
     super(
-      'Claude refused the call before reaching the model — almost certainly the ' +
-        "subscription's rate limit for this window. Nothing was spent. Wait for the " +
-        'window to reset and re-run; companies that were not assessed are retried ' +
-        'automatically.',
+      'Claude refused the call before reaching the model, so a usage limit has been ' +
+        'reached. Nothing was spent on the refused call.' +
+        (detail ? `\n  Claude said: ${detail}` : '') +
+        '\n  Which limit matters: a five-hour window reopens on its own, but a weekly or ' +
+        'monthly cap does not, and re-running sooner will not help. Check the message ' +
+        'above before rescheduling.' +
+        '\n  Either way nothing is lost — companies left unassessed are retried on the next run.',
     );
     this.name = 'PlanLimitError';
   }
@@ -209,11 +212,18 @@ function planLimitError(stdout: string): PlanLimitError | null {
     const e = JSON.parse(stdout) as {
       is_error?: boolean;
       duration_api_ms?: number;
+      result?: unknown;
       usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number };
     };
     const u = e.usage ?? {};
     const noTokens = !u.input_tokens && !u.output_tokens && !u.cache_read_input_tokens;
-    if (e.is_error && e.duration_api_ms === 0 && noTokens) return new PlanLimitError();
+    if (e.is_error && e.duration_api_ms === 0 && noTokens) {
+      // The CLI usually names the limit it hit ("5-hour", "weekly", "monthly
+      // spend"). Which one decides whether re-running in an hour is pointless,
+      // so it must reach the log rather than be replaced by a guess.
+      const detail = typeof e.result === 'string' ? e.result.trim().slice(0, 300) : undefined;
+      return new PlanLimitError(detail);
+    }
   } catch {
     // Not JSON, so not this failure mode.
   }
@@ -260,6 +270,17 @@ async function invoke(
     child.on('close', (code) => {
       clearTimeout(timer);
       if (code !== 0) {
+        // A call can burn tokens and then fail — the run that found this had two
+        // that spent $0.51 and $0.26 across 16 and 7 turns before erroring. The
+        // success path is the only place cost was recorded, so that spend went
+        // unreported. Plan usage is the scarce resource here; undercounting it
+        // is worse than a slightly noisy total.
+        try {
+          const spent = (JSON.parse(stdout) as { total_cost_usd?: number }).total_cost_usd;
+          if (typeof spent === 'number' && spent > 0) totalSpentUsd += spent;
+        } catch {
+          // Not JSON; nothing to account for.
+        }
         reject(planLimitError(stdout) ?? new Error(`claude exited ${code}: ${stderr.slice(0, 500) || stdout.slice(0, 500)}`));
         return;
       }

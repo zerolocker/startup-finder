@@ -245,8 +245,9 @@ export async function researchCompanies(
   );
   if (planLimited) {
     log.warn(
-      `Stopped early: ${companies.length - assessed} companies were not researched because the ` +
-        'plan\'s rate limit was reached. Re-run once the window resets — they are picked up automatically.',
+      `Stopped early: ${companies.length - assessed} companies were not researched because a usage ` +
+        'limit was reached. They are picked up automatically by the next run — see the message above ' +
+        'for which limit, since a five-hour window reopens on its own and a longer cap does not.',
     );
   }
   return { companies: out, costUsd, failures, planLimited };

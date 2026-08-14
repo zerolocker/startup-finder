@@ -308,3 +308,23 @@ describe('plan-limit backstop', () => {
     expect(streakAfter(['free-fail', 'free-fail', 'ok', 'free-fail', 'free-fail'])).toBeLessThan(FREE_FAILURE_LIMIT);
   });
 });
+
+describe('PlanLimitError message', () => {
+  // A real run stopped on a *monthly* spend cap while the message asserted a
+  // five-hour window and told the user to wait for it to reset. That advice was
+  // wrong and would have had them rescheduling against the wrong limit.
+  it('does not claim to know which limit was hit', async () => {
+    const { PlanLimitError } = await import('../src/llm/claude.ts');
+    const msg = new PlanLimitError().message;
+    expect(msg).not.toMatch(/rate limit for this window/);
+    expect(msg).toMatch(/a usage limit has been reached/i);
+    expect(msg).toMatch(/five-hour window reopens on its own, but a weekly or monthly cap does not/);
+  });
+
+  it('surfaces what Claude actually said, since that names the limit', async () => {
+    const { PlanLimitError } = await import('../src/llm/claude.ts');
+    expect(new PlanLimitError("You've hit your monthly spend limit").message).toContain(
+      "Claude said: You've hit your monthly spend limit",
+    );
+  });
+});

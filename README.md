@@ -104,9 +104,15 @@ decides everything for itself:
 
 ### Getting through a backlog faster
 
-Usage windows reset every five hours, so **schedule two or three routines more
-than five hours apart** — 07:00, 13:00, 19:00, say. Each picks up where the last
-one stopped and drains roughly another window's worth.
+Five-hour usage windows reset on their own, so **schedule two or three routines
+more than five hours apart** — 07:00, 13:00, 19:00, say. Each picks up where the
+last one stopped and drains roughly another window's worth.
+
+**This only helps against the five-hour window.** Plans also carry longer caps —
+weekly or monthly — and those do not reopen in a few hours, so extra routines
+will simply find the limit still in force and do nothing. When a run stops, the
+log records what Claude actually said; if it names a longer cap, more frequent
+runs are not the answer.
 
 On an ordinary day the first run finishes everything and the later ones find
 nothing to do and exit for free. They only earn their keep after the app has
