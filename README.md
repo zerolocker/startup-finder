@@ -108,23 +108,16 @@ Five-hour usage windows reset on their own, so **schedule two or three routines
 more than five hours apart** — 07:00, 13:00, 19:00, say. Each picks up where the
 last one stopped and drains roughly another window's worth.
 
-**This only helps against the five-hour window.** Plans also carry longer caps —
-weekly or monthly — and those do not reopen in a few hours, so extra routines
-will simply find the limit still in force and do nothing. When a run stops, the
-log records what Claude actually said; if it names a longer cap, more frequent
-runs are not the answer.
+**This only helps against the five-hour window.** Weekly and monthly caps do
+not reopen in hours, so extra routines would find the limit still in force. The
+log records what Claude said when a run stops — check it before rescheduling.
 
-On an ordinary day the first run finishes everything and the later ones find
-nothing to do and exit for free. They only earn their keep after the app has
-gone unrun for a few days, which is exactly when you want them.
+On an ordinary day the first run finishes everything and the rest exit free.
 
-If you would rather a run *not* consume your whole window, cap it in the
-routine's command: `pnpm sf run --limit 30`. Nothing is lost; the remainder
-moves to the next run.
+To leave window in reserve: `pnpm sf run --limit 30`.
 
-One consequence worth knowing: **anything older than a week is dropped rather
-than queued forever**. The newest day always goes first, which is the right
-trade for a funding digest — a two-week-old round is not worth a usage window.
+Days older than a week are dropped rather than queued. Newest goes first — a
+two-week-old round is not worth a usage window.
 
 If you would rather not use Routines, any scheduler works — it is one command
 with no arguments. `launchd`, `cron`, or running it by hand are all equivalent.

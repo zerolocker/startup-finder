@@ -178,25 +178,18 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
 }
 
 /**
- * Raised when the CLI refuses a call before it reaches the model — in practice,
- * the subscription's rate limit for the current window.
+ * The CLI refused a call before the model saw it — a usage limit.
  *
- * Worth a distinct type because it is not a per-item failure and must not be
- * retried against the rest of the queue. A real run hit this: 20 companies
- * researched fine over seven minutes, then all 37 remaining "failed" inside
- * ninety seconds, and were written to the shard as research failures. Nothing
- * had actually gone wrong with those companies.
+ * A distinct type because it is not a per-item failure and must not be retried
+ * against the rest of the queue. Once it cost 37 companies, all written to the
+ * shard as research failures when nothing was wrong with them.
  */
 export class PlanLimitError extends Error {
   constructor(detail?: string) {
     super(
-      'Claude refused the call before reaching the model, so a usage limit has been ' +
-        'reached. Nothing was spent on the refused call.' +
-        (detail ? `\n  Claude said: ${detail}` : '') +
-        '\n  Which limit matters: a five-hour window reopens on its own, but a weekly or ' +
-        'monthly cap does not, and re-running sooner will not help. Check the message ' +
-        'above before rescheduling.' +
-        '\n  Either way nothing is lost — companies left unassessed are retried on the next run.',
+      `Usage limit reached — Claude refused the call before the model saw it.${detail ? ` Claude said: ${detail}` : ''}` +
+        ' A 5-hour window reopens on its own; a weekly or monthly cap does not.' +
+        ' Unassessed companies are retried next run.',
     );
     this.name = 'PlanLimitError';
   }
@@ -270,11 +263,9 @@ async function invoke(
     child.on('close', (code) => {
       clearTimeout(timer);
       if (code !== 0) {
-        // A call can burn tokens and then fail — the run that found this had two
-        // that spent $0.51 and $0.26 across 16 and 7 turns before erroring. The
-        // success path is the only place cost was recorded, so that spend went
-        // unreported. Plan usage is the scarce resource here; undercounting it
-        // is worse than a slightly noisy total.
+        // A call can burn tokens and then fail; cost was only recorded on the
+        // success path, so that spend went unreported. Plan usage is the scarce
+        // resource — undercounting is worse than a noisy total.
         try {
           const spent = (JSON.parse(stdout) as { total_cost_usd?: number }).total_cost_usd;
           if (typeof spent === 'number' && spent > 0) totalSpentUsd += spent;

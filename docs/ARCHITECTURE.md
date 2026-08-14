@@ -74,8 +74,8 @@ everything ever seen.
    — which is exactly what happened on a real run, to 37 of 57 companies. A
    later run confirmed the fix: it stopped at 14 of 70 with `failures: 0`.
 
-   The limit is not always the five-hour window; one run stopped on a monthly
-   spend cap. Nothing may assert which one it was — quote what Claude said.
+   Plans carry several limits and only some reopen soon, so nothing may assert
+   which one fired — quote what Claude said.
 3. **`null` means unknown, never `0`.** Form D's `totalOfferingAmount` can
    literally be `"Indefinite"`; a `0` would rank a company as having raised
    nothing.

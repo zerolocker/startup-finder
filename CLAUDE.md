@@ -88,11 +88,9 @@ CLI refuses calls with zero tokens, `PlanLimitError` detects that and stops the
 run rather than recording the remaining queue as research failures. Do not "fix"
 that by retrying — no backoff outlasts a usage limit.
 
-**Do not assert which limit was hit.** A real run stopped on a *monthly spend
-cap* while the message claimed a five-hour window and told the user to wait for
-it to reset — advice that would have had them rescheduling against a limit that
-was never going to reopen that day. `PlanLimitError` quotes what Claude actually
-said and leaves the diagnosis to the reader.
+**Do not assert which limit was hit.** Plans carry several (five-hour, weekly,
+monthly), and only some reopen soon. `PlanLimitError` quotes what Claude said
+and leaves the diagnosis to the reader.
 
 Never remove the disk cache in `src/llm/claude.ts` — with no cap above it, the
 cache is the main thing between a careless re-run and a real dent in the rate
