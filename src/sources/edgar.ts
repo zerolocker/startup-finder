@@ -35,6 +35,18 @@ const parser = new XMLParser({
 // ---------------------------------------------------------------------------
 
 /**
+ * Compare industries on a canonical form.
+ *
+ * EDGAR spells these with the word "and" — "Oil and Gas", "REITS and Finance" —
+ * while this list was written with ampersands, so those two exclusions never
+ * fired and their filings were researched at ~$0.28 each. Normalizing both
+ * sides fixes the pair that was caught and the ones that were not yet:
+ * "Airlines & Airports" and "Lodging & Conventions" have the same shape.
+ */
+const canonicalIndustry = (s: string): string =>
+  s.toLowerCase().replace(/\s*&\s*/g, ' and ').replace(/\s+/g, ' ').trim();
+
+/**
  * Industry buckets that are essentially never an operating tech startup.
  * Form D's taxonomy is coarse, so this is the single most effective filter.
  */
@@ -55,7 +67,7 @@ const EXCLUDED_INDUSTRIES = new Set([
   'Airlines & Airports',
   'Lodging & Conventions',
   'Restaurants',
-]);
+].map(canonicalIndustry));
 
 /** Industries that make a Limited Partnership look like a fund, not a business. */
 const FUND_LIKE_INDUSTRIES = new Set([
@@ -67,7 +79,7 @@ const FUND_LIKE_INDUSTRIES = new Set([
   'Commercial',
   'REITS & Finance',
   'Other Banking and Financial Services',
-]);
+].map(canonicalIndustry));
 
 /**
  * Name patterns for investment vehicles. These are matched against the raw
@@ -125,7 +137,7 @@ export interface FilterVerdict {
  * test/edgar.test.ts when you do.
  */
 export function isLikelyOperatingStartup(filing: FormDFiling): FilterVerdict {
-  if (filing.industryGroup && EXCLUDED_INDUSTRIES.has(filing.industryGroup)) {
+  if (filing.industryGroup && EXCLUDED_INDUSTRIES.has(canonicalIndustry(filing.industryGroup))) {
     return { keep: false, reason: `industry "${filing.industryGroup}" is an investment/real-asset bucket` };
   }
   if (
@@ -133,7 +145,7 @@ export function isLikelyOperatingStartup(filing: FormDFiling): FilterVerdict {
     EXCLUDED_ENTITY_TYPES.has(filing.entityType) &&
     // An LP alone is not evidence of a fund; an LP filing under a fund-ish or
     // unstated industry is. See the note on EXCLUDED_ENTITY_TYPES.
-    (filing.industryGroup == null || FUND_LIKE_INDUSTRIES.has(filing.industryGroup))
+    (filing.industryGroup == null || FUND_LIKE_INDUSTRIES.has(canonicalIndustry(filing.industryGroup)))
   ) {
     return { keep: false, reason: `entity type "${filing.entityType}" with a fund-like industry` };
   }

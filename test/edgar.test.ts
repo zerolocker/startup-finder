@@ -169,6 +169,20 @@ describe('isLikelyOperatingStartup', () => {
     expect(isLikelyOperatingStartup(filing({ industryGroup: 'Pooled Investment Fund' })).keep).toBe(false);
   });
 
+  // Real strings from a live EDGAR day. The exclusion list was written with
+  // ampersands but EDGAR spells these with "and", so both rules silently never
+  // fired and their filings were researched at ~$0.28 each.
+  it.each([
+    ['REITS and Finance', 'Center Street Lending REIT, LLC'],
+    ['Oil and Gas', 'USEDC Opportunity Zone IV LP'],
+  ])('drops %s, which EDGAR spells with "and" rather than "&"', (industryGroup, entityName) => {
+    expect(isLikelyOperatingStartup(filing({ industryGroup, entityName })).keep).toBe(false);
+  });
+
+  it('still drops the ampersand spelling, in case EDGAR ever changes', () => {
+    expect(isLikelyOperatingStartup(filing({ industryGroup: 'Oil & Gas' })).keep).toBe(false);
+  });
+
   it('drops real estate vehicles', () => {
     expect(isLikelyOperatingStartup(filing({ industryGroup: 'Residential' })).keep).toBe(false);
   });
