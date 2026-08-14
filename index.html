@@ -44,7 +44,11 @@
   }
   input[type=search] { flex: 1 1 200px; min-width: 0; }
   label { font-size: .85rem; color: var(--muted); display: flex; align-items: center; gap: .35rem; }
-  .count { margin-left: auto; font-size: .85rem; color: var(--muted); white-space: nowrap; }
+  /* The search input is flex:1, so anything that changes width on this row
+     steals space from it and shifts everything between. Both counters use
+     tabular figures and reserve room, so grading does not reflow the bar. */
+  .count { margin-left: auto; font-size: .85rem; color: var(--muted); white-space: nowrap;
+    font-variant-numeric: tabular-nums; }
   .card {
     background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
     padding: 1rem 1.15rem; margin-bottom: .75rem; box-shadow: var(--shadow);
@@ -88,18 +92,22 @@
      labels without grading every company by hand. */
   .save {
     font: inherit; font-size: .78rem; cursor: pointer; margin-left: .5rem;
-    padding: .12rem .5rem; border-radius: 20px; background: transparent;
+    padding: .1rem .45rem; border-radius: 20px; background: transparent;
     border: 1px solid var(--line); color: var(--muted);
-    /* "☆ save" and "★ saved" are different widths; without a floor the meta
-       block on the right shifts as you click down the list. */
-    min-width: 5.2rem; text-align: center;
   }
+  /* The word stays "save" in both states and only the star fills in, so the
+     pill never changes width and needs no min-width padding it out. The star
+     gets a fixed box because ☆ and ★ are not always the same advance width. */
+  .save .star { display: inline-block; width: 1em; text-align: center; }
   .save:hover { color: var(--text); }
-  .save[aria-pressed=true] { color: var(--good); border-color: currentColor; font-weight: 600; }
+  /* No weight change: bolding "save" made the pill 1px wider when pressed. The
+     filled star and the green already carry the state. */
+  .save[aria-pressed=true] { color: var(--good); border-color: currentColor; }
   #save { font: inherit; font-size: .85rem; padding: .4rem .7rem; border-radius: 7px;
     border: 1px solid var(--line); background: var(--bg); color: var(--text); cursor: pointer; }
   #save:hover { border-color: var(--accent); color: var(--accent); }
-  #graded { font-size: .85rem; color: var(--muted); white-space: nowrap; }
+  #graded { font-size: .85rem; color: var(--muted); white-space: nowrap;
+    font-variant-numeric: tabular-nums; min-width: 13.5rem; text-align: right; }
 </style>
 </head>
 <body>
@@ -209,9 +217,9 @@ function updateGradedCount() {
   const seen = Object.values(LABELS).filter((l) => l.seen);
   const saved = seen.filter((l) => l.saved).length;
   const opened = seen.filter((l) => l.opened && !l.saved).length;
-  $('graded').textContent = seen.length
-    ? seen.length + ' seen · ' + opened + ' opened · ' + saved + ' saved'
-    : '';
+  // Rendered even at zero. Appearing for the first time — which happens a second
+  // after load, when the scroll observer fires — was the biggest jump of all.
+  $('graded').textContent = seen.length + ' seen · ' + opened + ' opened · ' + saved + ' saved';
 }
 
 // A card counts as seen once it has been at least half visible for a full
@@ -299,7 +307,7 @@ function card(r) {
     '<div class="head"><span class="score">' + (r.assessed ? r.score : '—') + '</span>' +
     '<span class="name">' + esc(r.name) + '</span>' +
     '<button class="save" type="button" aria-pressed="' + saved + '">' +
-      (saved ? '★ saved' : '☆ save') + '</button>' +
+      '<span class="star">' + (saved ? '★' : '☆') + '</span> save</button>' +
     '<span class="meta">' + esc(r.amountLabel) + (r.date ? ' · ' + esc(r.date) : '') +
       (r.location ? '<br>' + esc(r.location) : '') + '</span></div>' +
     (r.what ? '<p class="what">' + esc(r.what) + '</p>' : '') +
@@ -400,7 +408,7 @@ async function main() {
     // Saving implies having seen it, even if the observer has not fired yet.
     mark(id, { saved, seen: true });
     btn.setAttribute('aria-pressed', String(saved));
-    btn.textContent = saved ? '★ saved' : '☆ save';
+    btn.querySelector('.star').textContent = saved ? '★' : '☆';
     cardEl.classList.toggle('saved', saved);
   });
 

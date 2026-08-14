@@ -80,9 +80,26 @@ describe('renderDashboard — card layout', () => {
     expect(html).not.toMatch(/\.card\.saved \{ border-left: 3px/);
   });
 
-  // "☆ save" and "★ saved" are different widths.
-  it('fixes the save button width so the meta block stays put', () => {
-    expect(html).toMatch(/\.save \{[^}]*min-width:/s);
+  // The label stays "save" and only the star fills in, so the pill cannot
+  // change width — no min-width needed, and no dead space inside it.
+  it('keeps the save label a constant width without padding the pill out', () => {
+    expect(html).not.toMatch(/\.save \{[^}]*min-width:/s);
+    expect(html).toContain(".save .star { display: inline-block; width: 1em;");
+    expect(html).not.toContain("'★ saved'");
+    // Bolding the pressed label made the pill 1px wider.
+    expect(html).not.toMatch(/\.save\[aria-pressed=true\][^}]*font-weight/);
+  });
+
+  // The search input is flex:1, so a counter that grows steals its space and
+  // shifts the whole row.
+  it('reserves room for the grading counter so the control bar cannot reflow', () => {
+    expect(html).toMatch(/#graded \{[^}]*min-width: 13\.5rem/s);
+    expect(html).toMatch(/#graded \{[^}]*tabular-nums/s);
+    expect(html).toMatch(/\.count \{[^}]*tabular-nums/s);
+  });
+
+  it('renders the counter at zero rather than appearing later', () => {
+    expect(html).toContain("$('graded').textContent = seen.length + ' seen · '");
   });
 
   it('shows the location in the card header, not as a tag', () => {
