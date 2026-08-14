@@ -92,26 +92,33 @@ Then tell me the top 3 companies it found and what they do.
 That is the whole setup. The prompt stays that short because `pnpm sf run`
 decides everything for itself:
 
-- **It never researches more than ~70 companies per run** — about one day, plus
-  a little to drain a backlog. If the routine misses a few days, the run does
-  not try to do all of them at once; it works through them over the following
-  days, newest first. One run therefore cannot eat your whole usage window.
+- **It researches until your usage window runs out, then stops cleanly** and
+  says what is left. That is the intended stopping point, not a failure: a day's
+  filings are worth roughly one Claude Pro window, so the limit is the natural
+  unit of work and needs no tuning.
 - **A missed day is backfilled** without you asking, and an issue that a rate
   limit interrupted is resumed. Both are the same thing to it — a day with
   companies still unresearched — so there is no separate recovery step.
-- If your **usage window runs out** mid-run it stops cleanly and says what is
-  left. Tomorrow's routine picks it up.
+- **A run with nothing outstanding makes no LLM calls at all**, so it is free.
 - It is **idempotent**. Running it twice costs nothing the second time.
 
-If a run still takes more of your window than you want, put a smaller number in
-the routine's command — `pnpm sf run --limit 40`. Nothing is lost either way;
-the remainder just moves to the next run.
+### Getting through a backlog faster
 
-One consequence worth knowing: because a day is already about a full run's
-budget, a long backlog drains slowly, and **anything older than a week is
-dropped rather than queued forever**. The newest day always goes first, which is
-the right trade for a funding digest — a two-week-old round is not worth a usage
-window.
+Usage windows reset every five hours, so **schedule two or three routines more
+than five hours apart** — 07:00, 13:00, 19:00, say. Each picks up where the last
+one stopped and drains roughly another window's worth.
+
+On an ordinary day the first run finishes everything and the later ones find
+nothing to do and exit for free. They only earn their keep after the app has
+gone unrun for a few days, which is exactly when you want them.
+
+If you would rather a run *not* consume your whole window, cap it in the
+routine's command: `pnpm sf run --limit 30`. Nothing is lost; the remainder
+moves to the next run.
+
+One consequence worth knowing: **anything older than a week is dropped rather
+than queued forever**. The newest day always goes first, which is the right
+trade for a funding digest — a two-week-old round is not worth a usage window.
 
 If you would rather not use Routines, any scheduler works — it is one command
 with no arguments. `launchd`, `cron`, or running it by hand are all equivalent.
@@ -149,8 +156,10 @@ researched over seven minutes, then every remaining call refused. The run detect
 that, stops cleanly rather than marking the rest as failures, and says how many it
 missed. Tomorrow's routine picks them up — there is nothing to do by hand.
 
-If that happens most days, `--limit 25` in the routine's command halves the run,
-at the cost of leaving the rest for the following day.
+That is now the intended stopping point rather than a problem: a run researches
+until the window is spent and leaves the rest for next time. Schedule a second
+routine more than five hours later if you want more done in a day, or pass
+`--limit` to keep some window in reserve.
 
 ## Requirements
 

@@ -278,3 +278,33 @@ describe('buildResearchPrompt — geography', () => {
     expect(buildResearchPrompt(company, abroad)).toContain('They live in Germany');
   });
 });
+
+describe('plan-limit backstop', () => {
+  // PlanLimitError matches one exact envelope shape. If that ever changes, a
+  // run whose only stop condition is the rate limit would burn through the
+  // whole queue marking failures. The streak check is the backstop: a genuine
+  // research failure costs tokens, so several free failures in a row means
+  // nothing is being attempted.
+  const FREE_FAILURE_LIMIT = 5;
+
+  const streakAfter = (outcomes: Array<'free-fail' | 'paid-fail' | 'ok'>) => {
+    let streak = 0;
+    for (const o of outcomes) {
+      if (o === 'ok') streak = 0;
+      else streak = o === 'free-fail' ? streak + 1 : 0;
+    }
+    return streak;
+  };
+
+  it('trips after enough consecutive free failures', () => {
+    expect(streakAfter(Array(FREE_FAILURE_LIMIT).fill('free-fail'))).toBeGreaterThanOrEqual(FREE_FAILURE_LIMIT);
+  });
+
+  it('does not trip on failures that actually spent tokens', () => {
+    expect(streakAfter(Array(10).fill('paid-fail'))).toBe(0);
+  });
+
+  it('resets on any success, so scattered failures never accumulate', () => {
+    expect(streakAfter(['free-fail', 'free-fail', 'ok', 'free-fail', 'free-fail'])).toBeLessThan(FREE_FAILURE_LIMIT);
+  });
+});

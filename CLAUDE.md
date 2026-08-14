@@ -38,12 +38,18 @@ a third:
   what happened last time. Backfilling and rate-limit recovery are deliberately
   the *same* operation — both are just "days with unassessed companies".
 
-  **It is bounded by companies, not by days** (`DEFAULT_RUN_BUDGET`, ~70). A day
-  is ~62 companies and most of a Pro window, so three missed days would be ~$50
-  and would consume the user's entire window before the plan limit stopped it.
-  Do not "simplify" this to a day-count cap: a day that a rate limit interrupted
-  stops being "yesterday" by the next run, so a day-based window would abandon
-  exactly the case the catch-up exists for.
+  **It runs until the plan's rate limit stops it.** That is the design, not an
+  accident: a day is ~62 companies and ~$18-equivalent, about one Pro window, so
+  any fixed budget either wastes window or cannot finish a normal day. The user
+  schedules several routines more than five hours apart to drain a backlog, and
+  a run with nothing outstanding makes no LLM calls, so the extra ones are free.
+
+  Two things not to "simplify". A day-count cap would abandon a day that a rate
+  limit interrupted, because by the next run it is no longer "yesterday" — bound
+  work, not days. And `PlanLimitError` matching one envelope shape is backed up
+  by a consecutive-free-failure streak in `research.ts`; with the rate limit as
+  the *only* stop condition, losing that detection means burning the whole queue
+  into failures.
 - The `review-startups` skill — reading and grading an issue.
 
 `ingest` / `research` / `report` are internal stages, useful while developing.

@@ -26,7 +26,7 @@
 import type { Assessment, Company, Profile, RunCompany } from '../types.ts';
 import { AssessmentSchema } from '../types.ts';
 import { profileToPrompt } from '../config.ts';
-import { PlanLimitError, runClaudeJson, type ModelAlias } from '../llm/claude.ts';
+import { PlanLimitError, runClaudeJson, spentUsd, type ModelAlias } from '../llm/claude.ts';
 import { mapWithConcurrency } from '../util/http.ts';
 import { formatUsd } from '../util/text.ts';
 import { log } from '../util/log.ts';
@@ -179,9 +179,18 @@ export async function researchCompanies(
   // so continuing would mark the rest of the queue as research failures in
   // seconds. Stop dispatching and leave them unassessed for the next run.
   let planLimited = false;
+  // Backstop for the above. PlanLimitError matches one exact envelope shape;
+  // this catches the same situation if that shape ever changes, by noticing
+  // that several calls in a row failed without spending anything. A genuine
+  // research failure costs tokens, so a free failure means nothing was tried.
+  let freeFailureStreak = 0;
+  const FREE_FAILURE_LIMIT = 5;
 
   const out = await mapWithConcurrency(companies, concurrency, async (company): Promise<RunCompany> => {
     if (planLimited) return { ...company, assessment: null, researchedAt: null };
+    // The odometer is the only thing that survives a throw, so read it across
+    // the call to tell a free refusal from a failure that actually ran.
+    const spentBefore = spentUsd();
     try {
       const { value, costUsd: cost } = await runClaudeJson(buildResearchPrompt(company, profile), AssessmentSchema, {
         model,
@@ -189,6 +198,7 @@ export async function researchCompanies(
         timeoutMs,
       });
       costUsd += cost;
+      freeFailureStreak = 0;
       return { ...company, assessment: value, researchedAt: new Date().toISOString() };
     } catch (err) {
       if (err instanceof PlanLimitError) {
@@ -199,6 +209,14 @@ export async function researchCompanies(
       // One company failing must not cost the run. It lands in the shard with a
       // null assessment, which the dashboard shows rather than hides.
       failures++;
+      freeFailureStreak = spentUsd() === spentBefore ? freeFailureStreak + 1 : 0;
+      if (freeFailureStreak >= FREE_FAILURE_LIMIT && !planLimited) {
+        planLimited = true;
+        log.warn(
+          `${FREE_FAILURE_LIMIT} calls in a row failed without spending anything — treating this as ` +
+            'the plan\'s rate limit and stopping. The rest are picked up next run.',
+        );
+      }
       log.warn(`research failed for ${company.name}`, String(err));
       return { ...company, assessment: null, researchedAt: null };
     } finally {

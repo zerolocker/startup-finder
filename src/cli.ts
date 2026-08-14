@@ -53,10 +53,10 @@ Commands:
 Options:
   --date <d>      Act on one specific issue, YYYY-MM-DD. The run command covers
                   everything outstanding without it, so you rarely need this.
-  --limit <n>     Companies researched per invocation, across all outstanding
-                  days (default 70 — about one day, plus a little to drain a
-                  backlog). Lower it if a run eats too much of your usage
-                  window; nothing is lost, the rest is picked up next time.
+  --limit <n>     Cap companies researched per invocation, across all
+                  outstanding days. Unbounded by default: a run researches until
+                  your plan's rate limit stops it, then leaves the rest for the
+                  next run. Set this to keep some window in reserve.
   --refresh       Re-score companies that already have an assessment. Use after
                   editing config/profile.yaml to see the effect.
   --model <name>  haiku | sonnet | opus (default sonnet)
@@ -136,6 +136,22 @@ async function stageIngest(days: number, date: string): Promise<RunCompany[]> {
   return shard;
 }
 
+/**
+ * Newest funding first, unknown dates last.
+ *
+ * A day's filings carry first-sale dates spread over weeks, so this is a real
+ * ordering rather than a tie-break — and it decides who gets researched when the
+ * rate limit cuts a run short.
+ */
+export function byFundingRecency(a: RunCompany, b: RunCompany): number {
+  const da = a.latestFunding?.date ?? '';
+  const db = b.latestFunding?.date ?? '';
+  if (da === db) return a.id.localeCompare(b.id); // stable, so reruns match
+  if (!da) return 1;
+  if (!db) return -1;
+  return db.localeCompare(da);
+}
+
 /** Research and score every unassessed company in the shard. */
 async function stageResearch(
   date: string,
@@ -151,7 +167,12 @@ async function stageResearch(
 
   // --refresh re-scores companies that already have an assessment, which is the
   // only way to see the effect of an edited profile.yaml on a finished issue.
-  const pending = refresh ? shard : shard.filter((c) => !c.assessment);
+  //
+  // Sorted by how recently the money landed, because a rate limit will often cut
+  // this list short and the freshest rounds are the ones worth having. The shard
+  // itself stays in id order so git can diff it, so the order has to be imposed
+  // here rather than read off the file.
+  const pending = (refresh ? shard : shard.filter((c) => !c.assessment)).sort(byFundingRecency);
   const targets = limit === undefined ? pending : pending.slice(0, limit);
   if (targets.length < pending.length) {
     log.warn(`--limit ${limit}: researching ${targets.length} of ${pending.length} unassessed companies`);
@@ -183,25 +204,21 @@ async function stageResearch(
 const MAX_CATCHUP_DAYS = 7;
 
 /**
- * How many companies one invocation will research, across all outstanding days.
+ * A run researches until the plan's rate limit stops it.
  *
- * A day is ~62 companies and ~$18-equivalent, which is already most of a Claude
- * Pro five-hour window. Three missed days would be ~186 companies and ~$50 — the
- * run would stop cleanly when the window ran out, but it would have consumed the
- * whole window first, leaving nothing for the user's own work.
+ * That is deliberate. A day is ~62 companies and ~$18-equivalent, already about
+ * a whole Claude Pro five-hour window, so any fixed budget either wastes window
+ * or fails to finish a normal day. Letting the limit be the stop condition
+ * extracts the most from each window and needs no tuning.
  *
- * So the bound is on work rather than on days. Outstanding days all stay
- * visible; each run drains a little more than one day of them, newest first.
- * Bounding by days instead would abandon a day that a rate limit interrupted,
- * because by the next run it is no longer "yesterday".
+ * It also composes with scheduling: because the window resets every five hours,
+ * several routines spaced more than five hours apart drain a backlog at roughly
+ * a window each. A run with nothing outstanding makes no LLM calls at all, so
+ * the extra routines cost nothing on days when there is nothing to do.
  *
- * The surplus over one day is small, so a backlog drains slowly — and
- * MAX_CATCHUP_DAYS means anything older than a week is dropped rather than
- * queued forever. That is the right trade for a funding digest: a two-week-old
- * round is not worth spending a usage window on, and the newest day always goes
- * first.
+ * `--limit` still caps it for anyone who wants to leave window headroom.
+ * MAX_CATCHUP_DAYS remains the outer bound on how much can ever be outstanding.
  */
-const DEFAULT_RUN_BUDGET = 70;
 
 export function datesToCover(index: readonly RunIndexEntry[], today: Date): string[] {
   const end = new Date(today);
@@ -321,17 +338,18 @@ async function cmdRun(opts: {
 
   const covered: RunIndexEntry[] = [];
   let stoppedEarly = false;
-  let budget = opts.limit ?? DEFAULT_RUN_BUDGET;
+  // Unbounded by default: the rate limit is the stop condition.
+  let budget = opts.limit ?? Infinity;
 
   for (const date of dates) {
     if (budget <= 0) {
-      log.warn(`Budget of ${opts.limit ?? DEFAULT_RUN_BUDGET} companies reached — ${dates.length - covered.length} day(s) left for the next run.`);
+      log.warn(`--limit ${opts.limit} reached — ${dates.length - covered.length} day(s) left for the next run.`);
       break;
     }
     if ((await readShard(date)).length === 0) await stageIngest(1, date);
 
     const before = (await readShard(date)).filter((c) => c.assessment).length;
-    const { planLimited } = await stageResearch(date, budget, opts.model);
+    const { planLimited } = await stageResearch(date, Number.isFinite(budget) ? budget : undefined, opts.model);
     const entry = await stageReport(date, spentUsd(), 1);
     budget -= entry.assessed - before;
 
@@ -364,9 +382,10 @@ async function cmdRun(opts: {
             `  Outstanding: ${missing} companies in the issues above` +
               (daysLeft > 0 ? `, and ${daysLeft} further day(s) not started` : '') + '.',
             stoppedEarly
-              ? '  The plan limit stopped this run. Re-run once your usage window resets.'
-              : '  Bounded on purpose so one run cannot eat your whole usage window.',
-            '  The next run picks all of it up — nothing to do by hand.',
+              ? '  Your usage window is spent — that is the intended stopping point.'
+              : '  Stopped by --limit.',
+            '  The next run picks all of it up. Windows reset every 5 hours, so a',
+            '  second routine more than 5 hours later will continue from here.',
           ]
         : []),
       '',
