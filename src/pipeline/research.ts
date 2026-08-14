@@ -199,6 +199,10 @@ export async function researchCompanies(
       });
       costUsd += cost;
       freeFailureStreak = 0;
+      // One line per company. Verbose on stderr, but the file log is the only
+      // record of an unattended run, and "which company was it up to when the
+      // limit hit" is the first thing anyone asks.
+      log.debug(`researched ${company.name} (fit ${value.fit}, $${cost.toFixed(3)})`);
       return { ...company, assessment: value, researchedAt: new Date().toISOString() };
     } catch (err) {
       if (err instanceof PlanLimitError) {
@@ -226,6 +230,15 @@ export async function researchCompanies(
   log.progressDone();
 
   const assessed = out.filter((c) => c.assessment).length;
+  log.info(
+    `RESEARCH BATCH ${JSON.stringify({
+      requested: companies.length,
+      assessed,
+      failures,
+      planLimited,
+      costUsd: Number(costUsd.toFixed(2)),
+    })}`,
+  );
   log.info(
     `Researched ${assessed}/${companies.length} companies ($${costUsd.toFixed(2)})` +
       (failures > 0 ? `, ${failures} failed` : ''),

@@ -10,3 +10,7 @@ data/cache/
 # The grading export, on its way into data/labels.jsonl via the
 # review-startups skill. Transient by design.
 labels.json
+
+# Per-run logs. Machine-specific and regenerated; the durable record of what a
+# run produced is data/index.json and the shard.
+logs/

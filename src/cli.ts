@@ -23,7 +23,7 @@
 import { parseArgs } from 'node:util';
 import { writeFile, mkdir, readFile } from 'node:fs/promises';
 import type { RunCompany, RunIndexEntry } from './types.ts';
-import { DASHBOARD_PATH, INDEX_PATH, RUNS_DIR, runShardPath } from './paths.ts';
+import { DASHBOARD_PATH, INDEX_PATH, RUNS_DIR, runLogPath, runShardPath } from './paths.ts';
 import { readAll, writeAll } from './store/jsonl.ts';
 import { ingestEdgar } from './sources/edgar.ts';
 import { ingestNews } from './sources/news.ts';
@@ -32,7 +32,7 @@ import { buildResearchPrompt, fitOf, researchCompanies } from './pipeline/resear
 import { renderDashboard } from './report/html.ts';
 import { loadProfile } from './config.ts';
 import { isClaudeAvailable, resetSpend, spentUsd } from './llm/claude.ts';
-import { log } from './util/log.ts';
+import { log, logFilePath, startFileLog } from './util/log.ts';
 import { formatUsd } from './util/text.ts';
 
 const USAGE = `startup-finder — find recently-funded startups worth your time
@@ -329,12 +329,16 @@ async function cmdRun(opts: {
   resetSpend();
   const started = Date.now();
 
+  // Started before any work so a crash mid-run still leaves a trail.
+  startFileLog(runLogPath(new Date().toISOString().slice(0, 10)));
+
   const dates = opts.date ? [opts.date] : datesToCover(await readIndex(), new Date());
   if (dates.length === 0) {
     process.stdout.write('\nAlready up to date. Nothing to run.\n\n');
     return;
   }
-  if (dates.length > 1) log.info(`${dates.length} days outstanding: ${dates.join(', ')}`);
+  log.info(`Covering ${dates.length} day(s): ${dates.join(', ')}`);
+  log.info(`Limit: ${opts.limit ?? 'none — will run until the plan rate limit stops it'}`);
 
   const covered: RunIndexEntry[] = [];
   let stoppedEarly = false;
@@ -350,8 +354,14 @@ async function cmdRun(opts: {
 
     const before = (await readShard(date)).filter((c) => c.assessment).length;
     const { planLimited } = await stageResearch(date, Number.isFinite(budget) ? budget : undefined, opts.model);
+
     const entry = await stageReport(date, spentUsd(), 1);
-    budget -= entry.assessed - before;
+    const didThisDay = entry.assessed - before;
+    budget -= didThisDay;
+    log.info(
+      `Day ${date}: researched ${didThisDay} this run, ${entry.assessed}/${entry.companies} assessed overall, ` +
+        `$${spentUsd().toFixed(2)} spent so far${planLimited ? ' — PLAN LIMIT REACHED' : ''}`,
+    );
 
     covered.push(entry);
     if (planLimited) {
@@ -368,6 +378,19 @@ async function cmdRun(opts: {
     .slice(0, 10);
   const missing = covered.reduce((n, e) => n + (e.companies - e.assessed), 0);
   const daysLeft = dates.length - covered.length;
+
+  log.info(
+    `RUN SUMMARY ${JSON.stringify({
+      outcome: stoppedEarly ? 'stopped-at-plan-limit' : missing > 0 ? 'stopped-at-limit-flag' : 'complete',
+      seconds: Math.round((Date.now() - started) / 1000),
+      costUsd: Number(spentUsd().toFixed(2)),
+      daysCovered: covered.map((e) => e.date),
+      daysNotStarted: daysLeft,
+      companiesOutstanding: missing,
+      issues: covered.map((e) => ({ date: e.date, assessed: e.assessed, of: e.companies })),
+    })}`,
+  );
+  if (logFilePath()) log.info(`Log written to ${logFilePath()}`);
 
   process.stdout.write(
     [

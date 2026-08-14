@@ -34,3 +34,7 @@ export const INDEX_PATH = join(DATA_DIR, 'index.json');
  * under a local static server and on GitHub Pages served from the root.
  */
 export const DASHBOARD_PATH = join(ROOT, 'index.html');
+
+/** Per-run logs. Gitignored — machine-specific, and regenerated every run. */
+export const LOGS_DIR = join(ROOT, 'logs');
+export const runLogPath = (date: string): string => join(LOGS_DIR, `${date}.log`);
