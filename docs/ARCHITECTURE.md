@@ -17,7 +17,7 @@ cumulative store.
 
 | stage | cost | in | out |
 |---|---|---|---|
-| ingest | free | ~220 filings, 7 RSS feeds | ~60 companies |
+| ingest | free | 220-290 filings, 7 RSS feeds | 60-70 companies |
 | merge | free | filings + news items | one record per company |
 | research | ~$0.25-0.30/company | every company | fit score + dossier |
 | report | free | the shard | `index.html`, `data/index.json` |
@@ -66,12 +66,10 @@ everything ever seen.
    company was filtered out. It sorts to the bottom of the dashboard but stays
    visible, and the next run retries it.
 
-   Two causes, and they must stay distinguishable. A genuine failure consumes
-   tokens. A **plan-limit refusal** consumes none: the CLI rejects the call
-   before it reaches the model, reporting zero API time and zero tokens.
-   `PlanLimitError` detects that signature and stops the run, because otherwise
-   an exhausted window marks the whole remaining queue as failed in seconds —
-   which is exactly what happened on a real run, to 37 of 57 companies.
+   Two causes, kept distinguishable: a genuine failure consumes tokens, a
+   usage-limit refusal consumes none. `PlanLimitError` matches the second and
+   stops the run — without it a limit marked 37 of 57 healthy companies failed.
+
 3. **`null` means unknown, never `0`.** Form D's `totalOfferingAmount` can
    literally be `"Indefinite"`; a `0` would rank a company as having raised
    nothing.
@@ -141,5 +139,5 @@ and holding companies that get through, and the dashboard hides those by default
 `stageIngest`. See [DATA_SOURCES.md](DATA_SOURCES.md) for what is worth adding.
 
 **Changing what "good" means** is a config change, not a code change. Edit
-`config/profile.yaml`, then `pnpm sf research --limit 5` against an existing shard
+`config/profile.yaml`, then `pnpm sf research --refresh --limit 5` against a shard
 to see the effect for about a dollar.

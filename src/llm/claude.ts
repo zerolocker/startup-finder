@@ -178,22 +178,15 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
 }
 
 /**
- * Raised when the CLI refuses a call before it reaches the model — in practice,
- * the subscription's rate limit for the current window.
+ * A usage limit: the CLI refused the call before the model saw it.
  *
- * Worth a distinct type because it is not a per-item failure and must not be
- * retried against the rest of the queue. A real run hit this: 20 companies
- * researched fine over seven minutes, then all 37 remaining "failed" inside
- * ninety seconds, and were written to the shard as research failures. Nothing
- * had actually gone wrong with those companies.
+ * Distinct type because it is not a per-item failure and must not be retried
+ * across the queue — that once marked 37 healthy companies as failed.
  */
 export class PlanLimitError extends Error {
-  constructor() {
+  constructor(detail?: string) {
     super(
-      'Claude refused the call before reaching the model — almost certainly the ' +
-        "subscription's rate limit for this window. Nothing was spent. Wait for the " +
-        'window to reset and re-run; companies that were not assessed are retried ' +
-        'automatically.',
+      `Usage limit reached.${detail ? ` Claude said: ${detail}` : ''} Unassessed companies are retried next run.`,
     );
     this.name = 'PlanLimitError';
   }
@@ -209,11 +202,15 @@ function planLimitError(stdout: string): PlanLimitError | null {
     const e = JSON.parse(stdout) as {
       is_error?: boolean;
       duration_api_ms?: number;
+      result?: unknown;
       usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number };
     };
     const u = e.usage ?? {};
     const noTokens = !u.input_tokens && !u.output_tokens && !u.cache_read_input_tokens;
-    if (e.is_error && e.duration_api_ms === 0 && noTokens) return new PlanLimitError();
+    if (e.is_error && e.duration_api_ms === 0 && noTokens) {
+      const detail = typeof e.result === 'string' ? e.result.trim().slice(0, 300) : undefined;
+      return new PlanLimitError(detail);
+    }
   } catch {
     // Not JSON, so not this failure mode.
   }
@@ -260,6 +257,13 @@ async function invoke(
     child.on('close', (code) => {
       clearTimeout(timer);
       if (code !== 0) {
+        // A call can burn tokens and then fail, so we still need to record it.
+        try {
+          const spent = (JSON.parse(stdout) as { total_cost_usd?: number }).total_cost_usd;
+          if (typeof spent === 'number' && spent > 0) totalSpentUsd += spent;
+        } catch {
+          // Not JSON; nothing to account for.
+        }
         reject(planLimitError(stdout) ?? new Error(`claude exited ${code}: ${stderr.slice(0, 500) || stdout.slice(0, 500)}`));
         return;
       }

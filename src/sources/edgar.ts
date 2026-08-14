@@ -466,6 +466,10 @@ export async function ingestEdgar(opts: EdgarIngestOptions): Promise<EdgarIngest
   const newest = dates[0];
   const span = newest && oldest ? `${ymd(oldest)}..${ymd(newest)}` : 'no days';
   log.info(`EDGAR: ${refs.length} Form D filings across ${span} (${days} day window ending yesterday)`);
+  // Otherwise this stage is ~a minute of silence, indistinguishable from a hang.
+  if (refs.length > 0) {
+    log.info(`Fetching ${refs.length} filing documents from the SEC — roughly ${Math.ceil(refs.length / 8)}s`);
+  }
   if (missing.length > 0) {
     // Weekends dominate this list and are unremarkable; a weekday is not.
     const weekdays = missing.filter((d) => {
