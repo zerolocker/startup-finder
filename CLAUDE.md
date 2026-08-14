@@ -18,7 +18,7 @@ for a fast mental model.
 
 ```bash
 pnpm install
-pnpm test           # 147 tests, no network, <1s
+pnpm test           # 176 tests, no network, <1s
 pnpm typecheck      # tsc --noEmit, strict
 pnpm sf --help      # all CLI options
 
@@ -83,10 +83,16 @@ it fired mid-run and discarded work already paid for. What bounds a run is the
 size of one day (~60 companies at ~$0.25-0.30 each) plus `--limit`. Keep
 `--limit` small while iterating.
 
-A full day is enough to exhaust a Claude Pro window. When it happens the CLI
-refuses calls with zero tokens, `PlanLimitError` detects that and stops the run
-rather than recording the remaining queue as research failures. Do not "fix"
-that by retrying — no backoff outlasts a window; re-run after it resets.
+A full day is enough to exhaust a Claude plan's usage limit. When it happens the
+CLI refuses calls with zero tokens, `PlanLimitError` detects that and stops the
+run rather than recording the remaining queue as research failures. Do not "fix"
+that by retrying — no backoff outlasts a usage limit.
+
+**Do not assert which limit was hit.** A real run stopped on a *monthly spend
+cap* while the message claimed a five-hour window and told the user to wait for
+it to reset — advice that would have had them rescheduling against a limit that
+was never going to reopen that day. `PlanLimitError` quotes what Claude actually
+said and leaves the diagnosis to the reader.
 
 Never remove the disk cache in `src/llm/claude.ts` — with no cap above it, the
 cache is the main thing between a careless re-run and a real dent in the rate
