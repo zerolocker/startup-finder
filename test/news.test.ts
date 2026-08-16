@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   cleanCompanyName,
   extractHeadlineFacts,
+  isAcquisition,
   isFundAnnouncement,
   isFundingNews,
   isRoundup,
@@ -223,5 +224,75 @@ describe('isRoundup', () => {
     'Glasgow-based Mironid raises €39.9 million in Series B',
   ])('does not flag single-company headline %s', (title) => {
     expect(isRoundup(title)).toBe(false);
+  });
+});
+
+describe('2026-08-15 issue', () => {
+  // Every headline below is verbatim from the 2026-08-15 run, where it produced
+  // a company record that should not exist. Each one cost a full research call.
+  const item = (title: string) => ({ id: 'x', title, url: 'u', publishedAt: '', source: 'test', summary: '' });
+
+  it('drops an acquisition dressed up as a close', () => {
+    // "closes" is a funding verb, so this reached research as a company named
+    // "SpaceX officially" — whose dossier came back describing Cursor.
+    const title = 'SpaceX officially closes its Cursor acquisition';
+    expect(isAcquisition(title)).toBe(true);
+    expect(isFundingNews(item(title), FEED)).toBe(false);
+    expect(isFundingNews(item(title), { ...FEED, allFunding: true })).toBe(false);
+  });
+
+  it('cuts the subject at a clause verb instead of swallowing the clause', () => {
+    // Produced a second company, "Lovable confirms new $13.3B valuation",
+    // alongside the real "Lovable" record from the same day's Sifted piece.
+    expect(extractHeadlineFacts('Lovable confirms new $13.3B valuation, raises another $400M').company).toBe(
+      'Lovable',
+    );
+  });
+
+  it.each([
+    ['Accel raises $800m for ninth early-stage Europe fund', 'ordinal fund'],
+    ['Monzo and Lovable backer Accel raises enlarged $800M early-stage fund', 'adjectival fund'],
+  ])('drops %s (%s)', (title) => {
+    expect(isFundAnnouncement(title)).toBe(true);
+  });
+
+  it('still keeps a round whose headline ends on the investor’s fund name', () => {
+    // The guard for the rule above: here the trailing fund wrote the cheque.
+    const title = 'Lovable raises $400m backed by EU’s Scaleup Fund';
+    expect(isFundAnnouncement(title)).toBe(false);
+    expect(extractHeadlineFacts(title).company).toBe('Lovable');
+  });
+
+  it('rejects an "X backer Y" subject as an investor', () => {
+    expect(cleanCompanyName('Monzo and Lovable backer Accel')).toBeNull();
+  });
+
+  it.each([
+    ['OpenAI-backed Thrive Holdings raises $2B to bring AI to the enterprise', 'Thrive Holdings'],
+    [
+      'ETH Zurich spin-off Aisot Technologies bags €2.13 million to bring agentic AI to portfolio management',
+      'Aisot Technologies',
+    ],
+  ])('strips the attribution prefix in %s', (title, expected) => {
+    expect(extractHeadlineFacts(title).company).toBe(expected);
+  });
+
+  it.each([
+    ['Exclusive: ClearJet raises $25M to build the ‘Uber of Cargo’', 'ClearJet'],
+    ['Smallest.ai raises $13M to build ultra-fast voice AI that sounds genuinely human', 'Smallest.ai'],
+    ['Cytix raises $7M Series A to tackle cyber risks from AI-driven software development', 'Cytix'],
+    ['India’s Yulu raises $93M as quick-commerce boom fuels e-bike demand', 'Yulu'],
+    ['Metal Morph raises £700K to recover industrial resources from wastewater', 'Metal Morph'],
+    ['STRGY AI raises €1M to scale its AI-powered strategy execution platform', 'STRGY AI'],
+    ['Entravel Group secures $7.5M to scale its travel infrastructure platform', 'Entravel Group'],
+  ])('leaves the good rows in the same issue alone: %s', (title, expected) => {
+    expect(extractHeadlineFacts(title).company).toBe(expected);
+    expect(isFundingNews(item(title), FEED)).toBe(true);
+  });
+
+  it('does not mistake a funding round that mentions buying for M&A', () => {
+    // The bare infinitive is why ACQUISITION_RE only matches inflected forms.
+    expect(isAcquisition('Acme raises $5M to acquire rivals')).toBe(false);
+    expect(isFundAnnouncement('Acme raises $5M to fund expansion')).toBe(false);
   });
 });
