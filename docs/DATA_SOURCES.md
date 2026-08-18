@@ -146,6 +146,21 @@ The interesting part is what gets **rejected**. Every one of these produced a bo
 | `How to build secure … AI` | "How to build" | bare "secure" was an adjective |
 | `QMUL spinouts looking to raise` | "QMUL spinouts looking to" | bare "raise"; subject ends in a function word |
 | `Edtech platform raises $4.5M` | "Edtech platform" | subject is only category words, no name |
+| `SpaceX officially closes its Cursor acquisition` | "SpaceX officially" | `isAcquisition()` — M&A, not a round |
+| `Lovable confirms new $13.3B valuation, raises another $400M` | "Lovable confirms new $13.3B valuation" | subject cut at the first clause verb ⇒ "Lovable" |
+| `Accel raises $800m for ninth early-stage Europe fund` | "Accel" | `isFundAnnouncement()` — headline ends on "fund" |
+| `Monzo and Lovable backer Accel raises enlarged $800M early-stage fund` | "Monzo and Lovable backer Accel" | same, plus "backer" ⇒ an investor |
+| `OpenAI-backed Thrive Holdings raises $2B` | "OpenAI-backed Thrive Holdings" | attribution prefix stripped ⇒ "Thrive Holdings" |
+| `ETH Zurich spin-off Aisot Technologies bags €2.13M` | "ETH Zurich spin-off Aisot Technologies" | spin-off prefix stripped ⇒ "Aisot Technologies" |
+
+The last six rows are from the 2026-08-15 issue, which spent six of its seventeen
+research calls on entities that do not exist. Three of the six were scored as "not
+an operating company" (fit 3, 5, 14) — the money was spent to learn nothing; the
+other three scored 38-58 and would have been read as real companies. Two of the fixes needed a guard against their own
+over-reach, and those guards have tests too: `isAcquisition()` matches inflected
+forms only, so `Acme raises $5M to acquire rivals` survives; and the trailing-`fund`
+rule is suppressed by investor attribution, so `Lovable raises $400m backed by EU's
+Scaleup Fund` survives.
 
 The lesson generalizes: **funding vocabulary is identical for startups raising
 rounds, VCs raising funds, and journalists summarizing both.** Any new headline

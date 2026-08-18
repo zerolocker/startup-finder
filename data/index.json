@@ -1,11 +1,43 @@
 [
   {
+    "date": "2026-08-16",
+    "windowDays": 1,
+    "companies": 14,
+    "assessed": 14,
+    "costUsd": 2.4818554,
+    "generatedAt": "2026-08-17T13:07:40.704Z"
+  },
+  {
+    "date": "2026-08-15",
+    "windowDays": 1,
+    "companies": 17,
+    "assessed": 17,
+    "costUsd": 0.36787980000000003,
+    "generatedAt": "2026-08-16T13:05:03.084Z"
+  },
+  {
+    "date": "2026-08-14",
+    "windowDays": 1,
+    "companies": 80,
+    "assessed": 80,
+    "costUsd": 23.880954799999994,
+    "generatedAt": "2026-08-15T18:08:16.453Z"
+  },
+  {
     "date": "2026-08-13",
     "windowDays": 1,
-    "companies": 70,
-    "assessed": 14,
-    "costUsd": 4.3816784,
-    "generatedAt": "2026-08-14T04:29:35.760Z"
+    "companies": 71,
+    "assessed": 71,
+    "costUsd": 24.025991,
+    "generatedAt": "2026-08-14T18:04:50.664Z"
+  },
+  {
+    "date": "2026-08-12",
+    "windowDays": 1,
+    "companies": 68,
+    "assessed": 68,
+    "costUsd": 2.379647,
+    "generatedAt": "2026-08-14T18:07:02.184Z"
   },
   {
     "date": "2026-08-11",

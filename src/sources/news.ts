@@ -79,6 +79,54 @@ const ROUNDUP_RE =
 const FUND_ANNOUNCEMENT_RE =
   /(\bfund\s+(i{1,3}|iv|v|vi{1,3}|ix|x{1,3}|\d+)\b|\b(new|debut|maiden|inaugural)\s+fund\b|\bclos(es|ed)\s+.{0,30}\bfund\b|\bto (back|invest in)\b.{0,40}\bstartups\b|\braises?\b.{0,30}\b(new capital|to invest)\b|\blaunches\b.{0,25}\b(fund|investment arm)\b)/i;
 
+/**
+ * A headline that *ends* on the word "fund" — "Accel raises $800m for ninth
+ * early-stage Europe fund", "... raises enlarged $800M early-stage fund". Both
+ * reached research in a real run and came back scored 3 and 5 as "not an
+ * operating company" — the ordinal and adjectival forms miss every named
+ * pattern above.
+ *
+ * Anchoring to the end keeps "Acme raises $5M to fund expansion" out, where
+ * `fund` is the verb. The attribution guard below is the other half: a fund can
+ * also end a headline as the *investor*, and dropping those loses real rounds.
+ */
+const FUND_TAIL_RE = /\bfunds?\s*$/i;
+
+/**
+ * "... backed by EU's Scaleup Fund", "... led by Foo Fund" — here the trailing
+ * fund is who wrote the cheque, not what was raised. Without this,
+ * "Lovable raises $400m backed by EU's Scaleup Fund" is discarded as a fund
+ * announcement.
+ */
+const INVESTOR_ATTRIBUTION_RE = /\b(backed|led|supported|joined|co-led)\s+by\b|\bfrom\b/i;
+
+/**
+ * An M&A story, not a funding round.
+ *
+ * "SpaceX officially closes its Cursor acquisition" hits the funding
+ * vocabulary on "closes", and the subject parser then invented a company
+ * called "SpaceX officially" whose dossier came back describing Cursor — a
+ * full research call spent on an entity that does not exist. Neither party
+ * belongs in an issue: the acquirer is not raising, and the target is being
+ * absorbed rather than hiring on new money.
+ *
+ * Only inflected forms count, for the same reason the subject parser rejects
+ * bare stems: "Acme raises $5M to acquire rivals" is a funding headline, and
+ * matching the bare infinitive would throw it away.
+ */
+const ACQUISITION_RE = /\b(acquisitions?|acquires|acquired|acqui-?hires?|takeover|merger|merges\s+with)\b/i;
+
+/**
+ * Verbs that open a clause the subject parser must stop at.
+ *
+ * Deliberately disjoint from the funding verbs: those already terminate the
+ * subject, these are the ones a headline can slip in *before* them. Inflected
+ * forms only, for the reason spelled out in extractHeadlineFacts — bare stems
+ * like "plan", "target", and "eye" are ordinary nouns that appear in names.
+ */
+const CLAUSE_VERB_RE =
+  /\b(confirms|confirmed|reveals|revealed|unveils|unveiled|hits|reaches|reached|tops|topped|eyes|plans|targets|weighs|becomes|became|acquires|acquired|buys|bought|sells|sold|says|said)\b/i;
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Xml = Record<string, any>;
 
@@ -149,7 +197,7 @@ function toIso(value: string): string {
  * with them is not relevance but that they have no single subject to extract.
  */
 export function isFundingNews(item: NewsItem, feed: Feed): boolean {
-  if (isRoundup(item.title) || isFundAnnouncement(item.title)) return false;
+  if (isRoundup(item.title) || isFundAnnouncement(item.title) || isAcquisition(item.title)) return false;
   if (feed.allFunding) return true;
   return FUNDING_KEYWORDS.test(item.title) || AMOUNT_RE.test(item.title);
 }
@@ -161,7 +209,13 @@ export function isRoundup(title: string): boolean {
 
 /** True when the subject is a VC raising a fund rather than a startup raising a round. */
 export function isFundAnnouncement(title: string): boolean {
-  return FUND_ANNOUNCEMENT_RE.test(title);
+  if (FUND_ANNOUNCEMENT_RE.test(title)) return true;
+  return FUND_TAIL_RE.test(title) && !INVESTOR_ATTRIBUTION_RE.test(title);
+}
+
+/** True when the headline is about one company buying another, not raising. */
+export function isAcquisition(title: string): boolean {
+  return ACQUISITION_RE.test(title);
 }
 
 export interface HeadlineFacts {
@@ -209,6 +263,21 @@ export function extractHeadlineFacts(title: string): HeadlineFacts {
     title,
   );
   let company = verbMatch?.[1]?.trim() ?? null;
+
+  // A headline can hang two clauses off one subject:
+  //   "Lovable confirms new $13.3B valuation, raises another $400M"
+  // The match above is non-greedy but "confirms" is not a funding verb, so it
+  // runs on to "raises" and the subject swallows the whole first clause. That
+  // produced a second company named "Lovable confirms new $13.3B valuation"
+  // alongside the real "Lovable" — one story, two dossiers, twice the spend.
+  // Cutting at the first clause verb restores the actual subject.
+  if (company) {
+    const clause = CLAUSE_VERB_RE.exec(company);
+    // Index 0 means the "clause verb" *is* the subject — a company really named
+    // Eyes or Targets. Cutting there would leave nothing, turning a rare name
+    // into a rejection, so only cut when something precedes it.
+    if (clause && clause.index > 0) company = company.slice(0, clause.index).trim();
+  }
   if (company) company = cleanCompanyName(company);
 
   return { company, amountUsd, round };
@@ -221,6 +290,8 @@ export function extractHeadlineFacts(title: string): HeadlineFacts {
  * "Chip startup Olix"        -> "Olix"
  * "Exclusive: Acme"          -> "Acme"
  * "London’s Safehire.ai"     -> "Safehire.ai"
+ * "OpenAI-backed Thrive"     -> "Thrive"
+ * "ETH Zurich spin-off Aisot" -> "Aisot"
  *
  * Returns null when what's left is not plausibly a name, which is better than
  * emitting a garbage name that then fails to match anything in EDGAR.
@@ -238,9 +309,14 @@ export function cleanCompanyName(raw: string): string | null {
   company = company.replace(/^[A-Z][\w.-]+(?:’|')s\s+/, '');
   // Hyphenated locality: "Glasgow-based Mironid", "SF-based Acme"
   company = company.replace(/^[\w.'-]+[- ]based\s+/i, '');
-  // Descriptor nouns: "Chip startup Olix", "Defense tech Hadrian", "AI company Foo"
+  // Investor attribution: "OpenAI-backed Thrive Holdings", "a16z-backed Foo".
+  // The backer is not the subject, and leaving it on splits one company across
+  // two records the next time the same startup is written up without it.
+  company = company.replace(/^[\w.&'-]+[- ]backed\s+/i, '');
+  // Descriptor nouns: "Chip startup Olix", "Defense tech Hadrian", "AI company Foo",
+  // "ETH Zurich spin-off Aisot Technologies"
   company = company.replace(
-    /^(?:[\w.&-]+\s+){0,3}?\b(startup|scaleup|company|firm|platform|maker|developer|provider|unicorn|venture|tech)\s+/i,
+    /^(?:[\w.&-]+\s+){0,3}?\b(startup|scaleup|company|firm|platform|maker|developer|provider|unicorn|venture|tech|spin-?offs?|spin-?outs?)\s+/i,
     '',
   );
   company = company.trim().replace(/^[,\-–—:]+|[,\-–—:]+$/g, '').trim();
@@ -275,6 +351,16 @@ export function cleanCompanyName(raw: string): string | null {
 
   // Ending in an investor-firm noun means this is a VC, not a portfolio company.
   if (/\b(capital|ventures?|partners|fund|management)$/i.test(company)) return null;
+
+  // An "X backer Y" construction names the investor, not the startup:
+  // "Monzo and Lovable backer Accel raises enlarged $800M early-stage fund".
+  // The noun sits mid-string, so the trailing check above does not see it.
+  if (/\bbackers?\b/i.test(company)) return null;
+
+  // A money figure inside the subject means a clause was captured rather than
+  // a name — no company is called "... $13.3B valuation". This backstops the
+  // clause-verb cut in extractHeadlineFacts for phrasings it does not know.
+  if (AMOUNT_RE.test(company)) return null;
 
   // A "subject" longer than ~5 words is a sentence fragment, not a name.
   if (company.split(/\s+/).length > 5) return null;
