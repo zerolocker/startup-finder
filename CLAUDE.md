@@ -18,7 +18,7 @@ for a fast mental model.
 
 ```bash
 pnpm install
-pnpm test           # 190 tests, no network, <1s
+pnpm test           # 192 tests, no network, <1s
 pnpm typecheck      # tsc --noEmit, strict
 pnpm sf --help      # all CLI options
 
@@ -83,10 +83,10 @@ it fired mid-run and discarded work already paid for. What bounds a run is the
 size of one day (~60 companies at ~$0.25-0.30 each) plus `--limit`. Keep
 `--limit` small while iterating.
 
-A full day is enough to exhaust a Claude Pro window. When it happens the CLI
-refuses calls with zero tokens, `PlanLimitError` detects that and stops the run
-rather than recording the remaining queue as research failures. Do not "fix"
-that by retrying — no backoff outlasts a window; re-run after it resets.
+A full day can exhaust a plan's usage limit. The CLI then refuses calls with
+zero tokens; `PlanLimitError` detects that and stops the run rather than marking
+the queue as failures. Do not retry — no backoff outlasts a usage limit, and do
+not name which limit fired: plans carry several and only some reopen soon.
 
 Never remove the disk cache in `src/llm/claude.ts` — with no cap above it, the
 cache is the main thing between a careless re-run and a real dent in the rate
@@ -165,6 +165,9 @@ runs, and they earn their place because a future session can re-derive them.
 - Comments explain **why**, not what. The codebase leans on this heavily —
   particularly around the ingest filter and the prompts, where the reasoning is not
   recoverable from the code.
+- **Keep prose short.** Comments, docs, commit messages, log lines, PR bodies.
+  One or two lines for a comment; trim to the claim and cut the restatement.
+  A comment that narrates history rather than the code below it is noise.
 - No new dependencies without a good reason. Current runtime deps:
   `fast-xml-parser`, `yaml`, `zod`.
 - All HTTP goes through `src/util/http.ts` (rate limiting + caching). The SEC

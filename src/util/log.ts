@@ -1,12 +1,7 @@
 /**
- * Tiny leveled logger. Writes to stderr so stdout stays pipeable.
- *
- * A run can also tee everything to a file (see `startFileLog`). That matters
- * because the interesting runs are the unattended ones: a scheduled routine
- * fires, hits the plan's rate limit somewhere in the middle, and stops. By the
- * time anyone looks, the terminal output is gone. `data/index.json` records what
- * a run *achieved* but not *why it stopped*, and telling "the limit stopped it
- * cleanly" from "everything failed for some other reason" is the whole question.
+ * Tiny leveled logger. Writes to stderr so stdout stays pipeable, and tees to a
+ * file via `startFileLog` — index.json records what a run achieved, not why it
+ * stopped.
  */
 
 import { appendFileSync, mkdirSync } from 'node:fs';
@@ -19,13 +14,8 @@ const threshold = LEVELS[(process.env['SF_LOG_LEVEL'] as Level) ?? 'info'] ?? LE
 
 let logFile: string | null = null;
 
-/**
- * Tee every subsequent log line to `path`, in addition to stderr.
- *
- * Appends rather than truncates: several runs a day is the intended usage, and
- * losing the earlier one would defeat the point. Written synchronously so a
- * crash or a kill still leaves the lines that led up to it on disk.
- */
+/** Tee to `path` as well as stderr. Appends, and writes synchronously so a kill
+ * still leaves the lines leading up to it. */
 export function startFileLog(path: string): void {
   mkdirSync(dirname(path), { recursive: true });
   logFile = path;
@@ -41,9 +31,8 @@ function emit(level: Level, msg: string, extra?: unknown): void {
   const tag = { debug: 'DBG', info: 'INF', warn: 'WRN', error: 'ERR' }[level];
   const suffix = extra === undefined ? '' : ` ${typeof extra === 'string' ? extra : JSON.stringify(extra)}`;
 
-  // The file gets full ISO timestamps and every level regardless of the console
-  // threshold — a log you read days later needs dates, and debug lines are
-  // exactly what you want when something went wrong unattended.
+  // Every level regardless of console threshold: debug lines are what you want
+  // after an unattended failure.
   if (logFile) {
     try {
       appendFileSync(logFile, `${new Date().toISOString()} ${tag} ${msg}${suffix}\n`);
