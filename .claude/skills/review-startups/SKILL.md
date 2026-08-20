@@ -27,10 +27,13 @@ Tell them three things and then **stop and wait**:
 1. **Pick the issue** with the Issue dropdown. Each run is one day; the dashboard
    shows one at a time. "Min fit" already defaults to `any`, and every company in
    the run is rendered, so no filtering is needed to see everything.
-2. **Grading is mostly automatic.** Scrolling past a card marks it *seen*
-   (grade 0, ignored). Expanding **Details** marks it *opened* (grade 1). Only
-   ★ **save** (grade 2) is a deliberate click. So a normal read-through produces
-   labels without grading every company by hand.
+2. **Grading is mostly automatic.** Scrolling a card up past the middle of the
+   screen marks it *seen* (grade 0, ignored) — the bottom of the screen does not
+   count, since that is where a card waits its turn rather than where it is read.
+   Expanding **Details** marks it *opened* (grade 1). The only clicks are
+   ★ **save** (grade 2) and **not interested** at the foot of the Details panel,
+   which puts a card they read and rejected back to 0. So a normal read-through
+   produces labels without grading every company by hand.
 3. **Press "Save grades" when done**, which writes `labels.json` — to a location
    they choose in Chrome, or to `~/Downloads` elsewhere.
 
@@ -79,6 +82,10 @@ built on these labels:
 - **`rank` records where on screen the company was when it was seen.** Attention
   decays down a long list, so a `0` near the bottom is much weaker evidence than a
   `0` at the top. Keep the field; an eval can truncate on it.
+
+A `0` reached through **not interested** is a read verdict, not inattention, and
+is the strongest 0 in the file — but the export does not distinguish it, so an
+eval cannot weight it. Add a field before relying on that difference.
 
 ## If the export gets fiddly
 
