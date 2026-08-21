@@ -124,8 +124,9 @@ Say **"review startups"** to Claude and the `review-startups` skill takes it fro
 there: it serves the repo, opens the dashboard, and — when you are done — folds
 your grades into `data/labels.jsonl` and commits them.
 
-Grading is mostly passive. Scrolling past a company records it as *ignored*,
-expanding **Details** records it as *opened*, and only ★ save is a click.
+Grading is mostly passive. Scrolling a company up past the middle of the screen
+records it as *ignored*, expanding **Details** records it as *opened*, and the
+only clicks are ★ save and the **not interested** button inside Details.
 
 Those grades are the only ground truth the app has: the model can tell you what a
 company does, but not whether its taste matches yours.

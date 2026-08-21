@@ -75,6 +75,9 @@ export function renderDashboard(): string {
   }
   .card.hot { border-left-color: var(--hot); }
   .card.saved { border-left-color: var(--good); }
+  /* Before .dim on purpose: equal specificity, so a company that is both keeps
+     the harder .55. */
+  .card.passed { opacity: .7; }
   .card.dim { opacity: .55; }
   .head { display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; }
   .score {
@@ -103,10 +106,15 @@ export function renderDashboard(): string {
   .fatal { border: 1px solid var(--hot); border-radius: 10px; padding: 1rem 1.15rem; }
   .fatal code { background: var(--bg); padding: .1rem .3rem; border-radius: 4px; }
   footer { margin-top: 2rem; color: var(--muted); font-size: .8rem; text-align: center; }
+  /* The reading line is the middle of the viewport (see the observer), so the
+     last cards need room below them to rise past it. Without this the tail of
+     every issue would be permanently unmarkable. Skipped on an empty list,
+     where it would push the "nothing matches" message off screen. */
+  #list:not(:empty)::after { content: ''; display: block; height: 50vh; }
 
-  /* Grading. Only "saved" needs a click: "seen" comes from the scroll observer
-     and "opened" from the <details> toggle, so a normal read-through produces
-     labels without grading every company by hand. */
+  /* Grading. "seen" comes from the scroll observer and "opened" from the
+     <details> toggle, so a normal read-through produces labels without grading
+     every company by hand. The only clicks are save and "not interested". */
   .save {
     font: inherit; font-size: .78rem; cursor: pointer; margin-left: .5rem;
     padding: .1rem .45rem; border-radius: 20px; background: transparent;
@@ -120,6 +128,17 @@ export function renderDashboard(): string {
   /* No weight change: bolding "save" made the pill 1px wider when pressed. The
      filled star and the green already carry the state. */
   .save[aria-pressed=true] { color: var(--good); border-color: currentColor; }
+  /* "not interested" closes the details panel's argument: a 0 from someone who
+     read the card, which the observer cannot tell from a 0 that never looked.
+     Neutral rather than red — it is a verdict about fit, not about the company. */
+  .pass {
+    font: inherit; font-size: .78rem; cursor: pointer; margin-top: .9rem;
+    padding: .1rem .45rem; border-radius: 20px; background: transparent;
+    border: 1px solid var(--line); color: var(--muted);
+  }
+  .pass .mark { display: inline-block; width: 1em; text-align: center; }
+  .pass:hover { color: var(--text); }
+  .pass[aria-pressed=true] { color: var(--text); border-color: currentColor; }
   #save { font: inherit; font-size: .85rem; padding: .4rem .7rem; border-radius: 7px;
     border: 1px solid var(--line); background: var(--bg); color: var(--text); cursor: pointer; }
   #save:hover { border-color: var(--accent); color: var(--accent); }
@@ -216,31 +235,41 @@ function toRow(c) {
  * scrolled that far". Treating an unexamined company as a 0 would teach any
  * future eval that whatever the ranker buried deserved to be buried — a bias
  * that is invisible and self-confirming.
+ *
+ * "not interested" is the only way back down. Opening the details implies a 1,
+ * which overstates a read that ended in a no; the button says so and returns the
+ * company to 0. It and save clear each other, so both can never be on.
  */
 const LABELS_KEY = 'sf-labels-v1';
 let LABELS = {};
 try { LABELS = JSON.parse(localStorage.getItem(LABELS_KEY)) || {}; } catch (e) { LABELS = {}; }
 
-const gradeOf = (l) => (l.saved ? 2 : l.opened ? 1 : 0);
+const gradeOf = (l) => (l.saved ? 2 : l.passed ? 0 : l.opened ? 1 : 0);
 
 function mark(id, patch) {
-  const prev = LABELS[id] || { seen: false, opened: false, saved: false, rank: null };
+  const prev = LABELS[id] || { seen: false, opened: false, saved: false, passed: false, rank: null };
   LABELS[id] = { ...prev, ...patch, at: new Date().toISOString(), runId: RUN_ID };
   try { localStorage.setItem(LABELS_KEY, JSON.stringify(LABELS)); } catch (e) {}
   updateGradedCount();
 }
 
 function updateGradedCount() {
-  const seen = Object.values(LABELS).filter((l) => l.seen);
-  const saved = seen.filter((l) => l.saved).length;
-  const opened = seen.filter((l) => l.opened && !l.saved).length;
+  // Counted through gradeOf so the bar always agrees with what the export says.
+  const grades = Object.values(LABELS).filter((l) => l.seen).map(gradeOf);
+  const saved = grades.filter((g) => g === 2).length;
+  const opened = grades.filter((g) => g === 1).length;
   // Rendered even at zero. Appearing for the first time — which happens a second
   // after load, when the scroll observer fires — was the biggest jump of all.
-  $('graded').textContent = seen.length + ' seen · ' + opened + ' opened · ' + saved + ' saved';
+  $('graded').textContent = grades.length + ' seen · ' + opened + ' opened · ' + saved + ' saved';
 }
 
-// A card counts as seen once it has been at least half visible for a full
-// second — long enough to exclude rows that flew past during a fast scroll.
+// A card counts as seen once it has spent a full second above the middle of the
+// viewport: long enough to exclude rows that flew past during a fast scroll, and
+// high enough to exclude the bottom of the screen, which is where a card waits
+// its turn rather than where it gets read. Shrinking the root's bottom edge by
+// half hands that test to the observer. The threshold has to be 0 to go with it
+// — against a root only half the viewport tall, a card taller than that could
+// never clear a fractional threshold, and the longest cards would never count.
 const timers = new Map();
 const observer = new IntersectionObserver((entries) => {
   for (const e of entries) {
@@ -258,7 +287,7 @@ const observer = new IntersectionObserver((entries) => {
       timers.delete(id);
     }
   }
-}, { threshold: 0.5 });
+}, { rootMargin: '0px 0px -50% 0px', threshold: 0 });
 
 function exportLabels() {
   const out = Object.entries(LABELS)
@@ -317,10 +346,19 @@ function card(r) {
     (r.summary && r.summary !== r.what ? '<h4>Summary</h4><p>' + esc(r.summary) + '</p>' : '') +
     (links ? '<h4>Links</h4><p>' + links + '</p>' : '');
 
-  const saved = (LABELS[r.id] || {}).saved === true;
+  const l = LABELS[r.id] || {};
+  const saved = l.saved === true;
+  const passed = l.passed === true;
+
+  // Only a card with a details panel gets the button, which is the right place
+  // for it: with nothing to read, scrolling past is already the honest signal.
+  const detailBody = detail
+    ? detail + '<button class="pass" type="button" aria-pressed="' + passed + '">' +
+      '<span class="mark">' + (passed ? '●' : '○') + '</span> not interested</button>'
+    : '';
 
   return '<div class="card' + (r.score >= 85 ? ' hot' : '') + (saved ? ' saved' : '') +
-    (r.operating ? '' : ' dim') + '" data-id="' + esc(r.id) + '">' +
+    (passed ? ' passed' : '') + (r.operating ? '' : ' dim') + '" data-id="' + esc(r.id) + '">' +
     '<div class="head"><span class="score">' + (r.assessed ? r.score : '—') + '</span>' +
     '<span class="name">' + esc(r.name) + '</span>' +
     '<button class="save" type="button" aria-pressed="' + saved + '">' +
@@ -329,8 +367,23 @@ function card(r) {
       (r.location ? '<br>' + esc(r.location) : '') + '</span></div>' +
     (r.what ? '<p class="what">' + esc(r.what) + '</p>' : '') +
     (tags.length ? '<div class="tags">' + tags.join('') + '</div>' : '') +
-    (detail ? '<details><summary>Details</summary><div class="detail">' + detail + '</div></details>' : '') +
+    (detailBody ? '<details><summary>Details</summary><div class="detail">' + detailBody + '</div></details>' : '') +
     '</div>';
+}
+
+/** Brings one card's buttons and classes back in line with LABELS. */
+function paint(cardEl) {
+  const l = LABELS[cardEl.dataset.id] || {};
+  const saveBtn = cardEl.querySelector('.save');
+  saveBtn.setAttribute('aria-pressed', String(!!l.saved));
+  saveBtn.querySelector('.star').textContent = l.saved ? '★' : '☆';
+  const passBtn = cardEl.querySelector('.pass');
+  if (passBtn) {
+    passBtn.setAttribute('aria-pressed', String(!!l.passed));
+    passBtn.querySelector('.mark').textContent = l.passed ? '●' : '○';
+  }
+  cardEl.classList.toggle('saved', !!l.saved);
+  cardEl.classList.toggle('passed', !!l.passed);
 }
 
 function render() {
@@ -354,8 +407,10 @@ function render() {
   $('count').textContent = out.length + ' of ' + ROWS.length;
   $('empty').hidden = out.length > 0;
 
-  // innerHTML replaced every node, so the old observations went with them.
+  // innerHTML replaced every node, so the old observations went with them. The
+  // pending timers go too, or one fires against a card the filter just removed.
   observer.disconnect();
+  for (const t of timers.values()) clearTimeout(t);
   timers.clear();
   document.querySelectorAll('.card').forEach((c) => observer.observe(c));
 }
@@ -417,16 +472,16 @@ async function main() {
     $(id).addEventListener(id === 'q' ? 'input' : 'change', render));
 
   $('list').addEventListener('click', (e) => {
-    const btn = e.target.closest('.save');
+    const btn = e.target.closest('.save, .pass');
     if (!btn) return;
     const cardEl = btn.closest('.card');
     const id = cardEl.dataset.id;
-    const saved = !((LABELS[id] || {}).saved);
-    // Saving implies having seen it, even if the observer has not fired yet.
-    mark(id, { saved, seen: true });
-    btn.setAttribute('aria-pressed', String(saved));
-    btn.querySelector('.star').textContent = saved ? '★' : '☆';
-    cardEl.classList.toggle('saved', saved);
+    const isSave = btn.classList.contains('save');
+    const on = !(LABELS[id] || {})[isSave ? 'saved' : 'passed'];
+    // The two contradict each other, so turning one on clears the other. Either
+    // implies having seen it, even if the observer has not fired yet.
+    mark(id, { seen: true, saved: isSave ? on : false, passed: isSave ? false : on });
+    paint(cardEl);
   });
 
   // The toggle event does not bubble, so it has to be captured.

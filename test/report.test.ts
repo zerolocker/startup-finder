@@ -70,6 +70,43 @@ describe('renderDashboard filtering', () => {
   });
 });
 
+describe('renderDashboard — grading', () => {
+  const html = renderDashboard();
+
+  // The bottom half of the screen is where a card waits its turn, not where it
+  // gets read, so a card only counts once it has risen above the midline.
+  it('puts the reading line at the middle of the viewport', () => {
+    expect(html).toContain("rootMargin: '0px 0px -50% 0px'");
+    // A card taller than half the viewport can never clear a fractional
+    // threshold against a root that short, so the longest ones would never count.
+    expect(html).not.toMatch(/threshold: 0\.\d/);
+  });
+
+  // Without room below the list the last cards can never reach the midline, so
+  // the tail of every issue would go permanently unmarked.
+  it('leaves room below the list for the last cards to scroll past the line', () => {
+    expect(html).toMatch(/#list:not\(:empty\)::after \{[^}]*height: 50vh/s);
+  });
+
+  // Opening the details implies a 1, which overstates a read that ended in a no.
+  it('lets "not interested" take an opened card back down to 0', () => {
+    expect(html).toContain('const gradeOf = (l) => (l.saved ? 2 : l.passed ? 0 : l.opened ? 1 : 0);');
+    expect(html).toContain('> not interested</button>');
+  });
+
+  // Both on at once would export a grade that contradicts the other button.
+  it('makes save and "not interested" clear each other', () => {
+    expect(html).toContain(
+      'mark(id, { seen: true, saved: isSave ? on : false, passed: isSave ? false : on });');
+  });
+
+  // A stale timer marked a filtered-out card seen, with the rank of whatever
+  // row had taken its place.
+  it('cancels pending seen-timers when the list is re-rendered', () => {
+    expect(html).toContain('for (const t of timers.values()) clearTimeout(t);');
+  });
+});
+
 describe('renderDashboard — card layout', () => {
   const html = renderDashboard();
 
@@ -99,7 +136,7 @@ describe('renderDashboard — card layout', () => {
   });
 
   it('renders the counter at zero rather than appearing later', () => {
-    expect(html).toContain("$('graded').textContent = seen.length + ' seen · '");
+    expect(html).toContain("$('graded').textContent = grades.length + ' seen · '");
   });
 
   it('shows the location in the card header, not as a tag', () => {
