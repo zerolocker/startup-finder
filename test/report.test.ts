@@ -121,7 +121,7 @@ describe('renderDashboard — card layout', () => {
   // change width — no min-width needed, and no dead space inside it.
   it('keeps the save label a constant width without padding the pill out', () => {
     expect(html).not.toMatch(/\.save \{[^}]*min-width:/s);
-    expect(html).toContain(".save .star { display: inline-block; width: 1em;");
+    expect(html).toContain(".save .star, .pass .mark { display: inline-block; width: 1em;");
     expect(html).not.toContain("'★ saved'");
     // Bolding the pressed label made the pill 1px wider.
     expect(html).not.toMatch(/\.save\[aria-pressed=true\][^}]*font-weight/);
@@ -139,9 +139,38 @@ describe('renderDashboard — card layout', () => {
     expect(html).toContain("$('graded').textContent = grades.length + ' seen · '");
   });
 
-  it('shows the location in the card header, not as a tag', () => {
-    expect(html).toContain("(r.location ? '<br>' + esc(r.location) : '')");
+  // Pinned to the right edge these read as a footnote, which is the wrong weight
+  // for the first facts about a company.
+  it('puts funding, date and location on one left-aligned line, not a right rail', () => {
+    expect(html).toContain("const meta = [r.amountLabel, r.date, r.location].filter(Boolean)");
+    expect(html).not.toMatch(/\.meta \{[^}]*margin-left: auto/s);
+    expect(html).not.toMatch(/\.meta \{[^}]*text-align: right/s);
     expect(html).not.toContain('<span class="tag">\' + esc(r.location)');
+  });
+
+  // The two questions the card exists to answer should not cost a click.
+  it('renders Summary and Why this score outside Details, summary first', () => {
+    const always = html.slice(html.indexOf('const always ='), html.indexOf('const meta ='));
+    expect(always).toContain('<h4>Summary</h4>');
+    expect(always).toContain('<h4>Why this score</h4>');
+    expect(always.indexOf('Summary')).toBeLessThan(always.indexOf('Why this score'));
+    // The Details panel keeps the rest and must not carry these back.
+    const detail = html.slice(html.indexOf('const detail = list('), html.indexOf('const always ='));
+    expect(detail).not.toContain('Why this score');
+    expect(detail).not.toContain('<h4>Summary</h4>');
+  });
+
+  // They live outside .detail now, so the label style has to reach them.
+  it('styles section labels at the card level, not only inside Details', () => {
+    expect(html).toMatch(/\.card h4 \{[^}]*text-transform: uppercase/s);
+    expect(html).not.toMatch(/\.detail h4 \{/);
+  });
+
+  it('puts "not interested" beside save in the head, not in Details', () => {
+    const head = html.slice(html.indexOf("'<div class=\"head\">"), html.indexOf("(meta ?"));
+    expect(head).toContain('class="save"');
+    expect(head).toContain('class="pass"');
+    expect(head.indexOf('class="save"')).toBeLessThan(head.indexOf('class="pass"'));
   });
 
   // An SEC address is frequently the filing agent's, so the researched HQ wins.
