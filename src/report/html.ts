@@ -29,12 +29,16 @@ export function renderDashboard(): string {
     color-scheme: light dark;
     --bg: #fbfbfa; --panel: #fff; --text: #1a1a19; --muted: #6b6b68;
     --line: #e5e4e1; --accent: #b4501e; --hot: #c2410c; --good: #15803d;
+    /* Same hues darkened for text sitting on a filled badge — the plain ones
+       are tuned against the card, and drop under 4.5:1 on --line. */
+    --good-ink: #166534; --hot-ink: #9a3412;
     --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 12px rgba(0,0,0,.04);
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #191918; --panel: #222221; --text: #ededec; --muted: #a1a09b;
       --line: #35352f; --accent: #e8845c; --hot: #f97316; --good: #4ade80;
+      --good-ink: #4ade80; --hot-ink: #fb923c;
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.2);
     }
   }
@@ -90,12 +94,19 @@ export function renderDashboard(): string {
   .meta { color: var(--muted); font-size: .85rem; margin-top: .3rem; }
   .what { margin: .5rem 0 0; }
   .tags { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .6rem; }
+  /* Flat fill, no outline, no hover, no pointer. These sit beside save and
+     "not interested" in the head, and an outlined pill there means "button" —
+     so the two have to look like different kinds of thing, not one kind in two
+     colours. Colour still carries the meaning; the fill carries "not a control". */
   .tag {
     font-size: .75rem; padding: .15rem .5rem; border-radius: 20px;
-    border: 1px solid var(--line); color: var(--muted);
+    background: var(--line); color: var(--text); cursor: default;
   }
-  .tag.hiring { color: var(--good); border-color: currentColor; }
-  .tag.warn { color: var(--hot); border-color: currentColor; }
+  .tag.hiring { color: var(--good-ink); }
+  .tag.warn { color: var(--hot-ink); }
+  /* Clears the buttons by a little more than the head's own gap, so the pair of
+     controls stays one group and the badges read as another. */
+  .head .tag:first-of-type { margin-left: .35rem; }
   details { margin-top: .7rem; }
   summary { cursor: pointer; color: var(--muted); font-size: .85rem; }
   summary:hover { color: var(--text); }
@@ -333,10 +344,15 @@ function card(r) {
     .map((l) => '<a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.label) + '</a>')
     .join(' · ');
 
+  // Hiring and confidence ride in the head: they are the two facts worth having
+  // before deciding to read on. "Not an operating company" keeps its own row —
+  // it is rare, and it means ignore everything above it, which is worth a line.
+  const headTags =
+    (r.hiring > 0 ? '<span class="tag hiring">' + r.hiring + ' open role' + (r.hiring > 1 ? 's' : '') + '</span>' : '') +
+    (r.confidence ? '<span class="tag">' + esc(r.confidence) + ' confidence</span>' : '');
+
   const tags = [];
   if (!r.operating) tags.push('<span class="tag warn">not an operating company</span>');
-  if (r.hiring > 0) tags.push('<span class="tag hiring">' + r.hiring + ' open role' + (r.hiring > 1 ? 's' : '') + '</span>');
-  if (r.confidence) tags.push('<span class="tag">' + esc(r.confidence) + ' confidence</span>');
 
   const detail = list(r.roles, 'Open roles') + list(r.green, 'Reasons to look closer') +
     list(r.red, 'Reasons for caution') + list(r.people, 'On the SEC filing') +
@@ -364,6 +380,7 @@ function card(r) {
       '<span class="star">' + (saved ? '★' : '☆') + '</span> save</button>' +
     '<button class="pass" type="button" aria-pressed="' + passed + '">' +
       '<span class="mark">' + (passed ? '●' : '○') + '</span> not interested</button>' +
+    headTags +
     '</div>' +
     (meta ? '<div class="meta">' + meta + '</div>' : '') +
     (r.what ? '<p class="what">' + esc(r.what) + '</p>' : '') +

@@ -166,6 +166,26 @@ describe('renderDashboard — card layout', () => {
     expect(html).not.toMatch(/\.detail h4 \{/);
   });
 
+  // An outlined pill in the head means "button". These are labels, so they have
+  // to look like a different kind of thing, not the same kind in another colour.
+  it('styles the badges as non-interactive: filled, unoutlined, no pointer', () => {
+    expect(html).toMatch(/\.tag \{[^}]*background: var\(--line\)/s);
+    expect(html).toMatch(/\.tag \{[^}]*cursor: default/s);
+    expect(html).not.toMatch(/\.tag \{[^}]*border:/s);
+    expect(html).not.toMatch(/\.tag[^{]*:hover/);
+    // The buttons keep the outline that says they can be pressed.
+    expect(html).toMatch(/\.save, \.pass \{[^}]*border: 1px solid var\(--line\)/s);
+  });
+
+  it('puts open roles and confidence in the head, the warning on its own row', () => {
+    const head = html.slice(html.indexOf("'<div class=\"head\">"), html.indexOf("(meta ?"));
+    expect(head).toContain('headTags');
+    expect(html).toMatch(/const headTags =[\s\S]*?open role[\s\S]*?confidence/);
+    // The warning is deliberately not promoted — it negates everything above it.
+    expect(html).toMatch(/const tags = \[\];\s*if \(!r\.operating\)/);
+    expect(html.slice(html.indexOf('const headTags ='), html.indexOf('const tags = ['))).not.toContain('operating');
+  });
+
   it('puts "not interested" beside save in the head, not in Details', () => {
     const head = html.slice(html.indexOf("'<div class=\"head\">"), html.indexOf("(meta ?"));
     expect(head).toContain('class="save"');
