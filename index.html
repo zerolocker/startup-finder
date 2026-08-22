@@ -74,7 +74,8 @@
   .name { font-weight: 650; font-size: 1.05rem; }
   /* Its own left-aligned line under the head. Pinned to the right edge it read
      as a footnote, which is the wrong weight for the first facts about a company. */
-  .meta { color: var(--muted); font-size: .85rem; margin-top: .3rem; }
+  .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: .55rem;
+    color: var(--muted); font-size: .85rem; margin-top: .3rem; }
   .what { margin: .5rem 0 0; }
   .tags { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .6rem; }
   /* Flat fill, no outline, no hover, no pointer. These sit beside save and
@@ -102,15 +103,9 @@
   .fatal { border: 1px solid var(--hot); border-radius: 10px; padding: 1rem 1.15rem; }
   .fatal code { background: var(--bg); padding: .1rem .3rem; border-radius: 4px; }
   footer { margin-top: 2rem; color: var(--muted); font-size: .8rem; text-align: center; }
-  /* The reading line is the middle of the viewport (see the observer), so the
-     last cards need room below them to rise past it. Without this the tail of
-     every issue would be permanently unmarkable. Skipped on an empty list,
-     where it would push the "nothing matches" message off screen. */
-  #list:not(:empty)::after { content: ''; display: block; height: 50vh; }
 
-  /* Grading. "seen" comes from the scroll observer and "opened" from the
-     <details> toggle, so a normal read-through produces labels without grading
-     every company by hand. The only clicks are save and "not interested". */
+  /* Grading. Every grade is a click: save, "not interested", or expanding
+     Details. Nothing is inferred from scrolling. */
   .save, .pass {
     font: inherit; font-size: .78rem; cursor: pointer;
     padding: .1rem .45rem; border-radius: 20px; background: transparent;
@@ -135,7 +130,7 @@
     border: 1px solid var(--line); background: var(--bg); color: var(--text); cursor: pointer; }
   #save:hover { border-color: var(--accent); color: var(--accent); }
   #graded { font-size: .85rem; color: var(--muted); white-space: nowrap;
-    font-variant-numeric: tabular-nums; min-width: 13.5rem; text-align: right; }
+    font-variant-numeric: tabular-nums; min-width: 17.5rem; text-align: right; }
 </style>
 </head>
 <body>
@@ -220,17 +215,19 @@ function toRow(c) {
 }
 
 /**
- * Grades for the review-startups skill. 0 = ignored, 1 = opened, 2 = saved.
+ * Grades for the review-startups skill. 0 = not interested, 1 = opened,
+ * 2 = saved.
  *
- * A company is exported ONLY once it has been seen. That distinction is the
- * whole point: "ignored" has to mean "looked at it and moved on", never "never
- * scrolled that far". Treating an unexamined company as a 0 would teach any
- * future eval that whatever the ranker buried deserved to be buried — a bias
- * that is invisible and self-confirming.
+ * Every grade is a click. Scrolling past a company says nothing and records
+ * nothing: it cannot distinguish "read it and moved on" from "eyes glazed over
+ * it", and the two are not the same evidence. A company nobody clicked is
+ * absent from the export rather than a 0 — filling those in would teach an eval
+ * that whatever the ranker buried deserved burying, a bias that is invisible
+ * and self-confirming.
  *
- * "not interested" is the only way back down. Opening the details implies a 1,
- * which overstates a read that ended in a no; the button says so and returns the
- * company to 0. It and save clear each other, so both can never be on.
+ * save and "not interested" clear each other, so both can never be on. Opening
+ * the details implies a 1, and "not interested" overrides it: it is the verdict
+ * of someone who read the card.
  */
 const LABELS_KEY = 'sf-labels-v1';
 let LABELS = {};
@@ -238,55 +235,40 @@ try { LABELS = JSON.parse(localStorage.getItem(LABELS_KEY)) || {}; } catch (e) {
 
 const gradeOf = (l) => (l.saved ? 2 : l.passed ? 0 : l.opened ? 1 : 0);
 
+/** Where the row sat on screen when it was labelled. Null if it is not rendered. */
+const rankOf = (id) => {
+  const i = [...document.querySelectorAll('.card')].findIndex((c) => c.dataset.id === id);
+  return i < 0 ? null : i + 1;
+};
+
 function mark(id, patch) {
-  const prev = LABELS[id] || { seen: false, opened: false, saved: false, passed: false, rank: null };
-  LABELS[id] = { ...prev, ...patch, at: new Date().toISOString(), runId: RUN_ID };
+  const prev = LABELS[id] || { opened: false, saved: false, passed: false, rank: null };
+  // Fixed on the first label: a later filter or search would move the row, and
+  // the position that matters is the one it had when the judgement was made.
+  const rank = prev.rank ?? rankOf(id);
+  LABELS[id] = { ...prev, ...patch, rank, at: new Date().toISOString(), runId: RUN_ID };
   try { localStorage.setItem(LABELS_KEY, JSON.stringify(LABELS)); } catch (e) {}
   updateGradedCount();
 }
 
+/** True once the company carries a judgement. Nothing else is exportable. */
+const isLabelled = (l) => !!(l.saved || l.passed || l.opened);
+
 function updateGradedCount() {
   // Counted through gradeOf so the bar always agrees with what the export says.
-  const grades = Object.values(LABELS).filter((l) => l.seen).map(gradeOf);
-  const saved = grades.filter((g) => g === 2).length;
-  const opened = grades.filter((g) => g === 1).length;
-  // Rendered even at zero. Appearing for the first time — which happens a second
-  // after load, when the scroll observer fires — was the biggest jump of all.
-  $('graded').textContent = grades.length + ' seen · ' + opened + ' opened · ' + saved + ' saved';
+  const grades = Object.values(LABELS).filter(isLabelled).map(gradeOf);
+  const n = (g) => grades.filter((x) => x === g).length;
+  // Rendered even at zero, so it does not appear from nowhere on the first click.
+  $('graded').textContent =
+    n(0) + ' not interested · ' + n(1) + ' opened · ' + n(2) + ' saved';
 }
-
-// A card counts as seen once it has spent a full second above the middle of the
-// viewport: long enough to exclude rows that flew past during a fast scroll, and
-// high enough to exclude the bottom of the screen, which is where a card waits
-// its turn rather than where it gets read. Shrinking the root's bottom edge by
-// half hands that test to the observer. The threshold has to be 0 to go with it
-// — against a root only half the viewport tall, a card taller than that could
-// never clear a fractional threshold, and the longest cards would never count.
-const timers = new Map();
-const observer = new IntersectionObserver((entries) => {
-  for (const e of entries) {
-    const id = e.target.dataset.id;
-    if (e.isIntersecting) {
-      if (!timers.has(id)) {
-        timers.set(id, setTimeout(() => {
-          const rank = [...document.querySelectorAll('.card')].findIndex((c) => c.dataset.id === id);
-          if (!(LABELS[id] || {}).seen) mark(id, { seen: true, rank: rank + 1 });
-          timers.delete(id);
-        }, 1000));
-      }
-    } else {
-      clearTimeout(timers.get(id));
-      timers.delete(id);
-    }
-  }
-}, { rootMargin: '0px 0px -50% 0px', threshold: 0 });
 
 function exportLabels() {
   const out = Object.entries(LABELS)
-    .filter(([, l]) => l.seen)
+    .filter(([, l]) => isLabelled(l))
     .map(([companyId, l]) => ({ companyId, grade: gradeOf(l), rank: l.rank, at: l.at, runId: l.runId }))
     .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
-  if (!out.length) { alert('Nothing graded yet — scroll through some companies first.'); return; }
+  if (!out.length) { alert('Nothing graded yet — save or dismiss a few companies first.'); return; }
   return JSON.stringify({ exportedAt: new Date().toISOString(), runId: RUN_ID, labels: out }, null, 2);
 }
 
@@ -323,9 +305,20 @@ function list(items, title) {
 }
 
 function card(r) {
-  const links = [...r.links, ...r.sources.map((s) => ({ label: 'SEC/news: ' + s.label, url: s.url }))]
-    .map((l) => '<a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.label) + '</a>')
-    .join(' · ');
+  const anchor = (l) =>
+    '<a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.label) + '</a>';
+
+  // The filing links are provenance, not somewhere anyone clicks through to, and
+  // they are the bulk of them. They stay in Details; everything that says what
+  // the company is — homepage, careers, coverage — comes up beside the facts.
+  // Matched loosely because the label is model-written: "SEC Form D Filing",
+  // "SEC Form D filing" and "SEC Filing" all occur.
+  const isFiling = (l) => /^sec\b/i.test(l.label);
+  const sourceLinks = r.sources.map((x) => ({ label: 'SEC/news: ' + x.label, url: x.url, edgar: x.label === 'edgar' }));
+  const headLinks = [...r.links.filter((l) => !isFiling(l)), ...sourceLinks.filter((x) => !x.edgar)]
+    .map(anchor).join('');
+  const links = [...r.links.filter(isFiling), ...sourceLinks.filter((x) => x.edgar)]
+    .map(anchor).join(' · ');
 
   // Hiring and confidence ride in the head: they are the two facts worth having
   // before deciding to read on. "Not an operating company" keeps its own row —
@@ -349,7 +342,8 @@ function card(r) {
     (r.rationale ? '<h4>Why this score</h4><p>' + esc(r.rationale) + '</p>' : '');
 
   // One line, not two right-aligned ones — see .meta.
-  const meta = [r.amountLabel, r.date, r.location].filter(Boolean).map(esc).join(' · ');
+  const facts = [r.amountLabel, r.date, r.location].filter(Boolean).map(esc).join(' · ');
+  const meta = (facts ? '<span class="facts">' + facts + '</span>' : '') + headLinks;
 
   const l = LABELS[r.id] || {};
   const saved = l.saved === true;
@@ -407,12 +401,6 @@ function render() {
   $('count').textContent = out.length + ' of ' + ROWS.length;
   $('empty').hidden = out.length > 0;
 
-  // innerHTML replaced every node, so the old observations went with them. The
-  // pending timers go too, or one fires against a card the filter just removed.
-  observer.disconnect();
-  for (const t of timers.values()) clearTimeout(t);
-  timers.clear();
-  document.querySelectorAll('.card').forEach((c) => observer.observe(c));
 }
 
 const jsonl = async (path) => {
@@ -478,16 +466,15 @@ async function main() {
     const id = cardEl.dataset.id;
     const isSave = btn.classList.contains('save');
     const on = !(LABELS[id] || {})[isSave ? 'saved' : 'passed'];
-    // The two contradict each other, so turning one on clears the other. Either
-    // implies having seen it, even if the observer has not fired yet.
-    mark(id, { seen: true, saved: isSave ? on : false, passed: isSave ? false : on });
+    // The two contradict each other, so turning one on clears the other.
+    mark(id, { saved: isSave ? on : false, passed: isSave ? false : on });
     paint(cardEl);
   });
 
   // The toggle event does not bubble, so it has to be captured.
   $('list').addEventListener('toggle', (e) => {
     if (e.target.tagName !== 'DETAILS' || !e.target.open) return;
-    mark(e.target.closest('.card').dataset.id, { opened: true, seen: true });
+    mark(e.target.closest('.card').dataset.id, { opened: true });
   }, true);
 
   $('save').addEventListener('click', saveLabels);

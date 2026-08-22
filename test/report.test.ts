@@ -73,19 +73,28 @@ describe('renderDashboard filtering', () => {
 describe('renderDashboard — grading', () => {
   const html = renderDashboard();
 
-  // The bottom half of the screen is where a card waits its turn, not where it
-  // gets read, so a card only counts once it has risen above the midline.
-  it('puts the reading line at the middle of the viewport', () => {
-    expect(html).toContain("rootMargin: '0px 0px -50% 0px'");
-    // A card taller than half the viewport can never clear a fractional
-    // threshold against a root that short, so the longest ones would never count.
-    expect(html).not.toMatch(/threshold: 0\.\d/);
+  // Scrolling is not evidence: it cannot tell "read it and moved on" from "eyes
+  // glazed over it". Every grade is now a click, so the machinery that turned a
+  // scroll into a 0 is gone rather than merely unused.
+  it('infers nothing from scrolling', () => {
+    expect(html).not.toContain('IntersectionObserver');
+    expect(html).not.toContain('rootMargin');
+    expect(html).not.toMatch(/#list:not\(:empty\)::after/);
+    expect(html).not.toMatch(/\bseen\b\s*:/);
   });
 
-  // Without room below the list the last cards can never reach the midline, so
-  // the tail of every issue would go permanently unmarked.
-  it('leaves room below the list for the last cards to scroll past the line', () => {
-    expect(html).toMatch(/#list:not\(:empty\)::after \{[^}]*height: 50vh/s);
+  // A company nobody clicked is absent, never a 0 — filling those in would teach
+  // an eval that whatever the ranker buried deserved burying.
+  it('exports only companies that were actually judged', () => {
+    expect(html).toContain('const isLabelled = (l) => !!(l.saved || l.passed || l.opened);');
+    expect(html).toContain('.filter(([, l]) => isLabelled(l))');
+  });
+
+  // A later filter or search moves the row, so the position is fixed on the
+  // first label rather than recomputed.
+  it('records rank on the click that labels the company', () => {
+    expect(html).toContain('const rank = prev.rank ?? rankOf(id);');
+    expect(html).toMatch(/const rankOf = \(id\) => \{/);
   });
 
   // Opening the details implies a 1, which overstates a read that ended in a no.
@@ -97,14 +106,9 @@ describe('renderDashboard — grading', () => {
   // Both on at once would export a grade that contradicts the other button.
   it('makes save and "not interested" clear each other', () => {
     expect(html).toContain(
-      'mark(id, { seen: true, saved: isSave ? on : false, passed: isSave ? false : on });');
+      'mark(id, { saved: isSave ? on : false, passed: isSave ? false : on });');
   });
 
-  // A stale timer marked a filtered-out card seen, with the rank of whatever
-  // row had taken its place.
-  it('cancels pending seen-timers when the list is re-rendered', () => {
-    expect(html).toContain('for (const t of timers.values()) clearTimeout(t);');
-  });
 });
 
 describe('renderDashboard — card layout', () => {
@@ -130,19 +134,19 @@ describe('renderDashboard — card layout', () => {
   // The search input is flex:1, so a counter that grows steals its space and
   // shifts the whole row.
   it('reserves room for the grading counter so the control bar cannot reflow', () => {
-    expect(html).toMatch(/#graded \{[^}]*min-width: 13\.5rem/s);
+    expect(html).toMatch(/#graded \{[^}]*min-width: 17\.5rem/s);
     expect(html).toMatch(/#graded \{[^}]*tabular-nums/s);
     expect(html).toMatch(/\.count \{[^}]*tabular-nums/s);
   });
 
   it('renders the counter at zero rather than appearing later', () => {
-    expect(html).toContain("$('graded').textContent = grades.length + ' seen · '");
+    expect(html).toContain("n(0) + ' not interested · ' + n(1) + ' opened · ' + n(2) + ' saved'");
   });
 
   // Pinned to the right edge these read as a footnote, which is the wrong weight
   // for the first facts about a company.
   it('puts funding, date and location on one left-aligned line, not a right rail', () => {
-    expect(html).toContain("const meta = [r.amountLabel, r.date, r.location].filter(Boolean)");
+    expect(html).toContain("const facts = [r.amountLabel, r.date, r.location].filter(Boolean)");
     expect(html).not.toMatch(/\.meta \{[^}]*margin-left: auto/s);
     expect(html).not.toMatch(/\.meta \{[^}]*text-align: right/s);
     expect(html).not.toContain('<span class="tag">\' + esc(r.location)');
@@ -184,6 +188,17 @@ describe('renderDashboard — card layout', () => {
     // The warning is deliberately not promoted — it negates everything above it.
     expect(html).toMatch(/const tags = \[\];\s*if \(!r\.operating\)/);
     expect(html.slice(html.indexOf('const headTags ='), html.indexOf('const tags = ['))).not.toContain('operating');
+  });
+
+  // Filing links are provenance nobody clicks through to, and they are the bulk
+  // of them; the ones that say what the company is belong next to the facts.
+  it('lifts every link except the SEC filings up beside the facts', () => {
+    expect(html).toContain('const isFiling = (l) => /^sec\\b/i.test(l.label);');
+    expect(html).toContain('r.links.filter((l) => !isFiling(l))');
+    expect(html).toContain("sourceLinks.filter((x) => !x.edgar)");
+    // Details keeps the filings and the EDGAR source, and nothing else.
+    expect(html).toContain('const links = [...r.links.filter(isFiling), ...sourceLinks.filter((x) => x.edgar)]');
+    expect(html).toContain("const meta = (facts ? '<span class=\"facts\">' + facts + '</span>' : '') + headLinks;");
   });
 
   it('puts "not interested" beside save in the head, not in Details', () => {

@@ -27,13 +27,11 @@ Tell them three things and then **stop and wait**:
 1. **Pick the issue** with the Issue dropdown. Each run is one day; the dashboard
    shows one at a time. "Min fit" already defaults to `any`, and every company in
    the run is rendered, so no filtering is needed to see everything.
-2. **Grading is mostly automatic.** Scrolling a card up past the middle of the
-   screen marks it *seen* (grade 0, ignored) — the bottom of the screen does not
-   count, since that is where a card waits its turn rather than where it is read.
-   Expanding **Details** marks it *opened* (grade 1). The only clicks are
-   ★ **save** (grade 2) and **not interested** at the foot of the Details panel,
-   which puts a card they read and rejected back to 0. So a normal read-through
-   produces labels without grading every company by hand.
+2. **Every grade is a click.** **not interested** is grade 0, expanding
+   **Details** is *opened* (grade 1), ★ **save** is grade 2. Scrolling past
+   records nothing at all, so companies they skimmed and never judged are
+   absent from the export rather than zeros. That means a read-through with no
+   clicking produces no labels — say so if they expect otherwise.
 3. **Press "Save grades" when done**, which writes `labels.json` — to a location
    they choose in Chrome, or to `~/Downloads` elsewhere.
 
@@ -54,7 +52,8 @@ loses nothing. They can review across several sittings and export once.
 
 3. **Sanity-check before writing.** Three things that mean the export is wrong:
    - Any `companyId` absent from that run's `data/runs/<date>.jsonl` — a stale tab.
-   - Every grade `0` — usually a fast scroll to the bottom, not real judgement.
+   - Every grade `0` — possible, but check it was not a run of misclicks; a 0
+     now costs a deliberate press.
    - Fewer than ~20 labels — say so; it is not enough to compute anything
      stable, though it is fine to bank it and continue later.
 
@@ -67,9 +66,16 @@ loses nothing. They can review across several sittings and export once.
 
 ## What the grades mean, and how they can lie
 
-`0 = ignored · 1 = opened · 2 = saved`. There is no 3; the user almost never
-reaches out to a founder, so a fourth level would be permanently empty. If that
-ever changes, add it — existing labels stay valid.
+`0 = not interested · 1 = opened · 2 = saved`. There is no 3; the user almost
+never reaches out to a founder, so a fourth level would be permanently empty. If
+that ever changes, add it — existing labels stay valid.
+
+A `0` is a press of **not interested**, never an inference from scrolling. The
+dashboard used to mark a card *seen* once it had been on screen long enough and
+export that as a 0; it no longer does, because "on screen" could not tell a read
+from a skim. Labels recorded before that change (the 2026-08-17 batch) contain
+both kinds — 12 of its 26 zeros were deliberate, 14 were scroll marks — and
+there is no field distinguishing them.
 
 Two biases to preserve rather than paper over, both load-bearing for any eval
 built on these labels:
@@ -79,13 +85,14 @@ built on these labels:
   every eval would conclude that whatever the ranker buried deserved burying —
   a bias that is invisible and self-confirming. Never fill missing rows with 0
   when merging.
-- **`rank` records where on screen the company was when it was seen.** Attention
-  decays down a long list, so a `0` near the bottom is much weaker evidence than a
-  `0` at the top. Keep the field; an eval can truncate on it.
-
-A `0` reached through **not interested** is a read verdict, not inattention, and
-is the strongest 0 in the file — but the export does not distinguish it, so an
-eval cannot weight it. Add a field before relying on that difference.
+- **`rank` records the row's position on screen when it was judged**, counted
+  down the list as filtered at that moment. It is recorded on the click, so it
+  is the position the company actually held when the call was made. Its main use
+  now is bounding how deep a session reached: with passive marks gone, an absent
+  company may have been skimmed or never reached, and the deepest `rank` is the
+  only handle on which. Note it is derivable from the run shard *only* if you
+  know which filters were on — for the 2026-08-17 batch all 35 ranks reproduce
+  from a default-filter sort, and only 26 do without the filter.
 
 ## If the export gets fiddly
 
