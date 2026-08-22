@@ -68,7 +68,9 @@
     min-width: 2.2rem; color: var(--accent);
   }
   .name { font-weight: 650; font-size: 1.05rem; }
-  .meta { color: var(--muted); font-size: .85rem; margin-left: auto; text-align: right; }
+  /* Its own left-aligned line under the head. Pinned to the right edge it read
+     as a footnote, which is the wrong weight for the first facts about a company. */
+  .meta { color: var(--muted); font-size: .85rem; margin-top: .3rem; }
   .what { margin: .5rem 0 0; }
   .tags { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .6rem; }
   .tag {
@@ -81,7 +83,7 @@
   summary { cursor: pointer; color: var(--muted); font-size: .85rem; }
   summary:hover { color: var(--text); }
   .detail { padding-top: .6rem; font-size: .92rem; }
-  .detail h4 { margin: .8rem 0 .25rem; font-size: .8rem; text-transform: uppercase;
+  .card h4 { margin: .8rem 0 .25rem; font-size: .8rem; text-transform: uppercase;
     letter-spacing: .05em; color: var(--muted); font-weight: 600; }
   .detail ul { margin: .2rem 0; padding-left: 1.1rem; }
   a { color: var(--accent); }
@@ -98,29 +100,25 @@
   /* Grading. "seen" comes from the scroll observer and "opened" from the
      <details> toggle, so a normal read-through produces labels without grading
      every company by hand. The only clicks are save and "not interested". */
-  .save {
-    font: inherit; font-size: .78rem; cursor: pointer; margin-left: .5rem;
+  .save, .pass {
+    font: inherit; font-size: .78rem; cursor: pointer;
     padding: .1rem .45rem; border-radius: 20px; background: transparent;
     border: 1px solid var(--line); color: var(--muted);
   }
+  /* Only the first pill clears the name; the head's gap spaces the pair, so they
+     read as one control rather than two unrelated buttons. */
+  .save { margin-left: .5rem; }
   /* The word stays "save" in both states and only the star fills in, so the
      pill never changes width and needs no min-width padding it out. The star
      gets a fixed box because ☆ and ★ are not always the same advance width. */
-  .save .star { display: inline-block; width: 1em; text-align: center; }
-  .save:hover { color: var(--text); }
+  .save .star, .pass .mark { display: inline-block; width: 1em; text-align: center; }
+  .save:hover, .pass:hover { color: var(--text); }
   /* No weight change: bolding "save" made the pill 1px wider when pressed. The
      filled star and the green already carry the state. */
   .save[aria-pressed=true] { color: var(--good); border-color: currentColor; }
-  /* "not interested" closes the details panel's argument: a 0 from someone who
-     read the card, which the observer cannot tell from a 0 that never looked.
-     Neutral rather than red — it is a verdict about fit, not about the company. */
-  .pass {
-    font: inherit; font-size: .78rem; cursor: pointer; margin-top: .9rem;
-    padding: .1rem .45rem; border-radius: 20px; background: transparent;
-    border: 1px solid var(--line); color: var(--muted);
-  }
-  .pass .mark { display: inline-block; width: 1em; text-align: center; }
-  .pass:hover { color: var(--text); }
+  /* "not interested" is a 0 from someone who read the card, which the observer
+     cannot tell from a 0 that never looked. Neutral rather than red — it is a
+     verdict about fit, not about the company. */
   .pass[aria-pressed=true] { color: var(--text); border-color: currentColor; }
   #save { font: inherit; font-size: .85rem; padding: .4rem .7rem; border-radius: 7px;
     border: 1px solid var(--line); background: var(--bg); color: var(--text); cursor: pointer; }
@@ -325,20 +323,21 @@ function card(r) {
 
   const detail = list(r.roles, 'Open roles') + list(r.green, 'Reasons to look closer') +
     list(r.red, 'Reasons for caution') + list(r.people, 'On the SEC filing') +
-    (r.rationale ? '<h4>Why this score</h4><p>' + esc(r.rationale) + '</p>' : '') +
-    (r.summary && r.summary !== r.what ? '<h4>Summary</h4><p>' + esc(r.summary) + '</p>' : '') +
     (links ? '<h4>Links</h4><p>' + links + '</p>' : '');
+
+  // What the company is and why it scored what it did are the two things the
+  // card exists to answer, so they are not worth a click to reach. Summary
+  // first: it says what this is before the score argues about it.
+  const always =
+    (r.summary && r.summary !== r.what ? '<h4>Summary</h4><p>' + esc(r.summary) + '</p>' : '') +
+    (r.rationale ? '<h4>Why this score</h4><p>' + esc(r.rationale) + '</p>' : '');
+
+  // One line, not two right-aligned ones — see .meta.
+  const meta = [r.amountLabel, r.date, r.location].filter(Boolean).map(esc).join(' · ');
 
   const l = LABELS[r.id] || {};
   const saved = l.saved === true;
   const passed = l.passed === true;
-
-  // Only a card with a details panel gets the button, which is the right place
-  // for it: with nothing to read, scrolling past is already the honest signal.
-  const detailBody = detail
-    ? detail + '<button class="pass" type="button" aria-pressed="' + passed + '">' +
-      '<span class="mark">' + (passed ? '●' : '○') + '</span> not interested</button>'
-    : '';
 
   return '<div class="card' + (r.score >= 85 ? ' hot' : '') + (saved ? ' saved' : '') +
     (passed ? ' passed' : '') + (r.operating ? '' : ' dim') + '" data-id="' + esc(r.id) + '">' +
@@ -346,11 +345,14 @@ function card(r) {
     '<span class="name">' + esc(r.name) + '</span>' +
     '<button class="save" type="button" aria-pressed="' + saved + '">' +
       '<span class="star">' + (saved ? '★' : '☆') + '</span> save</button>' +
-    '<span class="meta">' + esc(r.amountLabel) + (r.date ? ' · ' + esc(r.date) : '') +
-      (r.location ? '<br>' + esc(r.location) : '') + '</span></div>' +
+    '<button class="pass" type="button" aria-pressed="' + passed + '">' +
+      '<span class="mark">' + (passed ? '●' : '○') + '</span> not interested</button>' +
+    '</div>' +
+    (meta ? '<div class="meta">' + meta + '</div>' : '') +
     (r.what ? '<p class="what">' + esc(r.what) + '</p>' : '') +
     (tags.length ? '<div class="tags">' + tags.join('') + '</div>' : '') +
-    (detailBody ? '<details><summary>Details</summary><div class="detail">' + detailBody + '</div></details>' : '') +
+    always +
+    (detail ? '<details><summary>Details</summary><div class="detail">' + detail + '</div></details>' : '') +
     '</div>';
 }
 
@@ -361,10 +363,8 @@ function paint(cardEl) {
   saveBtn.setAttribute('aria-pressed', String(!!l.saved));
   saveBtn.querySelector('.star').textContent = l.saved ? '★' : '☆';
   const passBtn = cardEl.querySelector('.pass');
-  if (passBtn) {
-    passBtn.setAttribute('aria-pressed', String(!!l.passed));
-    passBtn.querySelector('.mark').textContent = l.passed ? '●' : '○';
-  }
+  passBtn.setAttribute('aria-pressed', String(!!l.passed));
+  passBtn.querySelector('.mark').textContent = l.passed ? '●' : '○';
   cardEl.classList.toggle('saved', !!l.saved);
   cardEl.classList.toggle('passed', !!l.passed);
 }
