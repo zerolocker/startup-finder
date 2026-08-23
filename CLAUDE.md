@@ -158,6 +158,19 @@ behavior, update the doc that describes it **in the same change**:
 Prefer measuring over asserting. Several claims in these docs are numbers from real
 runs, and they earn their place because a future session can re-derive them.
 
+## Replying to the user
+
+**The user does not read the code.** They work this repo as a product manager,
+not an engineer, so a reply that names functions, files, variables, or
+code-only concepts is unreadable to them.
+
+Write findings in terms of behaviour and consequence: what the app does, what it
+should do, what it costs, what they have to decide. Keep it short. Lead with the
+decision they need to make. Depth belongs in the PR, not the chat.
+
+This is about replies, not about the code — comments, docs, and commit messages
+still get the full technical detail.
+
 ## Conventions
 
 - TypeScript, strict, ESM, `.ts` extensions in imports (tsx runs sources directly;
