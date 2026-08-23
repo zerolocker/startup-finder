@@ -80,7 +80,14 @@ everything ever seen.
    that fetches one shard at load time. Inlining data made every run commit a
    second copy of records already on disk, and put text from SEC filings — which
    anyone can craft — inside a `<script>` block.
-6. **Never run `claude` from the repo root.** It reads `CLAUDE.md` from its working
+6. **A shard's date is the day it covers.** The filing window is anchored to
+   that date, never to the clock. Catching up is a loop over outstanding days,
+   one shard each — not a widened window; an earlier design derived the width
+   from the newest filing on disk and was replaced by the loop when runs became
+   per-day. Both halves have to agree: while the window still anchored to the
+   clock, the catch-up run of 2026-08-14 wrote 2026-08-13's filings into the
+   2026-08-12 shard as well, and that day's own 47 filings were never fetched.
+7. **Never run `claude` from the repo root.** It reads `CLAUDE.md` from its working
    directory, which would inject this project's instructions into every research
    prompt. `src/llm/claude.ts` runs it from an empty temp dir.
 

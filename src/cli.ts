@@ -118,7 +118,9 @@ async function writeShard(date: string, companies: readonly RunCompany[]): Promi
 
 /** Fetch a day and write its shard, with every company still unassessed. */
 async function stageIngest(days: number, date: string): Promise<RunCompany[]> {
-  const [edgar, news] = await Promise.all([ingestEdgar({ days }), ingestNews()]);
+  // `date` anchors the filing window: a shard is one day, and a catch-up run
+  // covers several, so without it every covered day gets yesterday's filings.
+  const [edgar, news] = await Promise.all([ingestEdgar({ days, endDate: date }), ingestNews()]);
   log.info(`Filings kept: ${edgar.filings.length}. Dropped: ${JSON.stringify(edgar.stats.dropped)}`);
 
   const { companies, stats } = mergeSources(edgar.filings, news.items);
