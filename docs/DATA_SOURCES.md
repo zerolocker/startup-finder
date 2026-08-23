@@ -68,19 +68,26 @@ This list matters more than the one above:
 - Form **D/A** amendments are follow-on closes on an existing round; we ingest them
   and merge them into the same company.
 
-### The lookback window
+### The filing window
 
-Ingestion walks one daily index per day, backwards from today. With `--days`
-omitted the window is derived from the newest `filedDate` already in
-`data/filings.jsonl` (plus 2 days of overlap, floored at 7, capped at 90), so
-consecutive runs never leave a hole. `autoLookbackDays()` in `edgar.ts` is the
-pure function that decides, and it is unit-tested.
+A shard is one day, and ingestion scans that day's daily index — the window is
+anchored to the shard's date, not to the clock. `--days` widens it backwards
+from that date; the default of 1 is what makes a shard mean one day.
 
-The overlap matters: a day whose filings were all filtered out as funds leaves
-no trace in `filings.jsonl`, so without it that day would look "already
-covered". The cap matters because cost is linear — ~160 filings per day of
-window, throttled to ~8/s. A clamped run logs a warning naming the exact number
-of uncovered days and the command to backfill them; it never skips silently.
+Catching up is therefore a loop over outstanding days, one shard each, rather
+than one widened window. An earlier design instead derived the width from the
+newest filing on disk; it was superseded when runs became per-day, and removed
+once the loop covered the same ground.
+
+Both halves have to agree, and for a while they did not: the window still
+anchored to the clock, so the catch-up run of 2026-08-14 gave 2026-08-13's
+filings to the 2026-08-12 shard as well. That day's own 47 filings were never
+fetched, and the duplicate research was almost free because the LLM cache
+absorbed it — which is why nothing in the cost signal revealed it.
+
+Daily indexes stay available indefinitely, so a past day can always be
+re-fetched. News cannot: RSS carries only recent items, so a gap permanently
+loses the press side for that period.
 
 ### Filtering heuristics, and their bias
 

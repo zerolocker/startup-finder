@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  autoLookbackDays,
+  indexDatesEnding,
   indexDatesFor,
   isLikelyOperatingStartup,
   parseFormD,
@@ -262,84 +262,36 @@ describe('indexDatesFor', () => {
   it('returns nothing for a zero-day window', () => {
     expect(indexDatesFor(0, NOW)).toEqual([]);
   });
-
-  // The two halves of the lookback have to agree: autoLookbackDays picks the
-  // width, indexDatesFor places it. If the window ends yesterday but the width
-  // is still computed from today, a day silently falls through the gap.
-  it('covers every day since the last filing on disk, for any gap', () => {
-    for (const gap of [1, 2, 3, 7, 30, 60]) {
-      const now = new Date('2026-08-12T04:51:00Z');
-      const latest = new Date(now);
-      latest.setUTCDate(latest.getUTCDate() - gap);
-      const latestYmd = ymd(latest);
-
-      const { days } = autoLookbackDays(latestYmd, now);
-      const covered = new Set(indexDatesFor(days, now).map(ymd));
-
-      // Every day after the newest filing, up to and including yesterday.
-      for (let i = 1; i < gap; i++) {
-        const d = new Date(latest);
-        d.setUTCDate(d.getUTCDate() + i);
-        expect(covered, `gap ${gap} should cover ${ymd(d)}`).toContain(ymd(d));
-      }
-    }
-  });
 });
 
-describe('autoLookbackDays', () => {
-  const NOW = new Date('2026-08-09T12:00:00Z');
+describe('indexDatesEnding', () => {
+  const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
-  it('uses the default window on a first run', () => {
-    const d = autoLookbackDays(null, NOW);
-    expect(d.days).toBe(7);
-    expect(d.clamped).toBe(false);
-    expect(d.reason).toMatch(/no prior filings/);
+  it('scans the day it is given, not the day it is run', () => {
+    expect(indexDatesEnding(1, new Date('2026-08-12T00:00:00Z')).map(ymd)).toEqual(['2026-08-12']);
   });
 
-  it('closes a gap that fits under the cap', () => {
-    // The bug this fixes: a fixed 7-day window silently skipped everything
-    // between runs.
-    const d = autoLookbackDays('2026-07-10', NOW); // 30 days earlier
-    expect(d.days).toBe(32); // 30 elapsed + 2 overlap
-    expect(d.clamped).toBe(false);
-    expect(d.uncoveredDays).toBe(0);
+  it('walks back from the given day, newest first', () => {
+    expect(indexDatesEnding(3, new Date('2026-09-01T00:00:00Z')).map(ymd)).toEqual([
+      '2026-09-01',
+      '2026-08-31',
+      '2026-08-30',
+    ]);
   });
 
-  it('clamps a 100-day gap and says exactly how much it is leaving out', () => {
-    // Run on day 1, again on day 100: the auto window covers 90 days and the
-    // remaining 12 are reported, never silently dropped.
-    const d = autoLookbackDays('2026-05-01', NOW); // 100 days earlier
-    expect(d.days).toBe(90);
-    expect(d.clamped).toBe(true);
-    expect(d.uncoveredDays).toBe(12); // 100 + 2 overlap - 90
+  // The 2026-08-14 run covered two outstanding days and gave both of them
+  // 2026-08-13's filings, so the 2026-08-12 shard is a copy of the 2026-08-13
+  // one — 51 identical companies, including a Form D filed on the 13th.
+  it('gives two covered days two different windows', () => {
+    const covered = ['2026-08-13', '2026-08-12'];
+    const scanned = covered.map((d) => indexDatesEnding(1, new Date(`${d}T00:00:00Z`)).map(ymd));
+    expect(scanned).toEqual([['2026-08-13'], ['2026-08-12']]);
   });
 
-  it('keeps a small overlap so a fully-filtered day is not treated as covered', () => {
-    const d = autoLookbackDays('2026-08-08', NOW); // yesterday
-    // 1 day elapsed + 2 overlap = 3, but never below the 7-day floor.
-    expect(d.days).toBe(7);
-  });
-
-  it('never goes below the default window', () => {
-    expect(autoLookbackDays('2026-08-09', NOW).days).toBe(7);
-  });
-
-  it('clamps an enormous gap and reports what it is leaving out', () => {
-    const d = autoLookbackDays('2024-01-01', NOW); // ~1.6 years
-    expect(d.days).toBe(90);
-    expect(d.clamped).toBe(true);
-    expect(d.uncoveredDays).toBeGreaterThan(400);
-    expect(d.reason).toMatch(/capped at 90/);
-  });
-
-  it('treats an unparseable date as no prior data rather than crashing', () => {
-    const d = autoLookbackDays('not-a-date', NOW);
-    expect(d.days).toBe(7);
-    expect(d.clamped).toBe(false);
-  });
-
-  it('respects a future filedDate without producing a negative window', () => {
-    const d = autoLookbackDays('2026-09-01', NOW);
-    expect(d.days).toBeGreaterThanOrEqual(7);
+  it('agrees with the clock-anchored window when that window ends yesterday', () => {
+    const now = new Date('2026-08-11T04:51:00Z');
+    expect(indexDatesFor(4, now).map(ymd)).toEqual(
+      indexDatesEnding(4, new Date('2026-08-10T00:00:00Z')).map(ymd),
+    );
   });
 });

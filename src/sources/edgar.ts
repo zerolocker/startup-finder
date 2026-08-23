@@ -313,85 +313,18 @@ export function parseFormD(xml: string, ctx: { cik: string; filedDate: string; a
 // Public entry point
 // ---------------------------------------------------------------------------
 
-/**
- * Hard ceiling on an automatic lookback. One HTTP request per filing, throttled
- * to ~8/s for the SEC, means ~160 filings/day of window — 90 days is already
- * ~30 minutes. Beyond that the user should decide deliberately.
- */
-export const MAX_AUTO_LOOKBACK_DAYS = 90;
-
-export interface LookbackDecision {
-  days: number;
-  /** Human-readable explanation, logged so coverage is never a mystery. */
-  reason: string;
-  /** True when the gap was larger than we are willing to fetch automatically. */
-  clamped: boolean;
-  /** Days of history that will NOT be fetched because of the clamp. */
-  uncoveredDays: number;
-}
-
-/**
- * Choose the lookback window when the user did not pass `--days`.
- *
- * The window used to be a fixed N days back from *today*, which silently lost
- * everything between runs: run on day 1 and again on day 100 with the default
- * of 7, and days 2-93 were never fetched. For a tool meant to run like a
- * newsletter that is a real defect, and exactly the kind of loss the user
- * cannot detect from the output.
- *
- * So we derive the window from the newest filing already on disk. `filedDate`
- * is the day a filing appeared in EDGAR, so the newest one marks the last day
- * we successfully read an index — self-healing, and it needs no extra state
- * file that could drift from reality.
- *
- * @param latestFiledDate newest `filedDate` in data/filings.jsonl, or null on a
- *   first run.
- */
-export function autoLookbackDays(
-  latestFiledDate: string | null,
-  now: Date = new Date(),
-  opts: { defaultDays?: number; overlapDays?: number; maxDays?: number } = {},
-): LookbackDecision {
-  const { defaultDays = 7, overlapDays = 2, maxDays = MAX_AUTO_LOOKBACK_DAYS } = opts;
-
-  const parsed = latestFiledDate ? Date.parse(`${latestFiledDate}T00:00:00Z`) : NaN;
-  if (!Number.isFinite(parsed)) {
-    return {
-      days: defaultDays,
-      reason: `no prior filings on disk — using the default ${defaultDays}-day window`,
-      clamped: false,
-      uncoveredDays: 0,
-    };
-  }
-
-  const elapsed = Math.floor((now.getTime() - parsed) / (24 * 60 * 60 * 1000));
-  // A couple of days of overlap: a day whose filings were all filtered out as
-  // funds leaves no trace in filings.jsonl and would otherwise look "covered".
-  const needed = Math.max(defaultDays, elapsed + overlapDays);
-
-  if (needed > maxDays) {
-    return {
-      days: maxDays,
-      reason: `last filing was ${elapsed} days ago; capped at ${maxDays} days`,
-      clamped: true,
-      uncoveredDays: needed - maxDays,
-    };
-  }
-
-  return {
-    days: needed,
-    reason:
-      elapsed <= 0
-        ? `already current — using a ${needed}-day window`
-        : `last filing was ${elapsed} days ago — widening the window to ${needed} days to close the gap`,
-    clamped: false,
-    uncoveredDays: 0,
-  };
-}
-
 export interface EdgarIngestOptions {
-  /** How many days back from today to scan. */
+  /** How many days back from `endDate` to scan. */
   days: number;
+  /**
+   * Newest index day to scan, `YYYY-MM-DD`. Defaults to yesterday.
+   *
+   * A shard is one day, so a run backfilling day D must pass D. Without it the
+   * window anchored to the clock instead, and a catch-up run wrote *yesterday's*
+   * filings into every day it covered — see the 2026-08-12 shard, which is a
+   * copy of 2026-08-13.
+   */
+  endDate?: string;
   /** Parallel primary_doc.xml fetches. Keep low — the SEC throttles hard. */
   concurrency?: number;
   /** Include Form D/A amendments (follow-on closes) as well as new Form Ds. */
@@ -422,9 +355,16 @@ export interface EdgarIngestResult {
  * tolerating a missing day rather than treating it as an error.
  */
 export function indexDatesFor(days: number, now: Date = new Date()): Date[] {
+  const end = new Date(now);
+  end.setUTCDate(end.getUTCDate() - 1);
+  return indexDatesEnding(days, end);
+}
+
+/** The same window, anchored to an explicit newest day rather than the clock. */
+export function indexDatesEnding(days: number, endDate: Date): Date[] {
   const dates: Date[] = [];
-  for (let i = 1; i <= days; i++) {
-    const date = new Date(now);
+  for (let i = 0; i < days; i++) {
+    const date = new Date(endDate);
     date.setUTCDate(date.getUTCDate() - i);
     dates.push(date);
   }
@@ -440,10 +380,10 @@ const ymd = (d: Date): string => d.toISOString().slice(0, 10);
  * rather than treated as an error.
  */
 export async function ingestEdgar(opts: EdgarIngestOptions): Promise<EdgarIngestResult> {
-  const { days, concurrency = 4, includeAmendments = true } = opts;
+  const { days, endDate, concurrency = 4, includeAmendments = true } = opts;
   const formTypes = includeAmendments ? ['D', 'D/A'] : ['D'];
 
-  const dates = indexDatesFor(days);
+  const dates = endDate ? indexDatesEnding(days, new Date(`${endDate}T00:00:00Z`)) : indexDatesFor(days);
   const refs: FilingRef[] = [];
   const missing: string[] = [];
   for (const date of dates) {
