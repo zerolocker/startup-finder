@@ -193,11 +193,37 @@ export class PlanLimitError extends Error {
 }
 
 /**
+ * An expired CLI login, which produces the same zero-token envelope as a usage
+ * limit. Subclasses PlanLimitError so the run still stops instead of burning
+ * the queue into failures — but waiting does not fix it, so the message must
+ * not tell the user their window will reopen. Six days of runs reported
+ * "usage limit" and found nothing before this was separated out.
+ */
+export class AuthExpiredError extends PlanLimitError {
+  constructor(detail?: string) {
+    super();
+    this.message =
+      `Claude CLI login expired${detail ? `: ${detail}` : ''}. ` +
+      'This is not a usage limit and will not clear on its own — run `claude login` to fix it. ' +
+      'Companies stay unassessed until then.';
+    this.name = 'AuthExpiredError';
+  }
+}
+
+/**
  * Detect the refusal signature: an error envelope reporting zero API time and
  * zero tokens in every bucket. A genuine model failure consumes tokens; this
  * never left the machine.
+ *
+ * Two different causes share that signature — a spent usage window and an
+ * expired login — so the text decides which one is reported.
  */
-function planLimitError(stdout: string): PlanLimitError | null {
+/** The CLI's wording when OAuth is gone, not when the plan is spent. */
+function isAuthFailure(detail: string | undefined): boolean {
+  return /authenticat|oauth|session expired|log ?in|credential/i.test(detail ?? '');
+}
+
+export function classifyRefusal(stdout: string): PlanLimitError | null {
   try {
     const e = JSON.parse(stdout) as {
       is_error?: boolean;
@@ -209,7 +235,7 @@ function planLimitError(stdout: string): PlanLimitError | null {
     const noTokens = !u.input_tokens && !u.output_tokens && !u.cache_read_input_tokens;
     if (e.is_error && e.duration_api_ms === 0 && noTokens) {
       const detail = typeof e.result === 'string' ? e.result.trim().slice(0, 300) : undefined;
-      return new PlanLimitError(detail);
+      return isAuthFailure(detail) ? new AuthExpiredError(detail) : new PlanLimitError(detail);
     }
   } catch {
     // Not JSON, so not this failure mode.
@@ -264,7 +290,7 @@ async function invoke(
         } catch {
           // Not JSON; nothing to account for.
         }
-        reject(planLimitError(stdout) ?? new Error(`claude exited ${code}: ${stderr.slice(0, 500) || stdout.slice(0, 500)}`));
+        reject(classifyRefusal(stdout) ?? new Error(`claude exited ${code}: ${stderr.slice(0, 500) || stdout.slice(0, 500)}`));
         return;
       }
       try {
