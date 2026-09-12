@@ -160,11 +160,11 @@ async function stageResearch(
   limit: number | undefined,
   model: 'haiku' | 'sonnet' | 'opus',
   refresh = false,
-): Promise<{ companies: RunCompany[]; planLimited: boolean }> {
+): Promise<{ companies: RunCompany[]; planLimited: boolean; authExpired: boolean }> {
   const shard = await readShard(date);
   if (shard.length === 0) {
     log.warn(`No shard for ${date} — run \`pnpm sf ingest\` first.`);
-    return { companies: [], planLimited: false };
+    return { companies: [], planLimited: false, authExpired: false };
   }
 
   // --refresh re-scores companies that already have an assessment, which is the
@@ -181,16 +181,16 @@ async function stageResearch(
   }
   if (targets.length === 0) {
     log.info(`All ${shard.length} companies in the ${date} run are already assessed. Use --refresh to re-score.`);
-    return { companies: shard, planLimited: false };
+    return { companies: shard, planLimited: false, authExpired: false };
   }
 
   const profile = await loadProfile();
-  const { companies: assessed, planLimited } = await researchCompanies(targets, profile, { model });
+  const { companies: assessed, planLimited, authExpired } = await researchCompanies(targets, profile, { model });
 
   const byId = new Map(assessed.map((c) => [c.id, c]));
   const merged = shard.map((c) => byId.get(c.id) ?? c);
   await writeShard(date, merged);
-  return { companies: merged, planLimited };
+  return { companies: merged, planLimited, authExpired };
 }
 
 /**
@@ -344,6 +344,7 @@ async function cmdRun(opts: {
 
   const covered: RunIndexEntry[] = [];
   let stoppedEarly = false;
+  let stoppedForAuth = false;
   // Unbounded by default: the rate limit is the stop condition.
   let budget = opts.limit ?? Infinity;
 
@@ -355,14 +356,15 @@ async function cmdRun(opts: {
     if ((await readShard(date)).length === 0) await stageIngest(1, date);
 
     const before = (await readShard(date)).filter((c) => c.assessment).length;
-    const { planLimited } = await stageResearch(date, Number.isFinite(budget) ? budget : undefined, opts.model);
+    const { planLimited, authExpired } = await stageResearch(date, Number.isFinite(budget) ? budget : undefined, opts.model);
+    if (authExpired) stoppedForAuth = true;
 
     const entry = await stageReport(date, spentUsd(), 1);
     const didThisDay = entry.assessed - before;
     budget -= didThisDay;
     log.info(
       `Day ${date}: researched ${didThisDay} this run, ${entry.assessed}/${entry.companies} assessed overall, ` +
-        `$${spentUsd().toFixed(2)} spent so far${planLimited ? ' — PLAN LIMIT REACHED' : ''}`,
+        `$${spentUsd().toFixed(2)} spent so far${planLimited ? (authExpired ? ' — LOGIN EXPIRED' : ' — PLAN LIMIT REACHED') : ''}`,
     );
 
     covered.push(entry);
@@ -383,7 +385,13 @@ async function cmdRun(opts: {
 
   log.info(
     `RUN SUMMARY ${JSON.stringify({
-      outcome: stoppedEarly ? 'stopped-at-plan-limit' : missing > 0 ? 'stopped-at-limit-flag' : 'complete',
+      outcome: stoppedForAuth
+        ? 'stopped-login-expired'
+        : stoppedEarly
+          ? 'stopped-at-plan-limit'
+          : missing > 0
+            ? 'stopped-at-limit-flag'
+            : 'complete',
       seconds: Math.round((Date.now() - started) / 1000),
       costUsd: Number(spentUsd().toFixed(2)),
       daysCovered: covered.map((e) => e.date),
@@ -406,11 +414,20 @@ async function cmdRun(opts: {
             '',
             `  Outstanding: ${missing} companies in the issues above` +
               (daysLeft > 0 ? `, and ${daysLeft} further day(s) not started` : '') + '.',
-            stoppedEarly
-              ? '  Your usage window is spent — that is the intended stopping point.'
-              : '  Stopped by --limit.',
-            '  The next run picks all of it up. Windows reset every 5 hours, so a',
-            '  second routine more than 5 hours later will continue from here.',
+            ...(stoppedForAuth
+              ? [
+                  '  The Claude CLI login has expired. This is NOT a usage limit and will',
+                  '  not clear on its own — every run does nothing until you run:',
+                  '',
+                  '      claude login',
+                ]
+              : [
+                  stoppedEarly
+                    ? '  Your usage window is spent — that is the intended stopping point.'
+                    : '  Stopped by --limit.',
+                  '  The next run picks all of it up. Windows reset every 5 hours, so a',
+                  '  second routine more than 5 hours later will continue from here.',
+                ]),
           ]
         : []),
       '',

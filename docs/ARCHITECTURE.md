@@ -70,6 +70,12 @@ everything ever seen.
    usage-limit refusal consumes none. `PlanLimitError` matches the second and
    stops the run — without it a limit marked 37 of 57 healthy companies failed.
 
+   An expired CLI login refuses with that same zero-token envelope, so
+   `classifyRefusal` splits it out as `AuthExpiredError`. It still stops the run,
+   but the message says to run `claude login` rather than promising the window
+   reopens: reported as a usage limit, it hid a dead login for six days and 318
+   companies.
+
 3. **`null` means unknown, never `0`.** Form D's `totalOfferingAmount` can
    literally be `"Indefinite"`; a `0` would rank a company as having raised
    nothing.

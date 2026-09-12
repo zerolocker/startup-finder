@@ -322,3 +322,59 @@ describe('PlanLimitError message', () => {
     expect(new PlanLimitError('monthly spend limit').message).toContain('Claude said: monthly spend limit');
   });
 });
+
+describe('expired login vs usage limit', () => {
+  // Real envelope from six consecutive daily runs (2026-09-06..09-11). An
+  // expired OAuth session refuses with zero tokens exactly like a spent usage
+  // window, so every run reported "usage limit" and quietly found nothing —
+  // 318 companies went unassessed before anyone looked at the login.
+  const authRefusal = JSON.stringify({
+    is_error: true,
+    duration_api_ms: 0,
+    result: 'Failed to authenticate: OAuth session expired and could not be refreshed',
+    usage: { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0 },
+  });
+
+  it('reports an expired login as a login problem, not a usage limit', async () => {
+    const { classifyRefusal, AuthExpiredError } = await import('../src/llm/claude.ts');
+    const err = classifyRefusal(authRefusal);
+    expect(err).toBeInstanceOf(AuthExpiredError);
+    expect(err!.message).toMatch(/claude login/);
+    expect(err!.message).not.toMatch(/Usage limit reached/);
+  });
+
+  // It must still stop the run: waiting does not fix it, but neither does
+  // grinding the rest of the queue into failures.
+  it('still stops the run like a plan limit', async () => {
+    const { classifyRefusal, PlanLimitError } = await import('../src/llm/claude.ts');
+    expect(classifyRefusal(authRefusal)).toBeInstanceOf(PlanLimitError);
+  });
+
+  it('leaves a genuine usage limit reported as one', async () => {
+    const { classifyRefusal, AuthExpiredError } = await import('../src/llm/claude.ts');
+    const err = classifyRefusal(
+      JSON.stringify({
+        is_error: true,
+        duration_api_ms: 0,
+        result: 'Claude usage limit reached',
+        usage: { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0 },
+      }),
+    );
+    expect(err).not.toBeInstanceOf(AuthExpiredError);
+    expect(err!.message).toMatch(/Usage limit reached/);
+  });
+
+  it('ignores an envelope that actually spent tokens', async () => {
+    const { classifyRefusal } = await import('../src/llm/claude.ts');
+    expect(
+      classifyRefusal(
+        JSON.stringify({
+          is_error: true,
+          duration_api_ms: 4210,
+          result: 'authentication hiccup mid-call',
+          usage: { input_tokens: 1200, output_tokens: 30 },
+        }),
+      ),
+    ).toBeNull();
+  });
+});

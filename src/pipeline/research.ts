@@ -26,7 +26,7 @@
 import type { Assessment, Company, Profile, RunCompany } from '../types.ts';
 import { AssessmentSchema } from '../types.ts';
 import { profileToPrompt } from '../config.ts';
-import { PlanLimitError, runClaudeJson, spentUsd, type ModelAlias } from '../llm/claude.ts';
+import { AuthExpiredError, PlanLimitError, runClaudeJson, spentUsd, type ModelAlias } from '../llm/claude.ts';
 import { mapWithConcurrency } from '../util/http.ts';
 import { formatUsd } from '../util/text.ts';
 import { log } from '../util/log.ts';
@@ -161,6 +161,8 @@ export interface ResearchResult {
   failures: number;
   /** True when the run stopped early because the plan's rate limit was hit. */
   planLimited: boolean;
+  /** Set when the stop was an expired login, which no amount of waiting fixes. */
+  authExpired: boolean;
 }
 
 /** Research and score every company given. */
@@ -170,7 +172,7 @@ export async function researchCompanies(
   opts: ResearchOptions = {},
 ): Promise<ResearchResult> {
   const { model = 'sonnet', concurrency = 3, timeoutMs = 240_000 } = opts;
-  if (companies.length === 0) return { companies: [], costUsd: 0, failures: 0, planLimited: false };
+  if (companies.length === 0) return { companies: [], costUsd: 0, failures: 0, planLimited: false, authExpired: false };
 
   let costUsd = 0;
   let failures = 0;
@@ -179,6 +181,7 @@ export async function researchCompanies(
   // so continuing would mark the rest of the queue as research failures in
   // seconds. Stop dispatching and leave them unassessed for the next run.
   let planLimited = false;
+  let authExpired = false;
   // Backstop for the above. PlanLimitError matches one exact envelope shape;
   // this catches the same situation if that shape ever changes, by noticing
   // that several calls in a row failed without spending anything. A genuine
@@ -208,6 +211,7 @@ export async function researchCompanies(
       if (err instanceof PlanLimitError) {
         if (!planLimited) log.warn(err.message);
         planLimited = true;
+        if (err instanceof AuthExpiredError) authExpired = true;
         return { ...company, assessment: null, researchedAt: null };
       }
       // One company failing must not cost the run. It lands in the shard with a
@@ -243,14 +247,19 @@ export async function researchCompanies(
     `Researched ${assessed}/${companies.length} companies ($${costUsd.toFixed(2)})` +
       (failures > 0 ? `, ${failures} failed` : ''),
   );
-  if (planLimited) {
+  if (authExpired) {
+    log.warn(
+      `Stopped early: ${companies.length - assessed} companies were not researched because the Claude ` +
+        'CLI login has expired. The next run will do nothing either until `claude login` is run.',
+    );
+  } else if (planLimited) {
     log.warn(
       `Stopped early: ${companies.length - assessed} companies were not researched because a usage ` +
         'limit was reached. They are picked up automatically by the next run — see the message above ' +
         'for which limit, since a five-hour window reopens on its own and a longer cap does not.',
     );
   }
-  return { companies: out, costUsd, failures, planLimited };
+  return { companies: out, costUsd, failures, planLimited, authExpired };
 }
 
 /** The number the dashboard sorts on. Unassessed companies sink, never vanish. */
