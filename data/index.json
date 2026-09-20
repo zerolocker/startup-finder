@@ -1,5 +1,29 @@
 [
   {
+    "date": "2026-09-19",
+    "windowDays": 1,
+    "companies": 19,
+    "assessed": 19,
+    "costUsd": 3.085074600000001,
+    "generatedAt": "2026-09-20T04:14:56.337Z"
+  },
+  {
+    "date": "2026-09-18",
+    "windowDays": 1,
+    "companies": 72,
+    "assessed": 72,
+    "costUsd": 11.709501999999999,
+    "generatedAt": "2026-09-20T04:25:53.285Z"
+  },
+  {
+    "date": "2026-09-17",
+    "windowDays": 1,
+    "companies": 69,
+    "assessed": 69,
+    "costUsd": 21.190820000000002,
+    "generatedAt": "2026-09-20T13:08:21.484Z"
+  },
+  {
     "date": "2026-09-15",
     "windowDays": 1,
     "companies": 80,
