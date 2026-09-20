@@ -45,6 +45,30 @@ describe('datesToCover', () => {
     expect(datesToCover([entry('2025-01-01', 5, 5)], TODAY)).toHaveLength(7);
   });
 
+  // A rate limit stops the newest-first walk on an OLDER day, so the newer days
+  // are complete and the interrupted one is not. Treating the first complete
+  // day as the end of history stranded it — 19 companies of 2026-09-17 sat
+  // unassessed while `sf run` reported "already up to date".
+  it('resumes a day a rate limit interrupted behind days that finished after it', () => {
+    expect(
+      datesToCover(
+        [entry('2026-09-19', 19, 19), entry('2026-09-18', 72, 72), entry('2026-09-17', 69, 50)],
+        new Date('2026-09-20T13:00:00Z'),
+      ),
+    ).toEqual(['2026-09-17']);
+  });
+
+  // The scan must not stop at a day that was never ingested either — the
+  // login-lapse days of 2026-09-13..15 sit behind a gap at 2026-09-16.
+  it('reaches unfinished days behind a day that was never ingested', () => {
+    expect(
+      datesToCover(
+        [entry('2026-09-19', 19, 19), entry('2026-09-15', 80, 0), entry('2026-09-14', 67, 0)],
+        new Date('2026-09-20T13:00:00Z'),
+      ),
+    ).toEqual(['2026-09-15', '2026-09-14']);
+  });
+
   it('treats an empty issue as not complete, so it is retried', () => {
     expect(datesToCover([entry('2026-08-11', 0, 0)], TODAY)).toContain('2026-08-11');
   });
