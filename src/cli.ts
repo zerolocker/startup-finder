@@ -29,6 +29,7 @@ import { ingestEdgar } from './sources/edgar.ts';
 import { ingestNews } from './sources/news.ts';
 import { mergeSources } from './pipeline/merge.ts';
 import { buildResearchPrompt, fitOf, researchCompanies } from './pipeline/research.ts';
+import { enrichMedia } from './pipeline/media.ts';
 import { renderDashboard } from './report/html.ts';
 import { loadProfile } from './config.ts';
 import { isClaudeAvailable, resetSpend, spentUsd } from './llm/claude.ts';
@@ -45,6 +46,7 @@ Commands:
                   Safe to run repeatedly; it is idempotent.
   ingest          Fetch a day into data/runs/<date>.jsonl, no LLM
   research        Research and score that shard's companies
+  media           Read researched homepages for pictures, no LLM
   report          Rewrite index.html and data/index.json
   runs            List the runs on disk
   show <id>       Print everything known about one company
@@ -193,6 +195,21 @@ async function stageResearch(
   return { companies: merged, planLimited, authExpired };
 }
 
+/** Pictures for a shard's researched companies. Free: no LLM, cached GETs. */
+async function stageMedia(date: string): Promise<void> {
+  const shard = await readShard(date);
+  const { companies, visited } = await enrichMedia(shard);
+  if (visited > 0) await writeShard(date, companies);
+}
+
+/**
+ * Issues a run fills pictures in for: the ones it covered, plus the week
+ * before, so issues written before the media stage existed catch up.
+ */
+function mediaDates(covered: readonly string[], index: readonly RunIndexEntry[]): string[] {
+  return [...new Set([...covered, ...index.slice(0, MAX_CATCHUP_DAYS).map((e) => e.date)])];
+}
+
 /**
  * The days a run should cover: everything from the last completed issue up to
  * yesterday, newest first.
@@ -336,6 +353,7 @@ async function cmdRun(opts: {
 
   const dates = opts.date ? [opts.date] : datesToCover(await readIndex(), new Date());
   if (dates.length === 0) {
+    for (const date of mediaDates([], await readIndex())) await stageMedia(date);
     process.stdout.write('\nAlready up to date. Nothing to run.\n\n');
     return;
   }
@@ -373,6 +391,10 @@ async function cmdRun(opts: {
       break;
     }
   }
+
+  // After research, not inside the loop: it is free, so a rate limit that
+  // stopped research early must not stop it too.
+  for (const date of mediaDates(covered.map((e) => e.date), await readIndex())) await stageMedia(date);
 
   const newest = covered[0];
   const companies = newest ? await readShard(newest.date) : [];
@@ -439,7 +461,7 @@ async function cmdRun(opts: {
         return `  ${fit}  ${amount}  ${where} ${c.name.slice(0, 28).padEnd(29)} ${(c.assessment?.whatTheyDo ?? '').slice(0, 48)}`;
       }),
       '',
-      '  serve the repo root and open index.html to read the issue',
+      '  open the digest on your phone to read and grade it (README: "Read and grade an issue")',
       '',
     ].join('\n'),
   );
@@ -504,6 +526,9 @@ async function main(): Promise<void> {
       await stageReport(date, spentUsd(), days);
       break;
     }
+    case 'media':
+      await stageMedia(await resolveDate(values.date));
+      break;
     case 'report':
       await stageReport(await resolveDate(values.date), 0, days);
       break;

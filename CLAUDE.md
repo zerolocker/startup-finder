@@ -18,7 +18,7 @@ for a fast mental model.
 
 ```bash
 pnpm install
-pnpm test           # 192 tests, no network, <1s
+pnpm test           # 242 tests, no network, <2s
 pnpm typecheck      # tsc --noEmit, strict
 pnpm sf --help      # all CLI options
 
@@ -50,13 +50,17 @@ a third:
   by a consecutive-free-failure streak in `research.ts`; with the rate limit as
   the *only* stop condition, losing that detection means burning the whole queue
   into failures.
-- The `review-startups` skill — reading and grading an issue.
+- The digest page — reading and grading an issue, on a phone.
+  `index.html` served by GitHub Pages at https://zerolocker.github.io/startup-finder/.
+  Grades save themselves to `data/labels.jsonl` through a pull request the page
+  opens and merges; see "Grades" in ARCHITECTURE.md. The `review-startups` skill
+  is the desk fallback, and where grades get analysed.
 
-`ingest` / `research` / `report` are internal stages, useful while developing.
-Do not document them as workflows.
+`ingest` / `research` / `media` / `report` are internal stages, useful while
+developing. Do not document them as workflows.
 
-To view the dashboard, serve the repo root — it reads `data/` over HTTP and cannot
-run from `file://`:
+To view the dashboard locally, serve the repo root — it reads `data/` over HTTP
+and cannot run from `file://`:
 
 ```bash
 python3 -m http.server 8000
@@ -145,6 +149,10 @@ deleting it is always safe and only costs re-fetch time.
 
 Expect diffs under `data/` when you run the pipeline. That is normal. Don't revert
 them, and don't add them to `.gitignore`.
+
+`data/labels.jsonl` also changes on `main` without you: each grading sitting on
+the phone lands as a squash-merged PR titled "Grades from the startup digest",
+from a `grades` branch the page recreates each time. Pull before editing it.
 
 ## Keeping docs true
 
