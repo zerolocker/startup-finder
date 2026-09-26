@@ -231,13 +231,31 @@ export function datesToCover(index: readonly RunIndexEntry[], today: Date): stri
   // research a week of filings — roughly 430 companies — on first use.
   if (index.length === 0) return [end.toISOString().slice(0, 10)];
 
-  const complete = new Set(index.filter((e) => e.companies > 0 && e.assessed >= e.companies).map((e) => e.date));
+  const byDate = new Map(index.map((e) => [e.date, e]));
   const out: string[] = [];
+
+  // A complete day ends the search for *new* days to ingest, not the walk. Days
+  // are processed newest first, so a rate limit leaves the newer days complete
+  // and an older one half done; stopping at the first complete day stranded
+  // that older day forever. Bound the work, not the days.
+  let settled = false;
   for (let i = 0; i < MAX_CATCHUP_DAYS; i++) {
     const d = new Date(end);
     d.setUTCDate(d.getUTCDate() - i);
     const iso = d.toISOString().slice(0, 10);
-    if (complete.has(iso)) break; // reached settled history; everything older is done
+    const entry = byDate.get(iso);
+
+    if (entry && entry.companies > 0 && entry.assessed >= entry.companies) {
+      settled = true;
+      continue;
+    }
+    // Companies on disk with some unassessed: outstanding work wherever it sits
+    // in the window, including behind days that finished after it.
+    if (entry && entry.companies > entry.assessed) {
+      out.push(iso);
+      continue;
+    }
+    if (settled) continue; // older than settled history — no uningested filings back there
     out.push(iso);
   }
   return out;
