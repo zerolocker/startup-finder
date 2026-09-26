@@ -144,6 +144,28 @@ export async function fetchText(url: string, opts: FetchOptions = {}): Promise<s
   throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
+/**
+ * Request a URL for its side effect and discard the body — e.g. asking a
+ * screenshot service to render before a reader needs it. Throttled like any
+ * other request, never cached, and never throws: it is only ever a head start.
+ */
+export async function warmUrl(url: string, timeoutMs = 20_000): Promise<void> {
+  try {
+    await throttle(new URL(url).host, async () => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, { headers: { 'User-Agent': BROWSER_USER_AGENT }, signal: controller.signal });
+        await res.arrayBuffer();
+      } finally {
+        clearTimeout(timer);
+      }
+    });
+  } catch (err) {
+    log.debug(`warm ${url} failed`, String(err));
+  }
+}
+
 /** Fetch and JSON-parse. */
 export async function fetchJson<T>(url: string, opts: FetchOptions = {}): Promise<T> {
   return JSON.parse(await fetchText(url, opts)) as T;

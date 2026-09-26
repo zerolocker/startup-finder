@@ -13,7 +13,7 @@ There are exactly **two** things to run, ever:
 | I want to… | Do this |
 |---|---|
 | Get a new issue, every day | A **Claude Desktop Routine** running `pnpm sf run` — [set up below](#run-it-daily) |
-| Read and grade an issue | The **`review-startups` skill** — say "review startups" to Claude |
+| Read and grade an issue | **Open the digest on your phone** — [set up once below](#read-and-grade-an-issue) |
 
 Everything else (`ingest`, `research`, `report`) is an internal stage you can
 call by hand while developing, but never need to.
@@ -25,8 +25,10 @@ call by hand while developing, but never need to.
 One day: **222 SEC Form D filings → 62 companies → all 62 researched on the web
 and scored**. About 15 minutes and a few dollars of your Claude plan's usage.
 
-Each run is a self-contained issue. The dashboard shows one issue at a time, with
-a picker to move between days.
+Each run is a self-contained issue, read as a swipeable deck on your phone: a
+cover page that sums up the day in charts, then one slide per company with a
+picture from its own website, its fit score, what it does and why it scored
+that — best first.
 
 ## Why it exists
 
@@ -48,8 +50,10 @@ flowchart TD
     B["funding news RSS — 7 feeds"] --> C
     C["merge — 62 companies, joined by exact name"] --> D
     D["research — web search on every one of the 62"]
-    D --> S[("data/runs/2026-08-11.jsonl — one self-contained issue")]
-    S --> H["index.html — reads one issue and ranks it"]
+    D --> M["media — each company's own homepage, for pictures"]
+    M --> S[("data/runs/2026-08-11.jsonl — one self-contained issue")]
+    S --> H["the digest page on GitHub Pages — read and grade on your phone"]
+    H -->|"grades"| L[("data/labels.jsonl")]
 ```
 
 - **ingest** — pulls one day of Form D filings and funding headlines. A filter
@@ -60,8 +64,11 @@ flowchart TD
   **every** company: what they build, who founded it, open roles, links — and
   scores the fit while it is there. Nothing is filtered out before this, so a
   company is never dismissed on the basis of its name.
-- **dashboard** — `index.html` loads one issue and ranks it. Every company in the
-  run is shown; there is no top-N cut.
+- **media** — free. Reads each researched company's homepage for the picture it
+  shares on social media, its logo and any demo video. Never asked of the model,
+  which would invent image links.
+- **dashboard** — `index.html`, served by GitHub Pages, loads one issue and ranks
+  it. Every company in the run is shown; there is no top-N cut.
 
 ## Configure it
 
@@ -120,16 +127,38 @@ with no arguments. `launchd`, `cron`, or running it by hand are all equivalent.
 
 ## Read and grade an issue
 
-Say **"review startups"** to Claude and the `review-startups` skill takes it from
-there: it serves the repo, opens the dashboard, and — when you are done — folds
-your grades into `data/labels.jsonl` and commits them.
+Open **https://zerolocker.github.io/startup-finder/** on your phone. Each new issue
+appears there on its own once the daily run lands.
 
-Grading is three clicks: ★ **save**, **not interested**, or expanding
-**Details**. Scrolling past a company records nothing — it cannot tell reading
-from skimming — so a company you never judged is simply absent.
+**Swipe** between companies. **★ Save** or **✕ Not interested** grades one and
+moves on; **Everything research found** opens the full dossier, which counts as
+*opened*. Swiping past records nothing — it cannot tell reading from skimming — so
+a company you skip stays ungraded rather than rejected. **List** switches to a
+searchable, filterable list of the same issue.
 
 Those grades are the only ground truth the app has: the model can tell you what a
 company does, but not whether its taste matches yours.
+
+### One-time setup
+
+1. **Turn on GitHub Pages**: the repo's *Settings → Pages*, source *Deploy from a
+   branch*, branch `main`, folder `/ (root)`. The address above works a minute
+   later.
+2. **Open it on your phone** and, if you like, *Share → Add to Home Screen*.
+3. **Let it save your grades.** Tap **Not synced** at the top right and follow the
+   link: it opens GitHub's token form already filled in, except that under
+   *Repository access* you pick *Only select repositories → startup-finder*.
+   Generate, copy, paste, **Connect**. Once per device — and on an iPhone, the
+   home-screen icon keeps its own storage, so paste it there.
+
+After that there is nothing to log in to. Grades save themselves: each sitting
+becomes one small pull request that the page merges on its own when you reach the
+end of the deck or leave the page. The pill at the top says **Saved** when GitHub
+has everything; a grade made offline waits on the phone and goes next time.
+
+Without a token the page still works; grades stay in that browser, and
+**Download grades file** in the same panel hands them to the `review-startups`
+skill on your computer.
 
 ## Inspecting things by hand
 
@@ -168,11 +197,13 @@ identify themselves.
 ```
 config/profile.yaml     what you care about — the only file most users edit
 src/sources/            EDGAR and RSS ingestion
-src/pipeline/           merge, then research-and-score
+src/pipeline/           merge, research-and-score, then media
 src/report/html.ts      the dashboard shell
+src/report/web/         the dashboard's logic and style, inlined into the shell
 src/llm/claude.ts       the claude -p wrapper (caching, cost accounting, retries)
 data/runs/<date>.jsonl  one self-contained issue per run, committed
 data/index.json         the list of issues
+data/labels.jsonl       your grades, one per company per issue
 index.html              the dashboard; reads data/, so it must be served
 docs/                   how it works, and where the data comes from
 ```
@@ -198,6 +229,6 @@ Start with [`CLAUDE.md`](CLAUDE.md), then
 [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md).
 
 ```bash
-pnpm test        # 147 tests, no network required
+pnpm test        # 242 tests, no network required
 pnpm typecheck
 ```

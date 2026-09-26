@@ -6,10 +6,13 @@ _How the app is put together, and the constraints that shape it._
 
 ```
 SEC Form D ─┐
-            ├─> merge ─> research (web search + score) ─> data/runs/<date>.jsonl
-news RSS ───┘                                                      │
-                                                                   v
-                                                    index.html reads one issue
+            ├─> merge ─> research (web search + score) ─> media ─> data/runs/<date>.jsonl
+news RSS ───┘                                                              │
+                                                                           v
+                                        index.html on GitHub Pages reads one issue
+                                                                           │ grades
+                                                                           v
+                                           data/labels.jsonl, via a PR the page merges
 ```
 
 A run is **one day**, and everything it produces lives in one shard. There is no
@@ -20,6 +23,7 @@ cumulative store.
 | ingest | free | 220-290 filings, 7 RSS feeds | 60-70 companies |
 | merge | free | filings + news items | one record per company |
 | research | ~$0.25-0.30/company | every company | fit score + dossier |
+| media | free | researched homepages | image, logo, video per company |
 | report | free | the shard | `index.html`, `data/index.json` |
 
 `src/types.ts` is the contract between stages and the best single file to read
@@ -48,9 +52,11 @@ makes it affordable.
 
 | path | written by | shape |
 |---|---|---|
-| `data/runs/<date>.jsonl` | ingest, then research | one `RunCompany` per line |
+| `data/runs/<date>.jsonl` | ingest, research, media | one `RunCompany` per line |
 | `data/index.json` | report | `RunIndexEntry[]`, newest first |
-| `index.html` | report | the dashboard shell — no data in it |
+| `index.html` | report | the dashboard — no data in it |
+| `src/report/web/` | by hand | the dashboard's logic and style, inlined into `index.html` |
+| `data/labels.jsonl` | the dashboard, via a PR | one grade per company per issue |
 | `data/cache/` | http + llm layers | gitignored, safe to delete |
 
 Shards and the index are **committed on purpose**. Git is the archive: back issues
@@ -82,10 +88,15 @@ everything ever seen.
 4. **Shards are written in id order**, so git stores what changed rather than a
    reordering of the whole file. No consumer may assume file order — rank
    explicitly at the point of use.
-5. **The dashboard carries no data.** `src/report/html.ts` emits a ~18 KB shell
+5. **The dashboard carries no data.** `src/report/html.ts` emits a ~80 KB shell
    that fetches one shard at load time. Inlining data made every run commit a
    second copy of records already on disk, and put text from SEC filings — which
    anyone can craft — inside a `<script>` block.
+
+   It does hold a GitHub token, so its Content-Security-Policy lets only its own
+   inline script run (by hash) and lets it talk only to its own origin and
+   `api.github.com`. No inline handlers, and every model-written link passes
+   `safeUrl()`, which admits http(s) only.
 6. **A shard's date is the day it covers.** The filing window is anchored to
    that date, never to the clock. Catching up is a loop over outstanding days,
    one shard each — not a widened window; an earlier design derived the width
@@ -96,6 +107,35 @@ everything ever seen.
 7. **Never run `claude` from the repo root.** It reads `CLAUDE.md` from its working
    directory, which would inject this project's instructions into every research
    prompt. `src/llm/claude.ts` runs it from an empty temp dir.
+8. **Pictures are scraped, never model-written.** A model asked for an image URL
+   invents a plausible one. `media` reads the company's own homepage, and only
+   one research was confident about — see DATA_SOURCES.md.
+9. **Every grade is a click.** Swiping the deck or scrolling the list records
+   nothing, so a company never judged is absent from `data/labels.jsonl`, never
+   a 0. Filling those in would teach any eval that whatever the ranker buried
+   deserved burying.
+
+## Grades: from a phone to `data/labels.jsonl`
+
+The dashboard is served by GitHub Pages from `main`, so it is a bookmark on a
+phone. Grades are written straight to the repo through GitHub's REST API with a
+fine-grained token the user pastes once per device (Contents and Pull requests,
+write, this repo only). There is no server.
+
+A sitting's grades go to a `grades` branch and reach `main` through a pull
+request the page opens and squash-merges itself — on reaching the end of the
+deck, on leaving the page, or at the next visit. That is the same
+branch-and-PR path every other change takes, and it works whether or not `main`
+is protected. If a merge is refused, the grades wait in the open PR, and the page
+reads them from the branch meanwhile.
+
+Commits are batched: one after 20 seconds without a grade, or two minutes into
+steady grading. Until the PR exists a grade stays queued in `localStorage`, so a
+phone that freezes the tab mid-save loses nothing — the next visit resets the
+branch from `main` and replays the queue.
+
+Without a token, grades stay in the browser and export as `labels.json` for the
+`review-startups` skill, as before.
 
 ## The ingest filter
 
@@ -150,6 +190,11 @@ and holding companies that get through, and the dashboard hides those by default
 **Adding a data source** is the most common change. Write a module in
 `src/sources/` returning records `mergeSources` understands, and add it to
 `stageIngest`. See [DATA_SOURCES.md](DATA_SOURCES.md) for what is worth adding.
+
+**Changing the dashboard** means editing `src/report/web/` and running
+`pnpm sf report`. `model.js` is the pure part — tested, and shared with the media
+stage — and `app.js` the DOM. There is no build step: the browser runs them as
+written, which is why they are plain JavaScript.
 
 **Changing what "good" means** is a config change, not a code change. Edit
 `config/profile.yaml`, then `pnpm sf research --refresh --limit 5` against a shard
