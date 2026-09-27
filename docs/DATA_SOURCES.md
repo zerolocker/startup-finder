@@ -184,6 +184,44 @@ Measured on the 52 items then on disk: 25 companies extracted, 4 of them junk
 
 ---
 
+## Company homepages — the pictures
+
+**What it is.** After research, `src/pipeline/media.ts` fetches each company's
+homepage once and reads three things out of its HTML: the image it shares on
+social media (`og:image`, then `twitter:image`), its home-screen or largest icon,
+and the first YouTube, Vimeo, Loom or Wistia video it embeds or links. Free: one
+cached GET per company, no LLM.
+
+**Which homepage.** The one research found, picked by `pickHomepage()` in
+`src/report/web/model.js` — the link labelled Homepage/Website, else the domain of
+a Careers/About/Docs link, never a registry, press, social or job-board host. And
+only when research called the company operating and was at least medium-confident
+who it is: a picture from a namesake's site is exactly the confident wrong answer
+rule 1 in CLAUDE.md is about. On ten issues on disk, 276 of 476 assessed companies
+carried a Homepage-labelled link.
+
+**Why scraped, not asked for.** A model asked for an image URL writes a plausible
+one. The homepage's own markup is what the company actually chose.
+
+**What the phone loads, and from where.** The dashboard tries, in order: the
+company's shared image; its video's YouTube thumbnail; a screenshot of the
+homepage from WordPress's free mShots service; a monogram. Logos: the scraped
+icon, then Google's favicon service, then a monogram. Anything that fails or
+comes back too small to draw moves to the next.
+
+**Gotchas.**
+- mShots renders on first request and answers with a small placeholder until it
+  is done, so the media stage requests each screenshot once in advance
+  (`warmUrl`), and the page treats an image under the requested width as not
+  ready yet.
+- Many sites serve relative `og:image` paths, `&amp;`-encoded query strings, or
+  `http:` URLs. All three are normalised; `http:` is upgraded because an https
+  page cannot load it.
+- A fetch that fails is recorded as a homepage with no pictures, and not retried
+  every run.
+
+---
+
 ## Sources worth adding
 
 Roughly in order of value per unit of work:

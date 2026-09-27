@@ -209,6 +209,27 @@ export type Assessment = z.infer<typeof AssessmentSchema>;
 export interface RunCompany extends Company {
   assessment: Assessment | null;
   researchedAt: string | null;
+  /**
+   * Pictures for the dashboard, read off the company's own homepage.
+   * Absent = not looked yet; `null` = no trustworthy homepage to look at.
+   */
+  media?: CompanyMedia | null;
+}
+
+/**
+ * What the company's homepage says about how it looks. Scraped from its HTML,
+ * never model-written: a model asked for an image URL invents plausible ones.
+ */
+export interface CompanyMedia {
+  /** The page the rest was read from — the researched homepage. */
+  homepage: string;
+  /** og:image / twitter:image: the picture the company chose to represent itself. */
+  image: string | null;
+  /** apple-touch-icon or the largest declared icon. */
+  logo: string | null;
+  /** The first YouTube, Vimeo, Loom or Wistia video on the homepage. */
+  video: string | null;
+  fetchedAt: string;
 }
 
 // ---------------------------------------------------------------------------
