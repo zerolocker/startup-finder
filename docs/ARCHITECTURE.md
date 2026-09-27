@@ -93,6 +93,11 @@ everything ever seen.
    per-day. Both halves have to agree: while the window still anchored to the
    clock, the catch-up run of 2026-08-14 wrote 2026-08-13's filings into the
    2026-08-12 shard as well, and that day's own 47 filings were never fetched.
+   Outstanding means "has unassessed companies on disk", not "older than the
+   newest complete issue": days run newest-first, so a rate limit leaves an
+   *older* day half done behind complete newer ones. `datesToCover` scans the
+   whole catch-up window for those; a complete day only stops it reaching
+   further back for new days to ingest.
 7. **Never run `claude` from the repo root.** It reads `CLAUDE.md` from its working
    directory, which would inject this project's instructions into every research
    prompt. `src/llm/claude.ts` runs it from an empty temp dir.
