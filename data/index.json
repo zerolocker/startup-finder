@@ -1,5 +1,13 @@
 [
   {
+    "date": "2026-10-13",
+    "windowDays": 1,
+    "companies": 96,
+    "assessed": 96,
+    "costUsd": 20.566462399999995,
+    "generatedAt": "2026-10-14T13:42:14.172Z"
+  },
+  {
     "date": "2026-10-12",
     "windowDays": 1,
     "companies": 17,
